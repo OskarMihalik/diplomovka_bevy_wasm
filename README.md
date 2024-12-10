@@ -7,10 +7,6 @@ Template for a Game using the awesome [Bevy engine][bevy] featuring out of the b
 * small example ["game"](https://niklasei.github.io/bevy_game_template/)
 * easy setup for running the web build using [trunk] (`trunk serve`) 
 * run the native version with `cargo run`
-* workflow for GitHub actions creating releases for Windows, Linux, macOS, and Web (Wasm) ready for distribution
-    * the same workflow creates development builds for the mobile platforms (two separate workflows can push to the stores after [some setup](#deploy-mobile-platforms))
-    * push a tag in the form of `v[0-9]+.[0-9]+.[0-9]+*` (e.g. `v1.1.42`) to trigger the flow
-* CI workflow that checks your application on all native platforms on every push
 
 WARNING: if you work in a private repository, please be aware that macOS and Windows runners cost more build minutes.
 **For public repositories the workflow runners are free!**
@@ -26,14 +22,7 @@ WARNING: if you work in a private repository, please be aware that macOS and Win
         * requires [trunk]: `cargo install --locked trunk`
         * requires `wasm32-unknown-unknown` target: `rustup target add wasm32-unknown-unknown`
         * this will serve your app on `8080` and automatically rebuild + reload it after code changes
-    * Start the android app: `cargo apk run -p mobile`
-        * requires following the instructions in the [bevy example readme for android setup][android-instructions]
-    * Start the iOS app (see the [bevy example readme for ios setup instructions][ios-instructions])
-        * Install Xcode through the app store
-        * Launch Xcode and install the iOS simulator (check the box upon first start, or install it through `Preferences > Platforms` later)
-        * Install the iOS and iOS simulator Rust targets with `rustup target add aarch64-apple-ios x86_64-apple-ios aarch64-apple-ios-sim`
-        * run `make run` inside the `/mobile` directory
-
+ 
 You should keep the `credits` directory up to date. The release workflow automatically includes the directory in every build.
 
 ### Updating the icons
@@ -46,35 +35,6 @@ You should keep the `credits` directory up to date. The release workflow automat
        4. Save as `build/windows/icon.ico`
  3. Replace `build/android/res/mipmap-mdpi/icon.png` with `macos/AppIcon.iconset/icon_256x256.png`, but rename it to `icon.png`
 
-### Deploy web build to GitHub pages
-
- 1. Trigger the `deploy-github-page` workflow
- 2. Activate [GitHub pages](https://pages.github.com/) for your repository
-     1. Source from the `gh-pages` branch (created by the just executed action)
- 3. After a few minutes your game is live at `http://username.github.io/repository`
-
-To deploy newer versions, just run the `deploy-github-page` workflow again.
-
-# Deploy mobile platforms
-
-For general info on mobile support, you can take a look at [one of my blog posts about mobile development with Bevy][mobile_dev_with_bevy_2] which is relevant to the current setup.
-
-## Android
-
-Currently, `cargo-apk` is used to run the development app. But APKs can no longer be published in the store and `cargo-apk` cannot produce the required AAB. This is why there is setup for two android related tools. In [`mobile/Cargo.toml`](./mobile/Cargo.toml), the `package.metadata.android` section configures `cargo-apk` while [`mobile/manifest.yaml`](./mobile/manifest.yaml) configures a custom fork of `xbuild` which is used in the `release-android-google-play` workflow to create an AAB.
-
-There is a [post about how to set up the android release workflow][workflow_bevy_android] on my blog.
-
-## iOS
-
-The setup is pretty much what Bevy does for the mobile example.
-
-There is a [post about how to set up the iOS release workflow][workflow_bevy_ios] on my blog.
-
-# Removing mobile platforms
-
-If you don't want to target Android or iOS, you can just delete the `/mobile`, `/build/android`, and `/build/ios` directories.
-Then delete the `[workspace]` section from `Cargo.toml`.
 
 # Getting started with Bevy
 
