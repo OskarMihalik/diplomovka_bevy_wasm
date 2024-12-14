@@ -30,8 +30,12 @@ pub struct GamePlugin;
 
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
-        app.init_state::<GameState>()
-            .add_plugins((LoadingPlugin, BuildingPlugin, PlayerPlugin));
+        app.init_state::<GameState>().add_plugins((
+            LoadingPlugin,
+            BuildingPlugin,
+            PlayerPlugin,
+            MeshPickingPlugin,
+        ));
 
         // #[cfg(debug_assertions)]
         // {
