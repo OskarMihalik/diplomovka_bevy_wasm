@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{loading::GltfAssets, GameState};
+use crate::{api::SendTestRequest, loading::GltfAssets, GameState};
 
 pub struct BuildingPlugin;
 
@@ -54,7 +54,8 @@ fn add_tag(
                     })),
                     GlobalTransform::from_xyz(position.x, position.y, position.z),
                 ))
-                .set_parent_in_place(target_entity);
+                .set_parent_in_place(target_entity)
+                .trigger(SendTestRequest {});
         }
         None => (),
     };

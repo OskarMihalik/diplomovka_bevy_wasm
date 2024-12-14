@@ -1,11 +1,13 @@
 #![allow(clippy::type_complexity)]
 
+mod api;
 mod building;
 mod loading;
 mod menu;
 
 use crate::loading::LoadingPlugin;
 
+use api::ApiPlugin;
 use bevy::app::App;
 #[cfg(debug_assertions)]
 // use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
@@ -30,12 +32,14 @@ pub struct GamePlugin;
 
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
-        app.init_state::<GameState>().add_plugins((
-            LoadingPlugin,
-            BuildingPlugin,
-            PlayerPlugin,
-            MeshPickingPlugin,
-        ));
+        app.add_plugins(ApiPlugin)
+            .init_state::<GameState>()
+            .add_plugins((
+                LoadingPlugin,
+                BuildingPlugin,
+                PlayerPlugin,
+                MeshPickingPlugin,
+            ));
 
         // #[cfg(debug_assertions)]
         // {

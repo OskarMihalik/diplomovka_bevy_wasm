@@ -65,13 +65,14 @@ bevy = { version = "0.15", default-features = false, features = [
     "tonemapping_luts",
     "webgl2",
     "x11",
-    "dynamic_linking",
+    # "dynamic_linking",
 ] }
 bevy_kira_audio = { version = "0.21" }
 bevy_asset_loader = { version = "0.22" }
 rand = { version = "0.8.3" }
 webbrowser = { version = "1", features = ["hardened"] }
 bevy_flycam = "0.15.0"
+bevy_mod_reqwest = "0.18"
 
 # keep the following in sync with Bevy's dependencies
 winit = { version = "0.30", default-features = false }

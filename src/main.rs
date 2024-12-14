@@ -7,12 +7,12 @@ use bevy::window::PrimaryWindow;
 use bevy::winit::WinitWindows;
 use bevy::DefaultPlugins;
 use bevy_game::GamePlugin; // ToDo: Replace bevy_game with your new crate name.
+use bevy_mod_reqwest::*;
 use std::io::Cursor;
 use winit::window::Icon;
 
 fn main() {
     App::new()
-        .insert_resource(ClearColor(Color::linear_rgb(0.4, 0.4, 0.4)))
         .add_plugins(
             DefaultPlugins
                 .set(WindowPlugin {
@@ -32,6 +32,7 @@ fn main() {
                     ..default()
                 }),
         )
+        .add_plugins(ReqwestPlugin::default())
         .add_plugins(GamePlugin)
         .add_systems(Startup, set_window_icon)
         .run();
