@@ -37,8 +37,4 @@ fn setup_scene(mut commands: Commands) {
         },
         Transform::from_xyz(4.0, 8.0, 4.0),
     ));
-    commands.spawn((
-        Camera3d::default(),
-        Transform::from_translation(Vec3::new(0.0, 0.0, 10.0)),
-    ));
 }

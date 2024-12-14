@@ -13,7 +13,6 @@ impl Plugin for LoadingPlugin {
         app.add_loading_state(
             LoadingState::new(GameState::Loading)
                 .continue_to_state(GameState::Playing)
-                .load_collection::<AudioAssets>()
                 .load_collection::<TextureAssets>()
                 .load_collection::<GltfAssets>(),
         );
@@ -22,12 +21,6 @@ impl Plugin for LoadingPlugin {
 
 // the following asset collections will be loaded during the State `GameState::Loading`
 // when done loading, they will be inserted as resources (see <https://github.com/NiklasEi/bevy_asset_loader>)
-
-#[derive(AssetCollection, Resource)]
-pub struct AudioAssets {
-    #[asset(path = "audio/flying.ogg")]
-    pub flying: Handle<AudioSource>,
-}
 
 #[derive(AssetCollection, Resource)]
 pub struct TextureAssets {
