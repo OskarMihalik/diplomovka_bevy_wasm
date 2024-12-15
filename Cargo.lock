@@ -328,6 +328,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f1fdabc7756949593fe60f30ec81974b613357de856987752631dea1e3394c80"
 
 [[package]]
+name = "backend"
+version = "0.1.0"
+
+[[package]]
 name = "backtrace"
 version = "0.3.74"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -584,6 +588,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_diplomovka"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "bevy_asset_loader",
+ "bevy_flycam",
+ "bevy_kira_audio",
+ "bevy_mod_reqwest",
+ "embed-resource",
+ "image",
+ "log",
+ "rand",
+ "webbrowser",
+ "winit",
+]
+
+[[package]]
 name = "bevy_dylib"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -644,23 +665,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "83039a8e4f7e92c96c97b0b3ac738a54781f77ce5086d3ae39698219586a7f1d"
 dependencies = [
  "bevy",
-]
-
-[[package]]
-name = "bevy_game"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "bevy_asset_loader",
- "bevy_flycam",
- "bevy_kira_audio",
- "bevy_mod_reqwest",
- "embed-resource",
- "image",
- "log",
- "rand",
- "webbrowser",
- "winit",
 ]
 
 [[package]]
@@ -1945,6 +1949,10 @@ name = "dpi"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f25c0e292a7ca6d6498557ff1df68f32c99850012b6ea401cf8daf771f22ff53"
+
+[[package]]
+name = "dto"
+version = "0.1.0"
 
 [[package]]
 name = "either"

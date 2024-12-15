@@ -6,10 +6,10 @@ use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 use bevy::winit::WinitWindows;
 use bevy::DefaultPlugins;
-use bevy_game::GamePlugin; // ToDo: Replace bevy_game with your new crate name.
+use bevy_diplomovka::GamePlugin;
 use bevy_mod_reqwest::*;
 use std::io::Cursor;
-use winit::window::Icon;
+use winit::window::Icon; // ToDo: Replace bevy_game with your new crate name.
 
 fn main() {
     App::new()
