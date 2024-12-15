@@ -1,0 +1,4 @@
+CREATE TABLE IF NOT EXISTS todo (
+    id SERIAL, 
+    name VARCHAR(250) NOT NULL
+    );
