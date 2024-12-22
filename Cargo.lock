@@ -780,6 +780,7 @@ dependencies = [
  "bevy_flycam",
  "bevy_kira_audio",
  "bevy_mod_reqwest",
+ "dto",
  "embed-resource",
  "image",
  "log",
@@ -2314,6 +2315,9 @@ checksum = "f25c0e292a7ca6d6498557ff1df68f32c99850012b6ea401cf8daf771f22ff53"
 [[package]]
 name = "dto"
 version = "0.1.0"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "either"

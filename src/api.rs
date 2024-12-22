@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy_mod_reqwest::*;
+use dto::test::Test;
 
 pub struct ApiPlugin;
 
@@ -15,10 +16,13 @@ impl Plugin for ApiPlugin {
 pub struct SendTestRequest {}
 
 fn send_requests(_trigger: Trigger<SendTestRequest>, mut client: BevyReqwest) {
-    let url = "https://bored-api.appbrewery.com/random";
-
+    let url = "http://localhost:4000/test";
+    let body = Test {
+        name: "aaaaaaa".to_string(),
+        age: 10,
+    };
     // use regular reqwest http calls, then poll them to completion.
-    let reqwest_request = client.get(url).build().unwrap();
+    let reqwest_request = client.post(url).json(&body).build().unwrap();
 
     client
         // Sends the created http request

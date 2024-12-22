@@ -14,6 +14,7 @@ use axum::{
 use axum_macros::debug_handler;
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
+use dto::test::Test;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use tokio_postgres::NoTls;
@@ -32,10 +33,11 @@ async fn main() {
     let backend = async {
         let app = Router::new()
             .route("/newTag", post(create_user))
+            .route("/test", post(test_bevy_route))
             .with_state(pool)
             .layer(
                 CorsLayer::new()
-                    .allow_origin("http://localhost:8080".parse::<HeaderValue>().unwrap())
+                    .allow_origin("*".parse::<HeaderValue>().unwrap())
                     .allow_methods([
                         Method::GET,
                         Method::POST,
@@ -55,6 +57,13 @@ async fn serve(app: Router, port: u16) {
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
+}
+
+#[debug_handler]
+async fn test_bevy_route(Json(payload): Json<Test>) -> (StatusCode, Json<Test>) {
+    let mut test = payload.clone();
+    test.age += 1;
+    (StatusCode::CONFLICT, Json(test))
 }
 
 #[debug_handler]
