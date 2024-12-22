@@ -1,17 +1,8 @@
-# A Bevy game template
+# Thesis
+some words what it does...
 
-Template for a Game using the awesome [Bevy engine][bevy] featuring out of the box builds for Windows, Linux, macOS, Web (Wasm), Android, and iOS.
 
-# What does this template give you?
-
-* small example ["game"](https://niklasei.github.io/bevy_game_template/)
-* easy setup for running the web build using [trunk] (`trunk serve`) 
-* run the native version with `cargo run`
-
-WARNING: if you work in a private repository, please be aware that macOS and Windows runners cost more build minutes.
-**For public repositories the workflow runners are free!**
-
-# How to use this template?
+# Run bevy
 
  1. Click "Use this template" on the repository's page
  2. Look for `ToDo` to use your own game name everywhere
@@ -22,8 +13,13 @@ WARNING: if you work in a private repository, please be aware that macOS and Win
         * requires [trunk]: `cargo install --locked trunk`
         * requires `wasm32-unknown-unknown` target: `rustup target add wasm32-unknown-unknown`
         * this will serve your app on `8080` and automatically rebuild + reload it after code changes
- 
-You should keep the `credits` directory up to date. The release workflow automatically includes the directory in every build.
+
+# Run Postgres:
+`docker compose up`
+
+# Run backend:
+`cargo run -p backend`
+
 
 ### Updating the icons
  1. Replace `build/macos/icon_1024x1024.png` with a `1024` times `1024` pixel png icon and run `create_icns.sh` or `create_icns_linux.sh` if you use linux (make sure to run the script inside the `build/macos` directory) - _Note: `create_icns.sh` requires a mac, and `create_icns_linux.sh` requires imagemagick and png2icns_
@@ -47,17 +43,3 @@ Audio in web-builds can have issues in some browsers. This seems to be a general
 # License
 
 This project is licensed under [CC0 1.0 Universal](LICENSE) except some content of `assets` and the Bevy icons in the `build` directory (see [Credits](credits/CREDITS.md)). Go crazy and feel free to show me whatever you build with this ([@nikl_me][nikl-twitter] / [@nikl_me@mastodon.online][nikl-mastodon] ).
-
-[bevy]: https://bevyengine.org/
-[bevy-learn]: https://bevyengine.org/learn/
-[bevy-discord]: https://discord.gg/bevy
-[nikl-twitter]: https://twitter.com/nikl_me
-[nikl-mastodon]: https://mastodon.online/@nikl_me
-[firefox-sound-issue]: https://github.com/NiklasEi/bevy_kira_audio/issues/9
-[Bevy Cheat Book]: https://bevy-cheatbook.github.io/introduction.html
-[trunk]: https://trunkrs.dev/
-[android-instructions]: https://github.com/bevyengine/bevy/blob/latest/examples/README.md#setup
-[ios-instructions]: https://github.com/bevyengine/bevy/blob/latest/examples/README.md#setup-1
-[mobile_dev_with_bevy_2]: https://www.nikl.me/blog/2023/notes_on_mobile_development_with_bevy_2/
-[workflow_bevy_android]: https://www.nikl.me/blog/2023/github_workflow_to_publish_android_app/
-[workflow_bevy_ios]: https://www.nikl.me/blog/2023/github_workflow_to_publish_ios_app/
