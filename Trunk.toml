@@ -2,11 +2,14 @@
 public_url = "./"
 
 [serve]
-port = 8080
+port = 8081
+addresses = ["0.0.0.0"]
 
 [watch]
 watch = [
     "./src",
     "./assets",
+    "dto",
+    "build",
 ] # Paths to watch. The `build.target`'s parent folder is watched by default.
 ignore = ["./db"] # Paths to ignore.

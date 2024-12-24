@@ -38,6 +38,11 @@ dev = ["bevy/dynamic_linking"]
 #   and android_shared_stdcxx/android-game-activity, since those are covered in `mobile`
 [dependencies]
 dto = { path = "./dto" }
+bevy_egui = { version = "0.31", default-features = false, features = [
+    "open_url",
+    "default_fonts",
+    "render",
+] }
 bevy = { version = "0.15", default-features = false, features = [
     "animation",
     "bevy_asset",

@@ -1,6 +1,8 @@
 # Thesis
 some words what it does...
 
+# Before dev on linux:
+`sudo apt install libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev`
 
 # Run bevy
 
@@ -9,7 +11,7 @@ some words what it does...
  3. [Update the icons as described below](#updating-the-icons)
  4. Start coding :tada:
     * Start the native app: `cargo run`
-    * Start the web build: `trunk serve`
+    * Start the web build: `RUSTFLAGS=--cfg=web_sys_unstable_apis trunk serve`
         * requires [trunk]: `cargo install --locked trunk`
         * requires `wasm32-unknown-unknown` target: `rustup target add wasm32-unknown-unknown`
         * this will serve your app on `8080` and automatically rebuild + reload it after code changes
