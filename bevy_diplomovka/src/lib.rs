@@ -13,7 +13,7 @@ use bevy::app::App;
 #[cfg(debug_assertions)]
 // use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::prelude::*;
-use bevy_flycam::prelude::*;
+use bevy_panorbit_camera::PanOrbitCameraPlugin;
 use building::BuildingPlugin;
 use gui::GuiPlugin;
 // This example game uses States to separate logic
@@ -37,9 +37,9 @@ impl Plugin for GamePlugin {
         app.add_plugins(ApiPlugin)
             .init_state::<GameState>()
             .add_plugins((
+                PanOrbitCameraPlugin,
                 LoadingPlugin,
                 BuildingPlugin,
-                PlayerPlugin,
                 MeshPickingPlugin,
                 GuiPlugin,
             ));

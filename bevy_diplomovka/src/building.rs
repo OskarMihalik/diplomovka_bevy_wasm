@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_panorbit_camera::PanOrbitCamera;
 
 use crate::{api::SendTestRequest, loading::GltfAssets, GameState};
 
@@ -32,6 +33,11 @@ fn setup_scene(mut commands: Commands) {
             ..default()
         },
         Transform::from_xyz(4.0, 8.0, 4.0),
+    ));
+
+    commands.spawn((
+        Transform::from_translation(Vec3::new(0.0, 1.5, 5.0)),
+        PanOrbitCamera::default(),
     ));
 }
 
