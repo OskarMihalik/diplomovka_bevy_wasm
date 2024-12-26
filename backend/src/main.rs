@@ -63,6 +63,7 @@ async fn serve(app: Router, port: u16) {
 async fn test_bevy_route(Json(payload): Json<Test>) -> (StatusCode, Json<Test>) {
     let mut test = payload.clone();
     test.age += 1;
+
     (StatusCode::CONFLICT, Json(test))
 }
 
