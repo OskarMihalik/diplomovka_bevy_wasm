@@ -15,7 +15,8 @@ use bevy::app::App;
 use bevy::prelude::*;
 use bevy_panorbit_camera::PanOrbitCameraPlugin;
 use building::BuildingPlugin;
-use gui::GuiPlugin;
+use gui::{gui::GuiPlugin, perf_ui::PerfUI};
+// use gui::GuiPlugin;
 // This example game uses States to separate logic
 // See https://bevy-cheatbook.github.io/programming/states.html
 // Or https://github.com/bevyengine/bevy/blob/main/examples/ecs/state.rs
@@ -42,6 +43,7 @@ impl Plugin for GamePlugin {
                 BuildingPlugin,
                 MeshPickingPlugin,
                 GuiPlugin,
+                PerfUI,
             ));
 
         // #[cfg(debug_assertions)]

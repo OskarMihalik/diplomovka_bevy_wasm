@@ -34,7 +34,7 @@ dev = ["bevy/dynamic_linking"]
 # All of Bevy's default features exept for the audio related ones (bevy_audio, vorbis), since they clash with bevy_kira_audio
 #   and android_shared_stdcxx/android-game-activity, since those are covered in `mobile`
 [dependencies]
-model = { path = "../model" }
+iyes_perf_ui = { git = "https://github.com/IyesGames/iyes_perf_ui.git" }
 bevy_file_dialog = { git = "https://github.com/richardhozak/bevy_file_dialog.git" }
 bevy_panorbit_camera = "0.21"
 wasm-bindgen = "=0.2.97"

@@ -2,6 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use bevy::asset::AssetMetaCheck;
+use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 use bevy::winit::WinitWindows;
@@ -32,6 +33,7 @@ fn main() {
                     ..default()
                 }),
         )
+        .add_plugins(FrameTimeDiagnosticsPlugin::default())
         .add_plugins(ReqwestPlugin::default())
         .add_plugins(GamePlugin)
         .add_systems(Startup, set_window_icon)
