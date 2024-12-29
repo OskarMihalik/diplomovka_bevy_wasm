@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_mod_reqwest::*;
-use dto::test::Test;
+use dto::default::{TagDto, TagDtoResponse, Test};
 
 pub struct ApiPlugin;
 
@@ -16,13 +16,10 @@ impl Plugin for ApiPlugin {
 pub struct SendTestRequest {}
 
 fn send_requests(_trigger: Trigger<SendTestRequest>, mut client: BevyReqwest) {
-    let url = "http://localhost:4000/test";
-    let body = Test {
-        name: "aaaaaaa".to_string(),
-        age: 10,
-    };
+    let url = "http://localhost:4000/tags";
+
     // use regular reqwest http calls, then poll them to completion.
-    let reqwest_request = client.post(url).json(&body).build().unwrap();
+    let reqwest_request = client.get(url).build().unwrap();
 
     client
         // Sends the created http request
@@ -32,10 +29,12 @@ fn send_requests(_trigger: Trigger<SendTestRequest>, mut client: BevyReqwest) {
         // the rest is the same as a regular system
         .on_response(|trigger: Trigger<ReqwestResponseEvent>| {
             let response = trigger.event();
-            let data = response.as_str();
             let status = response.status();
+            let data = response.as_str().unwrap();
+            bevy::log::info!("response: {status}, data: {data}");
+            let uga: TagDtoResponse = serde_json::from_str(data).unwrap();
             // let headers = req.response_headers();
-            bevy::log::info!("code: {status}, data: {data:?}");
+            bevy::log::info!("code: {status}, data: {uga:?}");
         })
         // In case of request error, it can be reached using an observersystem as well
         .on_error(|trigger: Trigger<ReqwestErrorEvent>| {
