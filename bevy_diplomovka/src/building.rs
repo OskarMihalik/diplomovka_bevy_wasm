@@ -42,13 +42,15 @@ fn setup_scene(mut commands: Commands) {
 }
 
 fn add_tag(
-    pick_hit: Trigger<Pointer<Down>>,
+    pick_hit: Trigger<Pointer<Click>>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     let target_entity = pick_hit.entity();
-
+    if pick_hit.duration.as_millis() >= 100 {
+        return;
+    }
     match pick_hit.hit.position {
         Some(position) => {
             commands
