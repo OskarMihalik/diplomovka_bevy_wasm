@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_panorbit_camera::PanOrbitCamera;
 
-use crate::{api::SendTestRequest, loading::GltfAssets, GameState};
+use crate::{api::GetTagsEvent, loading::GltfAssets, GameState};
 
 pub struct BuildingPlugin;
 
@@ -61,7 +61,7 @@ fn add_tag(
                     GlobalTransform::from_xyz(position.x, position.y, position.z),
                 ))
                 .set_parent_in_place(target_entity)
-                .trigger(SendTestRequest {});
+                .trigger(GetTagsEvent {});
         }
         None => (),
     };

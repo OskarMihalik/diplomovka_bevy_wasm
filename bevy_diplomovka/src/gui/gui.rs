@@ -1,21 +1,22 @@
 use bevy::prelude::*;
-use bevy_egui::{egui, EguiContexts, EguiPlugin};
+use bevy_egui::{
+    egui::{self, Align2},
+    EguiContexts, EguiPlugin,
+};
 use bevy_file_dialog::prelude::*;
+use dto::default::TagDto;
+use egui_toast::{Toast, ToastKind, ToastOptions, Toasts};
 pub struct GuiPlugin;
 struct TextFileContents;
 
 #[derive(Default, Resource)]
-struct UiState {
-    label: String,
-    value: f32,
+pub struct UiState {
+    pub tags: Vec<TagDto>,
 }
 
 #[derive(Default, Resource)]
-struct OccupiedScreenSpace {
-    left: f32,
-    top: f32,
-    right: f32,
-    bottom: f32,
+pub struct UiContexts {
+    pub toasts: Toasts,
 }
 
 impl Plugin for GuiPlugin {
@@ -29,7 +30,8 @@ impl Plugin for GuiPlugin {
                     .with_load_file::<TextFileContents>(),
             )
             .init_resource::<UiState>()
-            .init_resource::<OccupiedScreenSpace>()
+            .init_resource::<UiContexts>()
+            .add_systems(Startup, setup)
             .add_systems(Update, ui_example_system)
             .add_systems(
                 Update,
@@ -39,15 +41,22 @@ impl Plugin for GuiPlugin {
                     file_load_canceled,
                     file_save_canceled,
                 ),
-            );
+            )
+            .add_observer(show_error);
     }
+}
+
+fn setup(mut ui_context: ResMut<UiContexts>) {
+    ui_context.toasts = Toasts::new()
+        .anchor(Align2::RIGHT_TOP, (-10.0, -10.0)) // 10 units from the bottom right corner
+        .direction(egui::Direction::TopDown);
 }
 
 fn ui_example_system(
     mut commands: Commands,
-    mut is_last_selected: Local<bool>,
     mut contexts: EguiContexts,
-    mut occupied_screen_space: ResMut<OccupiedScreenSpace>,
+    ui_state: Res<UiState>,
+    mut ui_contexts: ResMut<UiContexts>,
 ) {
     let ctx = contexts.ctx_mut();
 
@@ -70,9 +79,39 @@ fn ui_example_system(
                     .save_file::<TextFileContents>(b"hello".to_vec());
             };
             ui.heading("Tags");
-
+            ui.separator();
+            ui.vertical(|ui| {
+                for tag in ui_state.tags.iter() {
+                    ui.label(format!("{}: {}", tag.id, tag.title));
+                }
+            });
             ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
         });
+
+    ui_contexts.toasts.show(ctx);
+}
+
+#[derive(Event)]
+pub struct ShowErrorEvent {
+    pub message: String,
+}
+
+fn show_error(
+    trigger: Trigger<ShowErrorEvent>,
+    mut ui_contexts: ResMut<UiContexts>,
+    mut contexts: EguiContexts,
+) {
+    let message = &trigger.event().message;
+    let ctx = contexts.ctx_mut();
+    bevy::log::error!("Error: {}", message);
+    ui_contexts.toasts.add(Toast {
+        text: message.into(),
+        kind: ToastKind::Error,
+        options: ToastOptions::default()
+            .duration_in_seconds(5.0)
+            .show_progress(true),
+        ..Default::default()
+    });
 }
 
 fn file_loaded(mut ev_loaded: EventReader<DialogFileLoaded<TextFileContents>>) {

@@ -911,6 +911,7 @@ dependencies = [
  "bevy_mod_reqwest",
  "bevy_panorbit_camera",
  "dto",
+ "egui-toast",
  "embed-resource",
  "image",
  "iyes_perf_ui",
@@ -2575,6 +2576,15 @@ dependencies = [
  "emath",
  "epaint",
  "nohash-hasher",
+]
+
+[[package]]
+name = "egui-toast"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "95d58a44bf48161fe6a3f12386722e99bf86b2c16d23c2d04f6a48a95a5923d2"
+dependencies = [
+ "egui",
 ]
 
 [[package]]
