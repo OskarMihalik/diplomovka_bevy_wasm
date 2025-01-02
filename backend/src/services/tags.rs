@@ -11,8 +11,8 @@ use axum_macros::debug_handler;
 
 use crate::ConnectionPool;
 use bb8::RunError;
-use dto::default::{self, ErrorDto, TagDto, TagDtoResponse, Test};
-use model::cornucopia::queries::tags::select_tags;
+use dto::default::{self, ErrorDto, NewTagDto, TagDto, TagDtoResponse, Test};
+use model::cornucopia::queries::tags::{insert_tag, select_tags};
 use tokio_postgres::{Error, GenericClient};
 
 pub fn map_err(error: RunError<Error>) -> Json<TagDtoResponse> {
@@ -41,6 +41,9 @@ pub async fn get_tag_service(State(pool): State<ConnectionPool>) -> Json<TagDtoR
                     title: tag.title,
                     model_id: tag.model_id,
                     created_at: tag.created_at,
+                    position_x: tag.position_x,
+                    position_y: tag.position_y,
+                    position_z: tag.position_z,
                 })
                 .collect();
             return Json(TagDtoResponse::Ok(tag_dtos));
@@ -50,5 +53,59 @@ pub async fn get_tag_service(State(pool): State<ConnectionPool>) -> Json<TagDtoR
                 message: format!("{:?}", error),
             }))
         }
+    }
+}
+
+#[debug_handler]
+pub async fn insert_tag_service(
+    State(pool): State<ConnectionPool>,
+    Json(dto): Json<NewTagDto>,
+) -> Json<TagDtoResponse> {
+    let connection = match pool.get().await {
+        Ok(connection) => connection,
+        Err(error) => return map_err(error),
+    };
+
+    let result = insert_tag()
+        .bind(
+            connection.client(),
+            &dto.title,
+            &dto.model_id,
+            &dto.position_x,
+            &dto.position_y,
+            &dto.position_z,
+        )
+        .await;
+
+    if let Err(error) = result {
+        return Json(TagDtoResponse::Err(ErrorDto {
+            message: format!("{:?}", error),
+        }));
+    }
+
+    let result = select_tags()
+        .bind(connection.client(), &100, &0)
+        .all()
+        .await;
+
+    match result {
+        Ok(tags) => {
+            let tag_dtos: Vec<TagDto> = tags
+                .into_iter()
+                .map(|tag| TagDto {
+                    id: tag.id,
+                    title: tag.title,
+                    model_id: tag.model_id,
+                    created_at: tag.created_at,
+                    position_x: tag.position_x,
+                    position_y: tag.position_y,
+                    position_z: tag.position_z,
+                })
+                .collect();
+            Json(TagDtoResponse::Ok(tag_dtos))
+        }
+        Err(error) => Json(TagDtoResponse::Err(ErrorDto {
+            message: format!("{:?}", error),
+        })),
     }
 }

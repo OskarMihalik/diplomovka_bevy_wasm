@@ -6,13 +6,13 @@ use bevy_egui::{
 use bevy_file_dialog::prelude::*;
 use dto::default::TagDto;
 use egui_toast::{Toast, ToastKind, ToastOptions, Toasts};
+
+use crate::building::TagData;
 pub struct GuiPlugin;
 struct TextFileContents;
 
 #[derive(Default, Resource)]
-pub struct UiState {
-    pub tags: Vec<TagDto>,
-}
+pub struct UiState {}
 
 #[derive(Default, Resource)]
 pub struct UiContexts {
@@ -57,6 +57,7 @@ fn ui_example_system(
     mut contexts: EguiContexts,
     ui_state: Res<UiState>,
     mut ui_contexts: ResMut<UiContexts>,
+    query_tags: Query<&TagData>,
 ) {
     let ctx = contexts.ctx_mut();
 
@@ -81,8 +82,8 @@ fn ui_example_system(
             ui.heading("Tags");
             ui.separator();
             ui.vertical(|ui| {
-                for tag in ui_state.tags.iter() {
-                    ui.label(format!("{}: {}", tag.id, tag.title));
+                for tag in query_tags.iter() {
+                    ui.label(format!("{}: {}", tag.dto.id, tag.dto.title));
                 }
             });
             ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());

@@ -4,12 +4,12 @@
 #[allow(unused_imports)] #[allow(dead_code)] pub mod types { }#[allow(clippy::all, clippy::pedantic)] #[allow(unused_variables)]
 #[allow(unused_imports)] #[allow(dead_code)] pub mod queries
 { pub mod tags
-{ use futures::{{StreamExt, TryStreamExt}};use futures; use cornucopia_async::GenericClient;#[derive(Clone,Copy, Debug)] pub struct SelectTagsParams<> { pub limit: i64,pub offset: i64,}#[derive( Debug, Clone, PartialEq,)] pub struct SelectTags
-{ pub id : i64,pub title : String,pub model_id : i64,pub created_at : time::OffsetDateTime,}pub struct SelectTagsBorrowed<'a> { pub id : i64,pub title : &'a str,pub model_id : i64,pub created_at : time::OffsetDateTime,}
+{ use futures::{{StreamExt, TryStreamExt}};use futures; use cornucopia_async::GenericClient;#[derive(Clone,Copy, Debug)] pub struct SelectTagsParams<> { pub limit: i64,pub offset: i64,}#[derive( Debug)] pub struct InsertTagParams<T1: cornucopia_async::StringSql,> { pub title: T1,pub model_id: i64,pub position_x: f32,pub position_y: f32,pub position_z: f32,}#[derive( Debug, Clone, PartialEq,)] pub struct SelectTags
+{ pub id : i32,pub title : String,pub model_id : i64,pub created_at : time::OffsetDateTime,pub position_z : f32,pub position_x : f32,pub position_y : f32,}pub struct SelectTagsBorrowed<'a> { pub id : i32,pub title : &'a str,pub model_id : i64,pub created_at : time::OffsetDateTime,pub position_z : f32,pub position_x : f32,pub position_y : f32,}
 impl<'a> From<SelectTagsBorrowed<'a>> for SelectTags
 {
-    fn from(SelectTagsBorrowed { id,title,model_id,created_at,}: SelectTagsBorrowed<'a>) ->
-    Self { Self { id,title: title.into(),model_id,created_at,} }
+    fn from(SelectTagsBorrowed { id,title,model_id,created_at,position_z,position_x,position_y,}: SelectTagsBorrowed<'a>) ->
+    Self { Self { id,title: title.into(),model_id,created_at,position_z,position_x,position_y,} }
 }pub struct SelectTagsQuery<'a, C: GenericClient, T, const N: usize>
 {
     client: &'a  C, params:
@@ -62,7 +62,7 @@ SelectTags, 2>
     SelectTagsQuery
     {
         client, params: [limit,offset,], stmt: &mut self.0, extractor:
-        |row| { SelectTagsBorrowed { id: row.get(0),title: row.get(1),model_id: row.get(2),created_at: row.get(3),} }, mapper: |it| { <SelectTags>::from(it) },
+        |row| { SelectTagsBorrowed { id: row.get(0),title: row.get(1),model_id: row.get(2),created_at: row.get(3),position_z: row.get(4),position_x: row.get(5),position_y: row.get(6),} }, mapper: |it| { <SelectTags>::from(it) },
     }
 } }impl <'a, C: GenericClient,> cornucopia_async::Params<'a,
 SelectTagsParams<>, SelectTagsQuery<'a, C,
@@ -73,6 +73,27 @@ SelectTags, 2>, C> for SelectTagsStmt
     SelectTagsParams<>) -> SelectTagsQuery<'a, C,
     SelectTags, 2>
     { self.bind(client, &params.limit,&params.offset,) }
+}pub fn insert_tag() -> InsertTagStmt
+{ InsertTagStmt(cornucopia_async::private::Stmt::new("INSERT INTO public.tag
+(title, model_id, position_x, position_y, position_z)
+VALUES($1, $2, $3, $4, $5)")) } pub struct
+InsertTagStmt(cornucopia_async::private::Stmt); impl InsertTagStmt
+{ pub async fn bind<'a, C:
+GenericClient,T1:
+cornucopia_async::StringSql,>(&'a mut self, client: &'a  C,
+title: &'a T1,model_id: &'a i64,position_x: &'a f32,position_y: &'a f32,position_z: &'a f32,) -> Result<u64, tokio_postgres::Error>
+{
+    let stmt = self.0.prepare(client).await?;
+    client.execute(stmt, &[title,model_id,position_x,position_y,position_z,]).await
+} }impl <'a, C: GenericClient + Send + Sync, T1: cornucopia_async::StringSql,>
+cornucopia_async::Params<'a, InsertTagParams<T1,>, std::pin::Pin<Box<dyn futures::Future<Output = Result<u64,
+tokio_postgres::Error>> + Send + 'a>>, C> for InsertTagStmt
+{
+    fn
+    params(&'a mut self, client: &'a  C, params: &'a
+    InsertTagParams<T1,>) -> std::pin::Pin<Box<dyn futures::Future<Output = Result<u64,
+    tokio_postgres::Error>> + Send + 'a>>
+    { Box::pin(self.bind(client, &params.title,&params.model_id,&params.position_x,&params.position_y,&params.position_z,)) }
 }}pub mod todo
 { use futures::{{StreamExt, TryStreamExt}};use futures; use cornucopia_async::GenericClient;#[derive( Debug)] pub struct UpdateTodoParams<T1: cornucopia_async::StringSql,> { pub name: T1,pub id: i32,}#[derive(Clone,Copy, Debug)] pub struct SelectTodosParams<> { pub limit: i64,pub offset: i64,}#[derive( Debug, Clone, PartialEq,)] pub struct SelectTodos
 { pub id : i32,pub name : String,}pub struct SelectTodosBorrowed<'a> { pub id : i32,pub name : &'a str,}
