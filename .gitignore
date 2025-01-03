@@ -5,3 +5,4 @@ target
 dist
 
 db/data
+node_modules

@@ -14,3 +14,10 @@ wasm:
 cd bevy_diplomovka
 trunk serve
 ```
+
+# db schema
+it is managed by prisma
+if you made changes to schema.prisma update db by:
+```
+npx prisma migrate dev --name init
+```

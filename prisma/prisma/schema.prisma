@@ -1,0 +1,71 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          Int           @id @default(autoincrement())
+  email       String        @unique
+  username    String
+  created_at  DateTime      @default(now())
+  updated_at  DateTime      @default(now()) @updatedAt
+  ProjectUser ProjectUser[]
+}
+
+model ProjectUser {
+  id         Int     @id @default(autoincrement())
+  project    Project @relation(fields: [project_id], references: [id])
+  project_id Int
+  user       User    @relation(fields: [user_id], references: [id])
+  user_id    Int
+}
+
+model Project {
+  id          Int           @id @default(autoincrement())
+  name        String
+  description String?
+  created_at  DateTime      @default(now())
+  updated_at  DateTime      @default(now()) @updatedAt
+  Model       Model[]
+  ProjectUser ProjectUser[]
+}
+
+model Model {
+  id         Int      @id @default(autoincrement())
+  version    Int
+  model_link String
+  name       String
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+  project    Project  @relation(fields: [project_id], references: [id])
+  project_id Int
+  Tag        Tag[]
+}
+
+model Tag {
+  id         Int          @id @default(autoincrement())
+  title      String
+  created_at DateTime     @default(now())
+  updated_at DateTime     @default(now()) @updatedAt
+  position_x Float        @db.Real
+  position_y Float        @db.Real
+  position_z Float        @db.Real
+  TagMessage TagMessage[]
+  model      Model        @relation(fields: [model_id], references: [id])
+  model_id   Int
+}
+
+model TagMessage {
+  id         Int      @id @default(autoincrement())
+  text       String
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+  tag        Tag      @relation(fields: [tag_id], references: [id])
+  tag_id     Int
+}

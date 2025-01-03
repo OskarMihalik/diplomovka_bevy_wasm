@@ -21,8 +21,8 @@ pub enum DtoResponse<T> {
 pub struct TagDto {
     pub id: i32,
     pub title: String,
-    pub model_id: i64,
-    pub created_at: time::OffsetDateTime,
+    pub model_id: i32,
+    pub created_at: time::PrimitiveDateTime,
     pub position_x: f32,
     pub position_y: f32,
     pub position_z: f32,
@@ -33,7 +33,7 @@ pub type TagDtoResponse = DtoResponse<Vec<TagDto>>;
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct NewTagDto {
     pub title: String,
-    pub model_id: i64,
+    pub model_id: i32,
     pub position_x: f32,
     pub position_y: f32,
     pub position_z: f32,
