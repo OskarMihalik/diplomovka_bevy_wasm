@@ -4,7 +4,6 @@ mod api;
 mod building;
 mod gui;
 mod loading;
-mod menu;
 mod utils;
 
 use crate::loading::LoadingPlugin;
@@ -26,11 +25,11 @@ use utils::log_entity_components;
 pub enum GameState {
     // During the loading State the LoadingPlugin will load our assets
     #[default]
-    Loading,
+    InitialLoading,
+
+    LoadingModel,
     // During this State the actual game logic is executed
-    Playing,
-    // Here the menu is drawn and waiting for player interaction
-    Menu,
+    ViewingModel,
 }
 
 pub struct GamePlugin;

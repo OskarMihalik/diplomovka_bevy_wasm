@@ -11,8 +11,8 @@ pub struct LoadingPlugin;
 impl Plugin for LoadingPlugin {
     fn build(&self, app: &mut App) {
         app.add_loading_state(
-            LoadingState::new(GameState::Loading)
-                .continue_to_state(GameState::Playing)
+            LoadingState::new(GameState::InitialLoading)
+                .continue_to_state(GameState::LoadingModel)
                 .load_collection::<TextureAssets>()
                 .load_collection::<GltfAssets>(),
         );

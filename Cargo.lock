@@ -918,6 +918,7 @@ dependencies = [
  "log",
  "rand",
  "serde_json",
+ "time",
  "wasm-bindgen",
  "webbrowser",
  "winit",

@@ -7,7 +7,7 @@ use bevy_file_dialog::prelude::*;
 use dto::default::TagDto;
 use egui_toast::{Toast, ToastKind, ToastOptions, Toasts};
 
-use crate::building::TagData;
+use crate::{building::TagData, utils::compare_by_created_at, GameState};
 pub struct GuiPlugin;
 struct TextFileContents;
 
@@ -31,8 +31,11 @@ impl Plugin for GuiPlugin {
             )
             .init_resource::<UiState>()
             .init_resource::<UiContexts>()
-            .add_systems(Startup, setup)
-            .add_systems(Update, ui_example_system)
+            .add_systems(OnEnter(GameState::ViewingModel), setup)
+            .add_systems(
+                Update,
+                ui_example_system.run_if(in_state(GameState::ViewingModel)),
+            )
             .add_systems(
                 Update,
                 (
@@ -82,7 +85,9 @@ fn ui_example_system(
             ui.heading("Tags");
             ui.separator();
             ui.vertical(|ui| {
-                for tag in query_tags.iter() {
+                for tag in query_tags.iter().sort_by::<&TagData>(|value_1, value_2| {
+                    compare_by_created_at(&value_1.dto.created_at, &value_2.dto.created_at)
+                }) {
                     ui.label(format!("{}: {}", tag.dto.id, tag.dto.title));
                 }
             });

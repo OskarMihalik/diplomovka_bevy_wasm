@@ -11,7 +11,7 @@ pub struct PerfUI;
 impl Plugin for PerfUI {
     fn build(&self, app: &mut App) {
         app.add_plugins(PerfUiPlugin)
-            .add_systems(OnEnter(GameState::Playing), setup);
+            .add_systems(OnEnter(GameState::ViewingModel), setup);
     }
 }
 

@@ -14,7 +14,10 @@ use axum::{
 };
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
-use services::tags::{get_tag_service, insert_tag_service};
+use services::{
+    model::get_model_service,
+    tags::{get_tag_service, insert_tag_service},
+};
 use std::net::SocketAddr;
 use tokio_postgres::NoTls;
 use tower_http::cors::CorsLayer;
@@ -32,6 +35,7 @@ async fn main() {
     let backend = async {
         let app = Router::new()
             .route("/tags", get(get_tag_service).post(insert_tag_service))
+            .route("/model/:model_id", get(get_model_service))
             .with_state(pool)
             .layer(
                 CorsLayer::new()

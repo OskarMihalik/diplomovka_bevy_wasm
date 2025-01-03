@@ -1,9 +1,12 @@
 use bevy::prelude::*;
 use bevy_panorbit_camera::PanOrbitCamera;
-use dto::default::{NewTagDto, TagDto};
+use dto::{
+    default::{NewTagDto, TagDto},
+    model::ModelDto,
+};
 
 use crate::{
-    api::{CreateNewTagEvent, GetTagsEvent},
+    api::{CreateNewTagEvent, GetModelEvent, GetTagsEvent},
     loading::GltfAssets,
     utils::LogEntityComponents,
     GameState,
@@ -14,28 +17,54 @@ pub struct TagData {
     pub dto: TagDto,
 }
 
+#[derive(Component)]
+pub struct ModelData {
+    pub dto: ModelDto,
+}
+
 pub struct BuildingPlugin;
 
 /// This plugin is responsible for the game menu (containing only one button...)
 /// The menu is only drawn during the State `GameState::Menu` and is removed when that state is exited
 impl Plugin for BuildingPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::Playing), (spawn_building, setup_scene))
-            .add_observer(rebuild_tags);
+        app.add_systems(OnEnter(GameState::LoadingModel), (setup_scene))
+            .add_systems(OnEnter(GameState::ViewingModel), on_viewing_model)
+            .add_observer(rebuild_tags)
+            .add_observer(spawn_building);
     }
 }
 
-fn spawn_building(mut commands: Commands, gltf_assets: Res<GltfAssets>) {
+#[derive(Event)]
+pub struct SpawnModelEvent {
+    pub model_dto: ModelDto,
+}
+
+fn on_viewing_model(mut commands: Commands) {
+    commands.trigger(GetTagsEvent {});
+}
+
+fn spawn_building(
+    trigger: Trigger<SpawnModelEvent>,
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+) {
+    let model_dto = &trigger.model_dto;
+    let gltf = asset_server.load(GltfAssetLabel::Scene(0).from_asset(model_dto.model_link.clone()));
     commands
         .spawn((
-            SceneRoot(gltf_assets.building.clone()),
+            SceneRoot(gltf),
             Transform::from_translation(Vec3::ZERO).with_scale(Vec3::splat(0.25)),
             // ColliderConstructorHierarchy::new(ColliderConstructor::ConvexHullFromMesh),
             // PickableBundle::default(),
             // AvianPickable,
             // RigidBody::Static,
+            ModelData {
+                dto: model_dto.clone(),
+            },
         ))
         .observe(add_tag);
+    commands.set_state(GameState::ViewingModel);
 }
 
 fn setup_scene(mut commands: Commands) {
@@ -51,6 +80,7 @@ fn setup_scene(mut commands: Commands) {
         Transform::from_translation(Vec3::new(0.0, 1.5, 5.0)),
         PanOrbitCamera::default(),
     ));
+    commands.trigger(GetModelEvent { model_id: 0 });
 }
 
 fn add_tag(
