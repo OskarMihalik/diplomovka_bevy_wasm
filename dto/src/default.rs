@@ -12,12 +12,6 @@ pub struct ErrorDto {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub enum DtoResponse<T> {
-    Ok(T),
-    Err(ErrorDto),
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TagDto {
     pub id: i32,
     pub title: String,
@@ -28,7 +22,7 @@ pub struct TagDto {
     pub position_z: f32,
 }
 
-pub type TagDtoResponse = DtoResponse<Vec<TagDto>>;
+pub type TagDtoResponse = Result<Vec<TagDto>, ErrorDto>;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct NewTagDto {

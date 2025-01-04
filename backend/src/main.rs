@@ -16,7 +16,7 @@ use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 use services::{
     model::get_model_service,
-    tags::{get_tag_service, insert_tag_service},
+    tags::{get_tag_service, insert_tag_service, update_tag_service},
 };
 use std::net::SocketAddr;
 use tokio_postgres::NoTls;
@@ -34,7 +34,7 @@ async fn main() {
     let pool = Pool::builder().build(manager).await.unwrap();
     let backend = async {
         let app = Router::new()
-            .route("/tags", post(insert_tag_service))
+            .route("/tags", post(insert_tag_service).patch(update_tag_service))
             .route("/tags/:model_id", get(get_tag_service))
             .route("/model/:model_id", get(get_model_service))
             .with_state(pool)
@@ -47,6 +47,7 @@ async fn main() {
                         Method::PUT,
                         Method::DELETE,
                         Method::OPTIONS,
+                        Method::PATCH,
                     ])
                     .allow_headers([http::header::CONTENT_TYPE]),
             );

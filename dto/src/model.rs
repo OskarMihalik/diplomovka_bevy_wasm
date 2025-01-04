@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::default::DtoResponse;
+use crate::default::ErrorDto;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ModelDto {
@@ -13,4 +13,4 @@ pub struct ModelDto {
     pub project_id: i32,
 }
 
-pub type ModelDtoResponse = DtoResponse<ModelDto>;
+pub type ModelDtoResponse = Result<ModelDto, ErrorDto>;

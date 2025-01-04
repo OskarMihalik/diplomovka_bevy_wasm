@@ -8,7 +8,8 @@ use dto::default::TagDto;
 use egui_toast::{Toast, ToastKind, ToastOptions, Toasts};
 
 use crate::{
-    building::{SelectedTag, TagData},
+    api::UpdateTagEvent,
+    building::{ModelData, SelectedTag, TagData},
     utils::compare_by_created_at,
     GameState,
 };
@@ -123,6 +124,7 @@ fn ui_tag_windows(
     mut contexts: EguiContexts,
     mut ui_contexts: ResMut<UiContexts>,
     mut query_tags: Query<(Entity, &mut TagData, &SelectedTag), With<SelectedTag>>,
+    query_models: Query<(Entity, &ModelData)>,
 ) {
     let ctx = contexts.ctx_mut();
     for (entity, mut tag_data, selected_tag) in &mut query_tags {
@@ -134,7 +136,18 @@ fn ui_tag_windows(
                     ui.text_edit_singleline(&mut tag_data.dto.title);
                 });
                 if ui.button("Submit").clicked() {
-                    // trigger event
+                    let parent_entity = query_models
+                        .iter()
+                        .find(|model| model.1.dto.id == tag_data.dto.model_id);
+                    if let Some((target_entity, model_data)) = parent_entity {
+                        commands.trigger(UpdateTagEvent {
+                            tag_dto: tag_data.dto.clone(),
+                            parent_entity: target_entity,
+                        });
+                    }
+                }
+                if ui.button("Close").clicked() {
+                    commands.entity(entity).remove::<SelectedTag>();
                 }
                 let scroll_area = ScrollArea::vertical();
                 scroll_area.show(ui, |ui| {
