@@ -18,6 +18,9 @@ pub struct TagData {
 }
 
 #[derive(Component)]
+pub struct SelectedTag {}
+
+#[derive(Component)]
 pub struct ModelData {
     pub dto: ModelDto,
 }
@@ -84,7 +87,7 @@ fn setup_scene(mut commands: Commands) {
         Transform::from_translation(Vec3::new(0.0, 1.5, 5.0)),
         PanOrbitCamera::default(),
     ));
-    commands.trigger(GetModelEvent { model_id: 1 });
+    commands.trigger(GetModelEvent { model_id: 2 });
 }
 
 fn add_tag(
@@ -143,39 +146,42 @@ fn rebuild_tags(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    query_tags: Query<(Entity, &TagData)>,
+    query_tags: Query<(Entity, &TagData, Option<&SelectedTag>)>,
 ) {
     let tags = &trigger.new_tag_dtos;
     let parent_entity = &trigger.parent_entity;
+    let mut selected_tags_id: Vec<i32> = vec![];
     for old_tag in query_tags.iter() {
         commands.entity(old_tag.0).despawn_recursive();
+        if old_tag.2.is_some() {
+            selected_tags_id.push(old_tag.1.dto.id);
+        }
     }
     bevy::log::info!("tags: {:#?}", tags);
     for tag_dto in tags.iter() {
-        commands
-            .spawn((
-                Mesh3d(meshes.add(Cuboid::new(0.3, 0.3, 0.3))),
-                MeshMaterial3d(materials.add(StandardMaterial {
-                    base_color: Color::srgb(1.0, 0.0, 0.0),
-                    ..Default::default()
-                })),
-                GlobalTransform::from_xyz(
-                    tag_dto.position_x,
-                    tag_dto.position_y,
-                    tag_dto.position_z,
-                ),
-                TagData {
-                    dto: TagDto {
-                        id: tag_dto.id,
-                        title: tag_dto.title.clone(),
-                        model_id: tag_dto.model_id,
-                        created_at: tag_dto.created_at.clone(),
-                        position_x: tag_dto.position_x,
-                        position_y: tag_dto.position_y,
-                        position_z: tag_dto.position_z,
-                    },
+        let mut builder = commands.spawn((
+            Mesh3d(meshes.add(Cuboid::new(0.3, 0.3, 0.3))),
+            MeshMaterial3d(materials.add(StandardMaterial {
+                base_color: Color::srgb(1.0, 0.0, 0.0),
+                ..Default::default()
+            })),
+            GlobalTransform::from_xyz(tag_dto.position_x, tag_dto.position_y, tag_dto.position_z),
+            TagData {
+                dto: TagDto {
+                    id: tag_dto.id,
+                    title: tag_dto.title.clone(),
+                    model_id: tag_dto.model_id,
+                    created_at: tag_dto.created_at.clone(),
+                    position_x: tag_dto.position_x,
+                    position_y: tag_dto.position_y,
+                    position_z: tag_dto.position_z,
                 },
-            ))
-            .set_parent_in_place(parent_entity.clone());
+            },
+        ));
+
+        builder.set_parent_in_place(parent_entity.clone());
+        if selected_tags_id.contains(&tag_dto.id) {
+            builder.insert(SelectedTag {});
+        }
     }
 }

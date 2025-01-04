@@ -1,13 +1,17 @@
 use bevy::prelude::*;
 use bevy_egui::{
-    egui::{self, Align2},
+    egui::{self, Align2, Id, ScrollArea},
     EguiContexts, EguiPlugin,
 };
 use bevy_file_dialog::prelude::*;
 use dto::default::TagDto;
 use egui_toast::{Toast, ToastKind, ToastOptions, Toasts};
 
-use crate::{building::TagData, utils::compare_by_created_at, GameState};
+use crate::{
+    building::{SelectedTag, TagData},
+    utils::compare_by_created_at,
+    GameState,
+};
 pub struct GuiPlugin;
 struct TextFileContents;
 
@@ -34,7 +38,7 @@ impl Plugin for GuiPlugin {
             .add_systems(OnEnter(GameState::ViewingModel), setup)
             .add_systems(
                 Update,
-                ui_example_system.run_if(in_state(GameState::ViewingModel)),
+                (ui_example_system, ui_tag_windows).run_if(in_state(GameState::ViewingModel)),
             )
             .add_systems(
                 Update,
@@ -60,7 +64,7 @@ fn ui_example_system(
     mut contexts: EguiContexts,
     ui_state: Res<UiState>,
     mut ui_contexts: ResMut<UiContexts>,
-    query_tags: Query<&TagData>,
+    query_tags: Query<(Entity, &TagData, Option<&SelectedTag>)>,
 ) {
     let ctx = contexts.ctx_mut();
 
@@ -84,17 +88,60 @@ fn ui_example_system(
             };
             ui.heading("Tags");
             ui.separator();
+
             ui.vertical(|ui| {
-                for tag in query_tags.iter().sort_by::<&TagData>(|value_1, value_2| {
-                    compare_by_created_at(&value_1.dto.created_at, &value_2.dto.created_at)
-                }) {
-                    ui.label(format!("{}: {}", tag.dto.id, tag.dto.title));
-                }
+                let scroll_area = ScrollArea::vertical();
+                scroll_area.show(ui, |ui| {
+                    ui.set_width(ui.available_width());
+                    for (tag_entity, tag, selected_tag) in
+                        query_tags.iter().sort_by::<&TagData>(|value_1, value_2| {
+                            compare_by_created_at(&value_1.dto.created_at, &value_2.dto.created_at)
+                        })
+                    {
+                        let checked = selected_tag.is_some();
+                        if ui
+                            .selectable_label(checked, format!("{}: {}", tag.dto.id, tag.dto.title))
+                            .clicked()
+                        {
+                            if checked {
+                                commands.entity(tag_entity).remove::<SelectedTag>();
+                            } else {
+                                commands.entity(tag_entity).insert(SelectedTag {});
+                            }
+                        }
+                    }
+                });
             });
             ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
         });
 
     ui_contexts.toasts.show(ctx);
+}
+
+fn ui_tag_windows(
+    mut commands: Commands,
+    mut contexts: EguiContexts,
+    mut ui_contexts: ResMut<UiContexts>,
+    mut query_tags: Query<(Entity, &mut TagData, &SelectedTag), With<SelectedTag>>,
+) {
+    let ctx = contexts.ctx_mut();
+    for (entity, mut tag_data, selected_tag) in &mut query_tags {
+        egui::Window::new(tag_data.dto.title.clone())
+            .id(Id::new(tag_data.dto.id))
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(format!("Title: "));
+                    ui.text_edit_singleline(&mut tag_data.dto.title);
+                });
+                if ui.button("Submit").clicked() {
+                    // trigger event
+                }
+                let scroll_area = ScrollArea::vertical();
+                scroll_area.show(ui, |ui| {
+                    ui.set_max_height(400.0);
+                });
+            });
+    }
 }
 
 #[derive(Event)]

@@ -72,6 +72,7 @@ bevy = { version = "0.15", default-features = false, features = [
     "default_font",
     "hdr",
     "multi_threaded",
+    "jpeg",
     "png",
     "smaa_luts",
     "sysinfo_plugin",
