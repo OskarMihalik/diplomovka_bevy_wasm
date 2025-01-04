@@ -1,5 +1,5 @@
---! select_tags (limit, offset)
-SELECT * FROM public."Tag" order by created_at DESC 
+--! select_tags (model_id, limit, offset)
+SELECT * FROM public."Tag" where model_id = :model_id order by created_at DESC 
 LIMIT :limit
 OFFSET :offset;
 

@@ -1,5 +1,5 @@
 use axum::{
-    extract::State,
+    extract::{Path, State},
     http::StatusCode,
     response::{IntoResponse, Response},
     Json,
@@ -22,14 +22,17 @@ pub fn map_err(error: RunError<Error>) -> Json<TagDtoResponse> {
 }
 
 #[debug_handler]
-pub async fn get_tag_service(State(pool): State<ConnectionPool>) -> Json<TagDtoResponse> {
+pub async fn get_tag_service(
+    Path(model_id): Path<i32>,
+    State(pool): State<ConnectionPool>,
+) -> Json<TagDtoResponse> {
     let connection = match pool.get().await {
         Ok(connection) => connection,
         Err(error) => return map_err(error),
     };
 
     let result = select_tags()
-        .bind(connection.client(), &100, &0)
+        .bind(connection.client(), &model_id, &100, &0)
         .all()
         .await;
     match result {
@@ -84,7 +87,7 @@ pub async fn insert_tag_service(
     }
 
     let result = select_tags()
-        .bind(connection.client(), &100, &0)
+        .bind(connection.client(), &dto.model_id, &100, &0)
         .all()
         .await;
 

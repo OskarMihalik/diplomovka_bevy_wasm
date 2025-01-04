@@ -34,7 +34,8 @@ async fn main() {
     let pool = Pool::builder().build(manager).await.unwrap();
     let backend = async {
         let app = Router::new()
-            .route("/tags", get(get_tag_service).post(insert_tag_service))
+            .route("/tags", post(insert_tag_service))
+            .route("/tags/:model_id", get(get_tag_service))
             .route("/model/:model_id", get(get_model_service))
             .with_state(pool)
             .layer(

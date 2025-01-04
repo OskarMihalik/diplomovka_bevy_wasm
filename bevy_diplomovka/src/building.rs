@@ -40,8 +40,12 @@ pub struct SpawnModelEvent {
     pub model_dto: ModelDto,
 }
 
-fn on_viewing_model(mut commands: Commands) {
-    commands.trigger(GetTagsEvent {});
+fn on_viewing_model(mut commands: Commands, query: Query<&ModelData, Changed<ModelData>>) {
+    for model_data in query.iter() {
+        commands.trigger(GetTagsEvent {
+            model_id: model_data.dto.id,
+        });
+    }
 }
 
 fn spawn_building(
@@ -80,23 +84,24 @@ fn setup_scene(mut commands: Commands) {
         Transform::from_translation(Vec3::new(0.0, 1.5, 5.0)),
         PanOrbitCamera::default(),
     ));
-    commands.trigger(GetModelEvent { model_id: 0 });
+    commands.trigger(GetModelEvent { model_id: 1 });
 }
 
 fn add_tag(
     pick_hit: Trigger<Pointer<Click>>,
     mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
     query: Query<(&SceneRoot, &Transform, &Children)>,
+    query_model: Query<&ModelData>,
 ) {
     let target_entity = pick_hit.entity();
     if pick_hit.duration.as_millis() >= 100 {
         return;
     }
-    // commands.trigger(LogEntityComponents {
-    //     entity: target_entity,
-    // });
+
+    let model_data = match query_model.get(target_entity) {
+        Ok(model_data) => model_data,
+        Err(_) => return,
+    };
 
     commands.entity(target_entity).log_components();
 
@@ -115,7 +120,7 @@ fn add_tag(
             commands.trigger(CreateNewTagEvent {
                 new_tag_dto: NewTagDto {
                     title: "new taaag".to_string(),
-                    model_id: 0,
+                    model_id: model_data.dto.id,
                     position_x: position.x,
                     position_y: position.y,
                     position_z: position.z,

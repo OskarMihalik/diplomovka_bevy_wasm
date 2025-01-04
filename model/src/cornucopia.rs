@@ -4,7 +4,7 @@
 #[allow(unused_imports)] #[allow(dead_code)] pub mod types { }#[allow(clippy::all, clippy::pedantic)] #[allow(unused_variables)]
 #[allow(unused_imports)] #[allow(dead_code)] pub mod queries
 { pub mod tags
-{ use futures::{{StreamExt, TryStreamExt}};use futures; use cornucopia_async::GenericClient;#[derive(Clone,Copy, Debug)] pub struct SelectTagsParams<> { pub limit: i64,pub offset: i64,}#[derive( Debug)] pub struct InsertTagParams<T1: cornucopia_async::StringSql,> { pub title: T1,pub model_id: i32,pub position_x: f32,pub position_y: f32,pub position_z: f32,}#[derive(Clone,Copy, Debug)] pub struct SelectModelParams<> { pub id: i32,pub limit: i64,pub offset: i64,}#[derive( Debug, Clone, PartialEq,)] pub struct SelectTags
+{ use futures::{{StreamExt, TryStreamExt}};use futures; use cornucopia_async::GenericClient;#[derive(Clone,Copy, Debug)] pub struct SelectTagsParams<> { pub model_id: i32,pub limit: i64,pub offset: i64,}#[derive( Debug)] pub struct InsertTagParams<T1: cornucopia_async::StringSql,> { pub title: T1,pub model_id: i32,pub position_x: f32,pub position_y: f32,pub position_z: f32,}#[derive(Clone,Copy, Debug)] pub struct SelectModelParams<> { pub id: i32,pub limit: i64,pub offset: i64,}#[derive( Debug, Clone, PartialEq,)] pub struct SelectTags
 { pub id : i32,pub title : String,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,pub position_x : f32,pub position_y : f32,pub position_z : f32,pub model_id : i32,}pub struct SelectTagsBorrowed<'a> { pub id : i32,pub title : &'a str,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,pub position_x : f32,pub position_y : f32,pub position_z : f32,pub model_id : i32,}
 impl<'a> From<SelectTagsBorrowed<'a>> for SelectTags
 {
@@ -95,29 +95,29 @@ GenericClient
         Ok(it)
     }
 }pub fn select_tags() -> SelectTagsStmt
-{ SelectTagsStmt(cornucopia_async::private::Stmt::new("SELECT * FROM public.\"Tag\" order by created_at DESC 
-LIMIT $1
-OFFSET $2")) } pub struct
+{ SelectTagsStmt(cornucopia_async::private::Stmt::new("SELECT * FROM public.\"Tag\" where model_id = $1 order by created_at DESC 
+LIMIT $2
+OFFSET $3")) } pub struct
 SelectTagsStmt(cornucopia_async::private::Stmt); impl SelectTagsStmt
 { pub fn bind<'a, C:
 GenericClient,>(&'a mut self, client: &'a  C,
-limit: &'a i64,offset: &'a i64,) -> SelectTagsQuery<'a,C,
-SelectTags, 2>
+model_id: &'a i32,limit: &'a i64,offset: &'a i64,) -> SelectTagsQuery<'a,C,
+SelectTags, 3>
 {
     SelectTagsQuery
     {
-        client, params: [limit,offset,], stmt: &mut self.0, extractor:
+        client, params: [model_id,limit,offset,], stmt: &mut self.0, extractor:
         |row| { SelectTagsBorrowed { id: row.get(0),title: row.get(1),created_at: row.get(2),updated_at: row.get(3),position_x: row.get(4),position_y: row.get(5),position_z: row.get(6),model_id: row.get(7),} }, mapper: |it| { <SelectTags>::from(it) },
     }
 } }impl <'a, C: GenericClient,> cornucopia_async::Params<'a,
 SelectTagsParams<>, SelectTagsQuery<'a, C,
-SelectTags, 2>, C> for SelectTagsStmt
+SelectTags, 3>, C> for SelectTagsStmt
 {
     fn
     params(&'a mut self, client: &'a  C, params: &'a
     SelectTagsParams<>) -> SelectTagsQuery<'a, C,
-    SelectTags, 2>
-    { self.bind(client, &params.limit,&params.offset,) }
+    SelectTags, 3>
+    { self.bind(client, &params.model_id,&params.limit,&params.offset,) }
 }pub fn insert_tag() -> InsertTagStmt
 { InsertTagStmt(cornucopia_async::private::Stmt::new("INSERT INTO public.\"Tag\"
 (title, model_id, position_x, position_y, position_z)

@@ -29,10 +29,12 @@ impl Plugin for ApiPlugin {
 }
 
 #[derive(Event)]
-pub struct GetTagsEvent {}
+pub struct GetTagsEvent {
+    pub model_id: i32,
+}
 
-fn get_tags(_trigger: Trigger<GetTagsEvent>, mut client: BevyReqwest) {
-    let url = format!("{BACKEND_URL}/tags");
+fn get_tags(trigger: Trigger<GetTagsEvent>, mut client: BevyReqwest) {
+    let url = format!("{BACKEND_URL}/tags/{:?}", trigger.model_id);
 
     // use regular reqwest http calls, then poll them to completion.
     let reqwest_request = client.get(url).build().unwrap();
