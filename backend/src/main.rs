@@ -20,7 +20,7 @@ use services::{
 };
 use std::net::SocketAddr;
 use tokio_postgres::NoTls;
-use tower_http::cors::CorsLayer;
+use tower_http::{cors::CorsLayer, services::ServeDir};
 
 type ConnectionPool = Pool<PostgresConnectionManager<NoTls>>;
 
@@ -34,6 +34,7 @@ async fn main() {
     let pool = Pool::builder().build(manager).await.unwrap();
     let backend = async {
         let app = Router::new()
+            // .nest_service("/assets", ServeDir::new("assets"))
             .route("/tags", post(insert_tag_service).patch(update_tag_service))
             .route("/tags/:model_id", get(get_tag_service))
             .route("/model/:model_id", get(get_model_service))

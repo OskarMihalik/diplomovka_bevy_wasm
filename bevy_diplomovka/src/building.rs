@@ -1,3 +1,4 @@
+use base64::prelude::BASE64_URL_SAFE_NO_PAD;
 use bevy::prelude::*;
 use bevy_panorbit_camera::PanOrbitCamera;
 use dto::{
@@ -7,6 +8,7 @@ use dto::{
 
 use crate::{
     api::{CreateNewTagEvent, GetModelEvent, GetTagsEvent},
+    asset::path_serialize::serialize_url,
     loading::GltfAssets,
     utils::LogEntityComponents,
     GameState,
@@ -57,7 +59,7 @@ fn spawn_building(
     asset_server: Res<AssetServer>,
 ) {
     let model_dto = &trigger.model_dto;
-    let gltf = asset_server.load(GltfAssetLabel::Scene(0).from_asset(model_dto.model_link.clone()));
+    let gltf = asset_server.load("http://localhost:9080/futuristic_building.glb#Scene0");
     commands
         .spawn((
             SceneRoot(gltf),
@@ -87,7 +89,7 @@ fn setup_scene(mut commands: Commands) {
         Transform::from_translation(Vec3::new(0.0, 1.5, 5.0)),
         PanOrbitCamera::default(),
     ));
-    commands.trigger(GetModelEvent { model_id: 2 });
+    commands.trigger(GetModelEvent { model_id: 0 });
 }
 
 fn add_tag(

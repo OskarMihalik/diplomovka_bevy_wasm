@@ -4,7 +4,7 @@ use bevy::{prelude::*, state::commands};
 use bevy_mod_reqwest::*;
 use dto::{
     default::{NewTagDto, TagDto, TagDtoResponse},
-    model::ModelDtoResponse,
+    model::{ModelDto, ModelDtoResponse},
 };
 
 use crate::{
@@ -20,8 +20,7 @@ pub struct ApiPlugin;
 /// The menu is only drawn during the State `GameState::Menu` and is removed when that state is exited
 impl Plugin for ApiPlugin {
     fn build(&self, app: &mut App) {
-        app
-            // .add_observer(get_tags)
+        app.add_observer(get_tags)
             .add_observer(create_new_tag)
             .add_observer(get_model)
             .add_observer(get_tags)
