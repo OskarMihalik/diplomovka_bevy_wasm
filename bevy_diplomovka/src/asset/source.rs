@@ -2,13 +2,15 @@
 // use crate::io::{AssetSource, PathStream};
 use crate::AssetApp;
 use bevy::{
-    asset::io::{AssetReader, AssetReaderError, AssetSource, PathStream, Reader},
+    asset::io::{AssetReader, AssetReaderError, AssetSource, PathStream, Reader, VecReader},
     prelude::*,
     utils::ConditionalSendFuture,
 };
 // use bevy_app::App;
 // use bevy_utils::ConditionalSendFuture;
 use std::path::{Path, PathBuf};
+
+// use super::wasm::HttpWasmAssetReader;
 /// Adds the `http` and `https` asset sources to the app.
 /// Any asset path that begins with `http` or `https` will be loaded from the web
 /// via `fetch`(wasm) or `ureq`(native).
@@ -58,22 +60,61 @@ impl HttpSourceAssetReader {
 }
 
 #[cfg(target_arch = "wasm32")]
-async fn get<'a>(path: PathBuf) -> Result<Box<dyn Reader>, AssetReaderError> {
-    use crate::io::wasm::HttpWasmAssetReader;
+use wasm_bindgen::{JsCast, JsValue};
+#[cfg(target_arch = "wasm32")]
+fn js_value_to_err(context: &str) -> impl FnOnce(JsValue) -> std::io::Error + '_ {
+    use js_sys::JSON;
+    move |value| {
+        let message = match JSON::stringify(&value) {
+            Ok(js_str) => format!("Failed to {context}: {js_str}"),
+            Err(_) => {
+                format!("Failed to {context} and also failed to stringify the JSValue of the error")
+            }
+        };
 
-    HttpWasmAssetReader::new("")
-        .fetch_bytes(path)
+        std::io::Error::new(std::io::ErrorKind::Other, message)
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+async fn get<'a>(path: PathBuf) -> Result<Box<dyn Reader>, AssetReaderError> {
+    // use super::wasm::HttpWasmAssetReader;
+    use js_sys::{Uint8Array, JSON};
+    use std::sync::Arc;
+    use wasm_bindgen::{JsCast, JsValue};
+    use wasm_bindgen_futures::JsFuture;
+    use web_sys::Response;
+    let window = web_sys::window().unwrap();
+
+    let resp_value = JsFuture::from(window.fetch_with_str(path.to_str().unwrap()))
         .await
-        .map(|r| Box::new(r) as Box<dyn Reader>)
+        .map_err(js_value_to_err("fetch path"))?;
+
+    let resp = resp_value
+        .dyn_into::<Response>()
+        .map_err(js_value_to_err("convert fetch to Response"))?;
+
+    match resp.status() {
+        200 => {
+            let data = JsFuture::from(resp.array_buffer().unwrap()).await.unwrap();
+            let bytes = Uint8Array::new(&data).to_vec();
+            let reader: Box<dyn Reader> = Box::new(VecReader::new(bytes));
+            Ok(reader)
+        }
+        404 => Err(AssetReaderError::NotFound(path)),
+        status => Err(AssetReaderError::Io(Arc::new(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("Encountered unexpected HTTP status {status}"),
+        )))),
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 async fn get<'a>(path: PathBuf) -> Result<Box<dyn Reader>, AssetReaderError> {
     // use crate::io::VecReader;
-    use std::io;
-
     use bevy::asset::io::VecReader;
-
+    use std::io;
+    // use ureq::Agent;
     // use bevy::asset::io::{AssetReaderError, Reader, VecReader};
 
     let str_path = path.to_str().ok_or_else(|| {

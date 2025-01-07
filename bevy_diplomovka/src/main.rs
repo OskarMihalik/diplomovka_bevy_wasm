@@ -1,6 +1,6 @@
 // disable console on windows for release builds
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-
+mod asset;
 use asset::http_asset_loader::BlobLoaderPlugin;
 use asset::source::http_source_plugin;
 use bevy::asset::AssetMetaCheck;
@@ -13,7 +13,7 @@ use bevy_diplomovka::GamePlugin;
 use bevy_mod_reqwest::*;
 use std::io::Cursor;
 use winit::window::Icon; // ToDo: Replace bevy_game with your new crate name.
-mod asset;
+                         // mod asset;
 
 fn main() {
     App::new()
