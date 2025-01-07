@@ -8,7 +8,6 @@ use dto::{
 
 use crate::{
     api::{CreateNewTagEvent, GetModelEvent, GetTagsEvent},
-    asset::path_serialize::serialize_url,
     loading::GltfAssets,
     utils::LogEntityComponents,
     GameState,

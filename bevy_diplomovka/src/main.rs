@@ -1,8 +1,7 @@
 // disable console on windows for release builds
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 mod asset;
-use asset::http_asset_loader::BlobLoaderPlugin;
-use asset::source::http_source_plugin;
+use asset::http_asset_loader::http_source_plugin;
 use bevy::asset::AssetMetaCheck;
 use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use bevy::prelude::*;
