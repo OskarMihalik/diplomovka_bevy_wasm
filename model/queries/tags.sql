@@ -15,6 +15,19 @@ WHERE id=:id;
 
 --! select_model (id, limit, offset)
 SELECT id, "version", model_link, "name", created_at, updated_at, project_id
-FROM public."Model" WHERE id=(:id)order by created_at DESC 
+FROM public."Model" WHERE id=(:id) order by created_at DESC 
+LIMIT :limit
+OFFSET :offset;
+
+--! insert_model(version, model_link, name, project_id)
+INSERT INTO public."Model"
+("version", model_link, "name", project_id)
+VALUES(:version, :model_link, :name, :project_id)
+RETURNING id;
+
+--! select_models(project_id, limit, offset)
+SELECT id, "version", model_link, "name", created_at, updated_at, project_id
+FROM public."Model"
+WHERE project_id=(:project_id) order by created_at DESC 
 LIMIT :limit
 OFFSET :offset;

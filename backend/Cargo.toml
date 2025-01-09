@@ -6,13 +6,15 @@ edition = "2021"
 [dependencies]
 dto = { path = "../dto" }
 model = { path = "../model" }
-axum = { version = "0.7" }
+axum = { version = "0.8", features = ["multipart"] }
 tokio = { version = "1.0", features = ["full"] }
 tower = { version = "0.4", features = ["util"] }
 tower-http = { version = "0.5.0", features = ["cors", "fs", "trace"] }
 serde = { version = "1.0.197", features = ["derive"] }
 cornucopia_async = "0.6.0"
 thiserror = "2.0.9"
+tokio-util = { version = "0.7", features = ["io"] }
+futures = "0.3"
 
 # Postgres interaction
 tokio-postgres = "0.7.7"

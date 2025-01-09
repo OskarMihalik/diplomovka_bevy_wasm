@@ -13,8 +13,7 @@ impl Plugin for LoadingPlugin {
         app.add_loading_state(
             LoadingState::new(GameState::InitialLoading)
                 .continue_to_state(GameState::LoadingModel)
-                .load_collection::<TextureAssets>()
-                .load_collection::<GltfAssets>(),
+                .load_collection::<TextureAssets>(),
         );
     }
 }
@@ -28,10 +27,4 @@ pub struct TextureAssets {
     pub bevy: Handle<Image>,
     #[asset(path = "textures/github.png")]
     pub github: Handle<Image>,
-}
-
-#[derive(AssetCollection, Resource)]
-pub struct GltfAssets {
-    #[asset(path = "models/futuristic_building.glb#Scene0")]
-    pub building: Handle<Scene>,
 }

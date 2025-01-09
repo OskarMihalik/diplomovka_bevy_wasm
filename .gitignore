@@ -6,3 +6,7 @@ dist
 
 db/data
 node_modules
+
+.http-asset-cache
+backend/assets/models/*
+!backend/assets/models/.gitkeep

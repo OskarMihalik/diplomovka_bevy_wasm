@@ -1,4 +1,4 @@
-use base64::prelude::BASE64_URL_SAFE_NO_PAD;
+use crate::api::BACKEND_URL;
 use bevy::prelude::*;
 use bevy_panorbit_camera::PanOrbitCamera;
 use dto::{
@@ -8,8 +8,6 @@ use dto::{
 
 use crate::{
     api::{CreateNewTagEvent, GetModelEvent, GetTagsEvent},
-    loading::GltfAssets,
-    utils::LogEntityComponents,
     GameState,
 };
 
@@ -58,7 +56,7 @@ fn spawn_building(
     asset_server: Res<AssetServer>,
 ) {
     let model_dto = &trigger.model_dto;
-    let gltf = asset_server.load("http://localhost:9080/futuristic_building.glb#Scene0");
+    let gltf = asset_server.load(format!("{BACKEND_URL}/{:?}", model_dto.model_link));
     commands
         .spawn((
             SceneRoot(gltf),

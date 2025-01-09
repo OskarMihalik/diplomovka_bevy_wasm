@@ -12,7 +12,7 @@ use crate::{
     gui::gui::{ShowErrorEvent, UiState},
 };
 
-const BACKEND_URL: &str = "http://localhost:4000";
+pub const BACKEND_URL: &str = "http://localhost:4000";
 
 pub struct ApiPlugin;
 

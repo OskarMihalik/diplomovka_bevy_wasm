@@ -14,3 +14,5 @@ pub struct ModelDto {
 }
 
 pub type ModelDtoResponse = Result<ModelDto, ErrorDto>;
+
+pub type ModelsDtoResponse = Result<Vec<ModelDto>, ErrorDto>;

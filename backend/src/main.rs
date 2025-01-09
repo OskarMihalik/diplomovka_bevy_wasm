@@ -6,7 +6,7 @@
 
 mod services;
 use axum::{
-    extract::State,
+    extract::{DefaultBodyLimit, State},
     http::{self, HeaderValue, Method, StatusCode},
     response::{Html, IntoResponse},
     routing::{get, post},
@@ -15,7 +15,7 @@ use axum::{
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 use services::{
-    model::get_model_service,
+    model::{get_model_service, upload_new_model_service},
     tags::{get_tag_service, insert_tag_service, update_tag_service},
 };
 use std::net::SocketAddr;
@@ -34,10 +34,14 @@ async fn main() {
     let pool = Pool::builder().build(manager).await.unwrap();
     let backend = async {
         let app = Router::new()
-            // .nest_service("/assets", ServeDir::new("assets"))
+            .nest_service("/assets/model/", ServeDir::new("backend/assets/models"))
             .route("/tags", post(insert_tag_service).patch(update_tag_service))
-            .route("/tags/:model_id", get(get_tag_service))
-            .route("/model/:model_id", get(get_model_service))
+            .route("/tags/{model_id}", get(get_tag_service))
+            .route("/model/{model_id}", get(get_model_service))
+            .route(
+                "/model/{project_id}/{model_name}",
+                post(upload_new_model_service).layer(DefaultBodyLimit::max(1024 * 1024 * 1024)),
+            )
             .with_state(pool)
             .layer(
                 CorsLayer::new()
