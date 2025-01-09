@@ -11,7 +11,7 @@ use crate::{
     api::UpdateTagEvent,
     building::{ModelData, SelectedTag, TagData},
     utils::compare_by_created_at,
-    GameState,
+    GameState, ProjectDtoRes,
 };
 pub struct GuiPlugin;
 struct TextFileContents;
@@ -36,7 +36,11 @@ impl Plugin for GuiPlugin {
             )
             .init_resource::<UiState>()
             .init_resource::<UiContexts>()
-            .add_systems(OnEnter(GameState::ViewingModel), setup)
+            .add_systems(Startup, setup_toasts)
+            .add_systems(
+                Update,
+                ui_project_model_screen.run_if(in_state(GameState::SelectingProjectAndModel)),
+            )
             .add_systems(
                 Update,
                 (ui_example_system, ui_tag_windows).run_if(in_state(GameState::ViewingModel)),
@@ -54,7 +58,41 @@ impl Plugin for GuiPlugin {
     }
 }
 
-fn setup(mut ui_context: ResMut<UiContexts>) {
+fn ui_project_model_screen(mut contexts: EguiContexts) {
+    let ctx = contexts.ctx_mut();
+    egui::TopBottomPanel::top("top_panel")
+        .resizable(true)
+        .min_height(32.0)
+        .show(ctx, |ui| {
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                ui.vertical_centered(|ui| {
+                    ui.heading("Expandable Upper Panel");
+                });
+                // lorem_ipsum(ui);
+            });
+        });
+
+    egui::SidePanel::left("Projects")
+        .resizable(true)
+        // .default_width(150.0)
+        .show(ctx, |ui| {
+            ui.vertical_centered(|ui| {
+                ui.heading("Projects");
+            });
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                // lorem_ipsum(ui);
+            });
+        });
+
+    egui::CentralPanel::default().show(ctx, |ui| {
+        ui.vertical_centered(|ui| {
+            ui.heading("Central Panel");
+        });
+        egui::ScrollArea::vertical().show(ui, |ui| {});
+    });
+}
+
+fn setup_toasts(mut ui_context: ResMut<UiContexts>) {
     ui_context.toasts = Toasts::new()
         .anchor(Align2::RIGHT_TOP, (-10.0, -10.0)) // 10 units from the bottom right corner
         .direction(egui::Direction::TopDown);
@@ -63,7 +101,6 @@ fn setup(mut ui_context: ResMut<UiContexts>) {
 fn ui_example_system(
     mut commands: Commands,
     mut contexts: EguiContexts,
-    ui_state: Res<UiState>,
     mut ui_contexts: ResMut<UiContexts>,
     query_tags: Query<(Entity, &TagData, Option<&SelectedTag>)>,
 ) {

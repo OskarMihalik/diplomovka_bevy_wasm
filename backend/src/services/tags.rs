@@ -1,7 +1,5 @@
 use axum::{
     extract::{Path, State},
-    http::StatusCode,
-    response::{IntoResponse, Response},
     Json,
 };
 use axum_macros::debug_handler;
@@ -11,7 +9,7 @@ use axum_macros::debug_handler;
 
 use crate::ConnectionPool;
 use bb8::RunError;
-use dto::default::{self, ErrorDto, NewTagDto, TagDto, TagDtoResponse, Test};
+use dto::default::{ErrorDto, NewTagDto, TagDto, TagDtoResponse};
 use model::cornucopia::queries::tags::{insert_tag, select_tags, update_tag};
 use tokio_postgres::{Client, Error, GenericClient};
 

@@ -12,7 +12,7 @@ impl Plugin for LoadingPlugin {
     fn build(&self, app: &mut App) {
         app.add_loading_state(
             LoadingState::new(GameState::InitialLoading)
-                .continue_to_state(GameState::LoadingModel)
+                .continue_to_state(GameState::SelectingProjectAndModel)
                 .load_collection::<TextureAssets>(),
         );
     }

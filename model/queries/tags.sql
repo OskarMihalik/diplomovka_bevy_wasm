@@ -31,3 +31,8 @@ FROM public."Model"
 WHERE project_id=(:project_id) order by created_at DESC 
 LIMIT :limit
 OFFSET :offset;
+
+--! select_project (id)
+SELECT id, "name", description, created_at, updated_at
+FROM public."Project"
+WHERE id=(:id);

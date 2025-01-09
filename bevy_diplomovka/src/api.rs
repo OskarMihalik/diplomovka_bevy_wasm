@@ -5,11 +5,13 @@ use bevy_mod_reqwest::*;
 use dto::{
     default::{NewTagDto, TagDto, TagDtoResponse},
     model::{ModelDto, ModelDtoResponse},
+    project::ProjectDtoResponse,
 };
 
 use crate::{
     building::{ModelData, RebuildTagsEvent, SpawnModelEvent, TagData},
     gui::gui::{ShowErrorEvent, UiState},
+    ProjectDtoRes,
 };
 
 pub const BACKEND_URL: &str = "http://localhost:4000";
@@ -24,6 +26,7 @@ impl Plugin for ApiPlugin {
             .add_observer(create_new_tag)
             .add_observer(get_model)
             .add_observer(get_tags)
+            .add_observer(get_project)
             .add_observer(update_tag);
     }
 }
@@ -186,6 +189,47 @@ fn update_tag(trigger: Trigger<UpdateTagEvent>, mut client: BevyReqwest) {
                             new_tag_dtos: tags,
                             parent_entity,
                         });
+                    }
+                    Err(error_dto) => commands.trigger(ShowErrorEvent {
+                        message: error_dto.message,
+                    }),
+                };
+            },
+        )
+        // In case of request error, it can be reached using an observersystem as well
+        .on_error(|trigger: Trigger<ReqwestErrorEvent>| {
+            let e = &trigger.event().0;
+            bevy::log::info!("error: {e:?}");
+        });
+}
+
+#[derive(Event)]
+pub struct GetProjectEvent {
+    pub project_id: i32,
+}
+
+fn get_project(trigger: Trigger<GetProjectEvent>, mut client: BevyReqwest) {
+    let url = format!("{BACKEND_URL}/project/{:?}", trigger.project_id);
+
+    // use regular reqwest http calls, then poll them to completion.
+    let reqwest_request = client.get(url).build().unwrap();
+
+    client
+        // Sends the created http request
+        .send(reqwest_request)
+        // The response from the http request can be reached using an observersystem,
+        // where the only requirement is that the first parameter in the system is the specific Trigger type
+        // the rest is the same as a regular system
+        .on_response(
+            |trigger: Trigger<ReqwestResponseEvent>, mut commands: Commands| {
+                let response = trigger.event();
+                let status = response.status();
+                let data = response.as_str().unwrap();
+                bevy::log::info!("response: {status}, data: {data}");
+                let parsed: ProjectDtoResponse = serde_json::from_str(data).unwrap();
+                match parsed {
+                    Ok(dto) => {
+                        commands.insert_resource(ProjectDtoRes { project_dto: dto });
                     }
                     Err(error_dto) => commands.trigger(ShowErrorEvent {
                         message: error_dto.message,

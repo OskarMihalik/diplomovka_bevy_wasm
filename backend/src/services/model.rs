@@ -2,8 +2,7 @@ use axum::{
     body::Bytes,
     extract::{Multipart, Path, State},
     http::StatusCode,
-    response::{IntoResponse, Response},
-    BoxError, Json, Router,
+    BoxError, Json,
 };
 use axum_macros::debug_handler;
 use futures::{Stream, TryStreamExt};
@@ -12,23 +11,16 @@ use tokio::{fs::File, io::BufWriter};
 use tokio_util::io::StreamReader;
 
 use crate::ConnectionPool;
-use bb8::RunError;
 use dto::{
-    default::{self, ErrorDto, NewTagDto, TagDto, TagDtoResponse, Test},
+    default::ErrorDto,
     model::{ModelDto, ModelDtoResponse, ModelsDtoResponse},
 };
-use model::cornucopia::queries::tags::{
-    insert_model, insert_tag, select_model, select_models, select_tags,
-};
-use tokio_postgres::{Error, GenericClient};
+use model::cornucopia::queries::tags::{insert_model, select_model, select_models};
+use tokio_postgres::GenericClient;
+
+use super::utils::map_err_pool_con;
 
 pub const UPLOADS_DIRECTORY: &str = "backend/assets/models";
-
-pub fn map_err(error: RunError<Error>) -> Json<ModelDtoResponse> {
-    Json(ModelDtoResponse::Err(ErrorDto {
-        message: format!("{:?}", error),
-    }))
-}
 
 #[debug_handler]
 pub async fn get_model_service(
@@ -37,7 +29,7 @@ pub async fn get_model_service(
 ) -> Json<ModelDtoResponse> {
     let connection = match pool.get().await {
         Ok(connection) => connection,
-        Err(error) => return map_err(error),
+        Err(error) => return map_err_pool_con(error),
     };
 
     let result = select_model()
@@ -59,6 +51,45 @@ pub async fn get_model_service(
         }
         Err(error) => {
             return Json(ModelDtoResponse::Err(ErrorDto {
+                message: format!("{:?}", error),
+            }))
+        }
+    }
+}
+
+#[debug_handler]
+pub async fn get_models_service(
+    Path(project_id): Path<i32>,
+    State(pool): State<ConnectionPool>,
+) -> Json<ModelsDtoResponse> {
+    let connection = match pool.get().await {
+        Ok(connection) => connection,
+        Err(error) => return map_err_pool_con(error),
+    };
+
+    let result = select_models()
+        .bind(connection.client(), &project_id, &100, &0)
+        .all()
+        .await;
+
+    match result {
+        Ok(models) => {
+            let dtos: Vec<ModelDto> = models
+                .iter()
+                .map(|model| ModelDto {
+                    id: model.id,
+                    version: model.version,
+                    model_link: model.model_link.clone(),
+                    name: model.name.clone(),
+                    created_at: model.created_at,
+                    updated_at: model.updated_at,
+                    project_id: model.project_id,
+                })
+                .collect();
+            return Json(ModelsDtoResponse::Ok(dtos));
+        }
+        Err(error) => {
+            return Json(ModelsDtoResponse::Err(ErrorDto {
                 message: format!("{:?}", error),
             }))
         }

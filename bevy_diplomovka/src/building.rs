@@ -1,4 +1,7 @@
-use crate::api::BACKEND_URL;
+use crate::{
+    api::{GetProjectEvent, BACKEND_URL},
+    ProjectDtoRes,
+};
 use bevy::prelude::*;
 use bevy_panorbit_camera::PanOrbitCamera;
 use dto::{
@@ -32,6 +35,7 @@ impl Plugin for BuildingPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(GameState::LoadingModel), (setup_scene))
             .add_systems(OnEnter(GameState::ViewingModel), on_viewing_model)
+            .add_systems(Update, react_to_project_change)
             .add_observer(rebuild_tags)
             .add_observer(spawn_building);
     }
@@ -89,6 +93,17 @@ fn setup_scene(mut commands: Commands) {
         Transform::from_translation(Vec3::new(0.0, 1.5, 5.0)),
         PanOrbitCamera::default(),
     ));
+    commands.trigger(GetProjectEvent { project_id: 0 });
+}
+
+fn react_to_project_change(mut commands: Commands, project_dto_res: Option<Res<ProjectDtoRes>>) {
+    let project_res = match project_dto_res {
+        Some(ok) => ok,
+        None => return,
+    };
+    if !project_res.is_changed() {
+        return;
+    }
     commands.trigger(GetModelEvent { model_id: 16 });
 }
 

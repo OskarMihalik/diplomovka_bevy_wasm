@@ -6,16 +6,16 @@
 
 mod services;
 use axum::{
-    extract::{DefaultBodyLimit, State},
-    http::{self, HeaderValue, Method, StatusCode},
-    response::{Html, IntoResponse},
+    extract::DefaultBodyLimit,
+    http::{self, HeaderValue, Method},
     routing::{get, post},
-    Json, Router,
+    Router,
 };
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 use services::{
-    model::{get_model_service, upload_new_model_service},
+    model::{get_model_service, get_models_service, upload_new_model_service},
+    project::get_project_service,
     tags::{get_tag_service, insert_tag_service, update_tag_service},
 };
 use std::net::SocketAddr;
@@ -38,6 +38,8 @@ async fn main() {
             .route("/tags", post(insert_tag_service).patch(update_tag_service))
             .route("/tags/{model_id}", get(get_tag_service))
             .route("/model/{model_id}", get(get_model_service))
+            .route("/models/{project_id}", get(get_models_service))
+            .route("/project/{project_id}", get(get_project_service))
             .route(
                 "/model/{project_id}/{model_name}",
                 post(upload_new_model_service).layer(DefaultBodyLimit::max(1024 * 1024 * 1024)),
