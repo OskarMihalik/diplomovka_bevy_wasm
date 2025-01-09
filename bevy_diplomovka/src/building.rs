@@ -56,7 +56,10 @@ fn spawn_building(
     asset_server: Res<AssetServer>,
 ) {
     let model_dto = &trigger.model_dto;
-    let gltf = asset_server.load(format!("{BACKEND_URL}/{:?}", model_dto.model_link));
+    let gltf = asset_server.load(format!(
+        "{BACKEND_URL}/assets/model/{:?}.glb#Scene0",
+        model_dto.id
+    ));
     commands
         .spawn((
             SceneRoot(gltf),
@@ -86,7 +89,7 @@ fn setup_scene(mut commands: Commands) {
         Transform::from_translation(Vec3::new(0.0, 1.5, 5.0)),
         PanOrbitCamera::default(),
     ));
-    commands.trigger(GetModelEvent { model_id: 0 });
+    commands.trigger(GetModelEvent { model_id: 16 });
 }
 
 fn add_tag(
