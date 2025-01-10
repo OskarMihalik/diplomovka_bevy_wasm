@@ -36,3 +36,9 @@ OFFSET :offset;
 SELECT id, "name", description, created_at, updated_at
 FROM public."Project"
 WHERE id=(:id);
+
+--! select_projects (limit, offset)
+SELECT id, "name", description, created_at, updated_at
+FROM public."Project" order by created_at DESC
+LIMIT :limit
+OFFSET :offset;

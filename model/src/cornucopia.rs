@@ -4,7 +4,7 @@
 #[allow(unused_imports)] #[allow(dead_code)] pub mod types { }#[allow(clippy::all, clippy::pedantic)] #[allow(unused_variables)]
 #[allow(unused_imports)] #[allow(dead_code)] pub mod queries
 { pub mod tags
-{ use futures::{{StreamExt, TryStreamExt}};use futures; use cornucopia_async::GenericClient;#[derive(Clone,Copy, Debug)] pub struct SelectTagsParams<> { pub model_id: i32,pub limit: i64,pub offset: i64,}#[derive( Debug)] pub struct InsertTagParams<T1: cornucopia_async::StringSql,> { pub title: T1,pub model_id: i32,pub position_x: f32,pub position_y: f32,pub position_z: f32,}#[derive( Debug)] pub struct UpdateTagParams<T1: cornucopia_async::StringSql,> { pub title: T1,pub position_x: f32,pub position_y: f32,pub position_z: f32,pub id: i32,}#[derive(Clone,Copy, Debug)] pub struct SelectModelParams<> { pub id: i32,pub limit: i64,pub offset: i64,}#[derive( Debug)] pub struct InsertModelParams<T1: cornucopia_async::StringSql,T2: cornucopia_async::StringSql,> { pub version: i32,pub model_link: T1,pub name: T2,pub project_id: i32,}#[derive(Clone,Copy, Debug)] pub struct SelectModelsParams<> { pub project_id: i32,pub limit: i64,pub offset: i64,}#[derive( Debug, Clone, PartialEq,)] pub struct SelectTags
+{ use futures::{{StreamExt, TryStreamExt}};use futures; use cornucopia_async::GenericClient;#[derive(Clone,Copy, Debug)] pub struct SelectTagsParams<> { pub model_id: i32,pub limit: i64,pub offset: i64,}#[derive( Debug)] pub struct InsertTagParams<T1: cornucopia_async::StringSql,> { pub title: T1,pub model_id: i32,pub position_x: f32,pub position_y: f32,pub position_z: f32,}#[derive( Debug)] pub struct UpdateTagParams<T1: cornucopia_async::StringSql,> { pub title: T1,pub position_x: f32,pub position_y: f32,pub position_z: f32,pub id: i32,}#[derive(Clone,Copy, Debug)] pub struct SelectModelParams<> { pub id: i32,pub limit: i64,pub offset: i64,}#[derive( Debug)] pub struct InsertModelParams<T1: cornucopia_async::StringSql,T2: cornucopia_async::StringSql,> { pub version: i32,pub model_link: T1,pub name: T2,pub project_id: i32,}#[derive(Clone,Copy, Debug)] pub struct SelectModelsParams<> { pub project_id: i32,pub limit: i64,pub offset: i64,}#[derive(Clone,Copy, Debug)] pub struct SelectProjectsParams<> { pub limit: i64,pub offset: i64,}#[derive( Debug, Clone, PartialEq,)] pub struct SelectTags
 { pub id : i32,pub title : String,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,pub position_x : f32,pub position_y : f32,pub position_z : f32,pub model_id : i32,}pub struct SelectTagsBorrowed<'a> { pub id : i32,pub title : &'a str,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,pub position_x : f32,pub position_y : f32,pub position_z : f32,pub model_id : i32,}
 impl<'a> From<SelectTagsBorrowed<'a>> for SelectTags
 {
@@ -223,6 +223,51 @@ GenericClient
         res.map(|row| (self.mapper)((self.extractor)(&row)))) .into_stream();
         Ok(it)
     }
+}#[derive( Debug, Clone, PartialEq,)] pub struct SelectProjects
+{ pub id : i32,pub name : String,pub description : String,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,}pub struct SelectProjectsBorrowed<'a> { pub id : i32,pub name : &'a str,pub description : &'a str,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,}
+impl<'a> From<SelectProjectsBorrowed<'a>> for SelectProjects
+{
+    fn from(SelectProjectsBorrowed { id,name,description,created_at,updated_at,}: SelectProjectsBorrowed<'a>) ->
+    Self { Self { id,name: name.into(),description: description.into(),created_at,updated_at,} }
+}pub struct SelectProjectsQuery<'a, C: GenericClient, T, const N: usize>
+{
+    client: &'a  C, params:
+    [&'a (dyn postgres_types::ToSql + Sync); N], stmt: &'a mut
+    cornucopia_async::private::Stmt, extractor: fn(&tokio_postgres::Row) -> SelectProjectsBorrowed,
+    mapper: fn(SelectProjectsBorrowed) -> T,
+} impl<'a, C, T:'a, const N: usize> SelectProjectsQuery<'a, C, T, N> where C:
+GenericClient
+{
+    pub fn map<R>(self, mapper: fn(SelectProjectsBorrowed) -> R) ->
+    SelectProjectsQuery<'a,C,R,N>
+    {
+        SelectProjectsQuery
+        {
+            client: self.client, params: self.params, stmt: self.stmt,
+            extractor: self.extractor, mapper,
+        }
+    } pub async fn one(self) -> Result<T, tokio_postgres::Error>
+    {
+        let stmt = self.stmt.prepare(self.client).await?; let row =
+        self.client.query_one(stmt, &self.params).await?;
+        Ok((self.mapper)((self.extractor)(&row)))
+    } pub async fn all(self) -> Result<Vec<T>, tokio_postgres::Error>
+    { self.iter().await?.try_collect().await } pub async fn opt(self) ->
+    Result<Option<T>, tokio_postgres::Error>
+    {
+        let stmt = self.stmt.prepare(self.client).await?;
+        Ok(self.client.query_opt(stmt, &self.params) .await?
+        .map(|row| (self.mapper)((self.extractor)(&row))))
+    } pub async fn iter(self,) -> Result<impl futures::Stream<Item = Result<T,
+    tokio_postgres::Error>> + 'a, tokio_postgres::Error>
+    {
+        let stmt = self.stmt.prepare(self.client).await?; let it =
+        self.client.query_raw(stmt,
+        cornucopia_async::private::slice_iter(&self.params)) .await?
+        .map(move |res|
+        res.map(|row| (self.mapper)((self.extractor)(&row)))) .into_stream();
+        Ok(it)
+    }
 }pub fn select_tags() -> SelectTagsStmt
 { SelectTagsStmt(cornucopia_async::private::Stmt::new("SELECT * FROM public.\"Tag\" where model_id = $1 order by created_at DESC 
 LIMIT $2
@@ -382,4 +427,29 @@ SelectProject, 1>
         client, params: [id,], stmt: &mut self.0, extractor:
         |row| { SelectProjectBorrowed { id: row.get(0),name: row.get(1),description: row.get(2),created_at: row.get(3),updated_at: row.get(4),} }, mapper: |it| { <SelectProject>::from(it) },
     }
-} }}}
+} }pub fn select_projects() -> SelectProjectsStmt
+{ SelectProjectsStmt(cornucopia_async::private::Stmt::new("SELECT id, \"name\", description, created_at, updated_at
+FROM public.\"Project\" order by created_at DESC
+LIMIT $1
+OFFSET $2")) } pub struct
+SelectProjectsStmt(cornucopia_async::private::Stmt); impl SelectProjectsStmt
+{ pub fn bind<'a, C:
+GenericClient,>(&'a mut self, client: &'a  C,
+limit: &'a i64,offset: &'a i64,) -> SelectProjectsQuery<'a,C,
+SelectProjects, 2>
+{
+    SelectProjectsQuery
+    {
+        client, params: [limit,offset,], stmt: &mut self.0, extractor:
+        |row| { SelectProjectsBorrowed { id: row.get(0),name: row.get(1),description: row.get(2),created_at: row.get(3),updated_at: row.get(4),} }, mapper: |it| { <SelectProjects>::from(it) },
+    }
+} }impl <'a, C: GenericClient,> cornucopia_async::Params<'a,
+SelectProjectsParams<>, SelectProjectsQuery<'a, C,
+SelectProjects, 2>, C> for SelectProjectsStmt
+{
+    fn
+    params(&'a mut self, client: &'a  C, params: &'a
+    SelectProjectsParams<>) -> SelectProjectsQuery<'a, C,
+    SelectProjects, 2>
+    { self.bind(client, &params.limit,&params.offset,) }
+}}}

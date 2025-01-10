@@ -11,4 +11,11 @@ pub struct ProjectDto {
     pub updated_at: time::PrimitiveDateTime,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct NewProjectDto {
+    pub name: String,
+    pub description: String,
+}
+
 pub type ProjectDtoResponse = Result<ProjectDto, ErrorDto>;
+pub type ProjectsDtoResponse = Result<Vec<ProjectDto>, ErrorDto>;

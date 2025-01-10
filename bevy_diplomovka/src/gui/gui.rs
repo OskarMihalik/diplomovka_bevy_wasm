@@ -1,15 +1,15 @@
-use bevy::prelude::*;
+use bevy::{ecs::entity, prelude::*};
 use bevy_egui::{
     egui::{self, Align2, Id, ScrollArea},
     EguiContexts, EguiPlugin,
 };
 use bevy_file_dialog::prelude::*;
-use dto::default::TagDto;
+use dto::{default::TagDto, project::NewProjectDto};
 use egui_toast::{Toast, ToastKind, ToastOptions, Toasts};
 
 use crate::{
-    api::UpdateTagEvent,
-    building::{ModelData, SelectedTag, TagData},
+    api::{GetProjectsEvent, UpdateTagEvent},
+    building::{ModelData, ProjectData, SelectedTag, TagData, ThisProjectIsSelected},
     utils::compare_by_created_at,
     GameState, ProjectDtoRes,
 };
@@ -38,6 +38,10 @@ impl Plugin for GuiPlugin {
             .init_resource::<UiContexts>()
             .add_systems(Startup, setup_toasts)
             .add_systems(
+                OnEnter(GameState::SelectingProjectAndModel),
+                setup_selecting_project_and_model,
+            )
+            .add_systems(
                 Update,
                 ui_project_model_screen.run_if(in_state(GameState::SelectingProjectAndModel)),
             )
@@ -58,15 +62,44 @@ impl Plugin for GuiPlugin {
     }
 }
 
-fn ui_project_model_screen(mut contexts: EguiContexts) {
+fn setup_selecting_project_and_model(mut commands: Commands) {
+    bevy::log::info!("Setting up selecting project and model");
+    commands.trigger(GetProjectsEvent {});
+}
+
+// this would probably be better id it was in resourse or in single entity
+/*
+struct ProjectDtoRes {
+    pub project_dto: ProjectDto,
+}
+
+struct SelectedProjectDtoRes {
+    pub project_id: ProjectDto,
+}
+
+the queries with ThisProjectIsSelected are adding complexity
+*/
+fn ui_project_model_screen(
+    mut commands: Commands,
+    mut contexts: EguiContexts,
+    window: Single<&Window>,
+    mut query_projects: Query<(Entity, &mut ProjectData, Option<&ThisProjectIsSelected>)>,
+    mut modal_open: Local<bool>,
+    mut new_project_dto: Local<NewProjectDto>,
+) {
     let ctx = contexts.ctx_mut();
+    let current_selected_project_entity = query_projects
+        .iter()
+        .find(|(_, _, selected)| selected.is_some())
+        .map(|(entity, _, _)| entity);
+
     egui::TopBottomPanel::top("top_panel")
         .resizable(true)
         .min_height(32.0)
         .show(ctx, |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| {
                 ui.vertical_centered(|ui| {
-                    ui.heading("Expandable Upper Panel");
+                    ui.heading("here will be user info");
                 });
                 // lorem_ipsum(ui);
             });
@@ -74,13 +107,61 @@ fn ui_project_model_screen(mut contexts: EguiContexts) {
 
     egui::SidePanel::left("Projects")
         .resizable(true)
-        // .default_width(150.0)
+        .default_width(window.width() / 2.0)
         .show(ctx, |ui| {
             ui.vertical_centered(|ui| {
                 ui.heading("Projects");
             });
+            if ui.button("Add new project").clicked() {
+                *modal_open = true;
+            }
+            ui.separator();
+
             egui::ScrollArea::vertical().show(ui, |ui| {
                 // lorem_ipsum(ui);
+                ui.vertical(|ui| {
+                    for (entity, mut project_data, selected_project) in query_projects
+                        .iter_mut()
+                        .sort_by::<&ProjectData>(
+                        |value_1, value_2| {
+                            compare_by_created_at(&value_1.dto.created_at, &value_2.dto.created_at)
+                        },
+                    ) {
+                        egui::Grid::new(Id::new(project_data.dto.id))
+                            .num_columns(2)
+                            .spacing([40.0, 4.0])
+                            .show(ui, |ui| {
+                                // self.gallery_grid_contents(ui);
+                                ui.label(format!("Name: "));
+                                ui.text_edit_singleline(&mut project_data.dto.name);
+                                ui.end_row();
+
+                                ui.label(format!("Description: "));
+                                ui.text_edit_multiline(&mut project_data.dto.description);
+                                ui.end_row();
+                            });
+                        let checked = selected_project.is_some();
+                        ui.horizontal(|ui| {
+                            if ui.selectable_label(checked, format!("Select")).clicked() {
+                                // if checked {
+                                match current_selected_project_entity {
+                                    Some(selected) => {
+                                        commands.entity(selected).remove::<ThisProjectIsSelected>();
+                                        commands.entity(entity).insert(ThisProjectIsSelected {});
+                                    }
+                                    None => {
+                                        commands.entity(entity).insert(ThisProjectIsSelected {});
+                                    }
+                                }
+                            }
+                            if ui.button("Submit").clicked() {
+                                // trigger update project
+                            }
+                        });
+
+                        ui.separator();
+                    }
+                })
             });
         });
 
@@ -90,6 +171,23 @@ fn ui_project_model_screen(mut contexts: EguiContexts) {
         });
         egui::ScrollArea::vertical().show(ui, |ui| {});
     });
+
+    egui::Window::new("Add new project")
+        .open(&mut modal_open)
+        .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
+        .show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.label(format!("Name: "));
+                ui.text_edit_singleline(&mut String::new());
+            });
+            ui.horizontal(|ui| {
+                ui.label(format!("Description: "));
+                ui.text_edit_multiline(&mut String::new());
+            });
+            if ui.button("Submit").clicked() {
+                // trigger add new project
+            }
+        });
 }
 
 fn setup_toasts(mut ui_context: ResMut<UiContexts>) {

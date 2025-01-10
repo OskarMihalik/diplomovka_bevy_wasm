@@ -1,15 +1,15 @@
-use std::process::Command;
-
-use bevy::{prelude::*, state::commands};
+use bevy::prelude::*;
 use bevy_mod_reqwest::*;
 use dto::{
     default::{NewTagDto, TagDto, TagDtoResponse},
     model::{ModelDto, ModelDtoResponse},
-    project::ProjectDtoResponse,
+    project::{ProjectDtoResponse, ProjectsDtoResponse},
 };
 
 use crate::{
-    building::{ModelData, RebuildTagsEvent, SpawnModelEvent, TagData},
+    building::{
+        ModelData, ProjectData, RebuildTagsEvent, SpawnModelEvent, TagData, ThisProjectIsSelected,
+    },
     gui::gui::{ShowErrorEvent, UiState},
     ProjectDtoRes,
 };
@@ -27,7 +27,8 @@ impl Plugin for ApiPlugin {
             .add_observer(get_model)
             .add_observer(get_tags)
             .add_observer(get_project)
-            .add_observer(update_tag);
+            .add_observer(update_tag)
+            .add_observer(get_projects);
     }
 }
 
@@ -235,6 +236,73 @@ fn get_project(trigger: Trigger<GetProjectEvent>, mut client: BevyReqwest) {
                         message: error_dto.message,
                     }),
                 };
+            },
+        )
+        // In case of request error, it can be reached using an observersystem as well
+        .on_error(|trigger: Trigger<ReqwestErrorEvent>| {
+            let e = &trigger.event().0;
+            bevy::log::info!("error: {e:?}");
+        });
+}
+
+#[derive(Event)]
+pub struct GetProjectsEvent {}
+
+fn get_projects(_trigger: Trigger<GetProjectsEvent>, mut client: BevyReqwest) {
+    let url = format!("{BACKEND_URL}/project");
+
+    // use regular reqwest http calls, then poll them to completion.
+    bevy::log::info!("sending request to {url}");
+    let reqwest_request = client.get(url).build().unwrap();
+    client
+        // Sends the created http request
+        .send(reqwest_request)
+        // The response from the http request can be reached using an observersystem,
+        // where the only requirement is that the first parameter in the system is the specific Trigger type
+        // the rest is the same as a regular system
+        .on_response(
+            |trigger: Trigger<ReqwestResponseEvent>,
+             mut commands: Commands,
+             query_selected_project: Option<
+                Single<(Entity, &ProjectData, &ThisProjectIsSelected)>,
+            >,
+             query_projects: Query<(Entity, &ProjectData)>| {
+                let response = trigger.event();
+                let status = response.status();
+                let data = response.as_str().unwrap();
+                bevy::log::info!("response: {status}, data: {data}");
+                let parsed: ProjectsDtoResponse = serde_json::from_str(data).unwrap();
+                let dtos = match parsed {
+                    Ok(dtos) => dtos,
+                    Err(error_dto) => {
+                        commands.trigger(ShowErrorEvent {
+                            message: error_dto.message,
+                        });
+                        return;
+                    }
+                };
+                match query_selected_project {
+                    Some(selected) => {
+                        for (entity, _) in query_projects.iter() {
+                            commands.entity(entity).despawn_recursive()
+                        }
+                        for dto in dtos {
+                            let dto_id = dto.id;
+                            let mut builder = commands.spawn(ProjectData { dto });
+                            if dto_id == selected.1.dto.id {
+                                builder.insert(ThisProjectIsSelected {});
+                            }
+                        }
+                    }
+                    None => {
+                        for (entity, _) in query_projects.iter() {
+                            commands.entity(entity).despawn_recursive()
+                        }
+                        for dto in dtos {
+                            commands.spawn(ProjectData { dto });
+                        }
+                    }
+                }
             },
         )
         // In case of request error, it can be reached using an observersystem as well

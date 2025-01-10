@@ -7,6 +7,7 @@ use bevy_panorbit_camera::PanOrbitCamera;
 use dto::{
     default::{NewTagDto, TagDto},
     model::ModelDto,
+    project::ProjectDto,
 };
 
 use crate::{
@@ -26,6 +27,15 @@ pub struct SelectedTag {}
 pub struct ModelData {
     pub dto: ModelDto,
 }
+
+#[derive(Component)]
+pub struct ProjectData {
+    pub dto: ProjectDto,
+}
+
+#[derive(Component)]
+
+pub struct ThisProjectIsSelected {}
 
 pub struct BuildingPlugin;
 
