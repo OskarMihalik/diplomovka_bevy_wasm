@@ -29,7 +29,6 @@ pub enum GameState {
     #[default]
     InitialLoading,
     SelectingProjectAndModel,
-    LoadingModel,
     // During this State the actual game logic is executed
     ViewingModel,
 }

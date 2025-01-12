@@ -9,7 +9,9 @@ use egui_toast::{Toast, ToastKind, ToastOptions, Toasts};
 
 use crate::{
     api::{GetProjectsEvent, UpdateTagEvent},
-    building::{ModelData, ProjectData, SelectedTag, TagData, ThisProjectIsSelected},
+    building::{
+        ModelData, ProjectData, SelectedTag, TagData, ThisModelIsSelected, ThisProjectIsSelected,
+    },
     utils::compare_by_created_at,
     GameState, ProjectDtoRes,
 };
@@ -69,12 +71,12 @@ fn setup_selecting_project_and_model(mut commands: Commands) {
 
 // this would probably be better id it was in resourse or in single entity
 /*
-struct ProjectDtoRes {
-    pub project_dto: ProjectDto,
+struct Projects {
+    pub project_dto: Vec<ProjectDto>,
 }
 
-struct SelectedProjectDtoRes {
-    pub project_id: ProjectDto,
+struct SelectedProject {
+    pub project_id: i32,
 }
 
 the queries with ThisProjectIsSelected are adding complexity
@@ -84,11 +86,17 @@ fn ui_project_model_screen(
     mut contexts: EguiContexts,
     window: Single<&Window>,
     mut query_projects: Query<(Entity, &mut ProjectData, Option<&ThisProjectIsSelected>)>,
+    mut query_models: Query<(Entity, &mut ModelData, Option<&ThisModelIsSelected>)>,
     mut modal_open: Local<bool>,
     mut new_project_dto: Local<NewProjectDto>,
 ) {
     let ctx = contexts.ctx_mut();
     let current_selected_project_entity = query_projects
+        .iter()
+        .find(|(_, _, selected)| selected.is_some())
+        .map(|(entity, _, _)| entity);
+
+    let current_selected_model_entity = query_models
         .iter()
         .find(|(_, _, selected)| selected.is_some())
         .map(|(entity, _, _)| entity);
@@ -120,7 +128,7 @@ fn ui_project_model_screen(
             egui::ScrollArea::vertical().show(ui, |ui| {
                 // lorem_ipsum(ui);
                 ui.vertical(|ui| {
-                    for (entity, mut project_data, selected_project) in query_projects
+                    for (entity, mut project_data, selected_model) in query_projects
                         .iter_mut()
                         .sort_by::<&ProjectData>(
                         |value_1, value_2| {
@@ -140,7 +148,7 @@ fn ui_project_model_screen(
                                 ui.text_edit_multiline(&mut project_data.dto.description);
                                 ui.end_row();
                             });
-                        let checked = selected_project.is_some();
+                        let checked = selected_model.is_some();
                         ui.horizontal(|ui| {
                             if ui.selectable_label(checked, format!("Select")).clicked() {
                                 // if checked {
@@ -167,9 +175,59 @@ fn ui_project_model_screen(
 
     egui::CentralPanel::default().show(ctx, |ui| {
         ui.vertical_centered(|ui| {
-            ui.heading("Central Panel");
+            ui.heading("Models");
         });
-        egui::ScrollArea::vertical().show(ui, |ui| {});
+        ui.separator();
+
+        egui::ScrollArea::vertical().show(ui, |ui| {
+            // lorem_ipsum(ui);
+            ui.vertical(|ui| {
+                for (entity, mut model_data, selected_model) in query_models
+                    .iter_mut()
+                    .sort_by::<&ModelData>(|value_1, value_2| {
+                        compare_by_created_at(&value_1.dto.created_at, &value_2.dto.created_at)
+                    })
+                {
+                    egui::Grid::new(Id::new(model_data.dto.id))
+                        .num_columns(2)
+                        .spacing([40.0, 4.0])
+                        .show(ui, |ui| {
+                            // self.gallery_grid_contents(ui);
+                            ui.label(format!("Name: "));
+                            ui.text_edit_singleline(&mut model_data.dto.name);
+                            ui.end_row();
+
+                            ui.label(format!("Version: "));
+                            ui.label(&model_data.dto.version.to_string());
+                            ui.end_row();
+
+                            ui.label(format!("Id: "));
+                            ui.label(model_data.dto.id.to_string());
+                            ui.end_row();
+                        });
+                    let checked = selected_model.is_some();
+                    ui.horizontal(|ui| {
+                        if ui.selectable_label(checked, format!("Open")).clicked() {
+                            // if checked {
+                            match current_selected_model_entity {
+                                Some(selected) => {
+                                    commands.entity(selected).remove::<ThisModelIsSelected>();
+                                    commands.entity(entity).insert(ThisModelIsSelected {});
+                                }
+                                None => {
+                                    commands.entity(entity).insert(ThisModelIsSelected {});
+                                }
+                            }
+                        }
+                        if ui.button("Submit").clicked() {
+                            // trigger update project
+                        }
+                    });
+
+                    ui.separator();
+                }
+            })
+        });
     });
 
     egui::Window::new("Add new project")

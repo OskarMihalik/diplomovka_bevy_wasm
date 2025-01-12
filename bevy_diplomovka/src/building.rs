@@ -1,5 +1,5 @@
 use crate::{
-    api::{GetProjectEvent, BACKEND_URL},
+    api::{GetModelsEvent, GetProjectEvent, BACKEND_URL},
     ProjectDtoRes,
 };
 use bevy::prelude::*;
@@ -27,6 +27,8 @@ pub struct SelectedTag {}
 pub struct ModelData {
     pub dto: ModelDto,
 }
+#[derive(Component)]
+pub struct ThisModelIsSelected {}
 
 #[derive(Component)]
 pub struct ProjectData {
@@ -43,9 +45,16 @@ pub struct BuildingPlugin;
 /// The menu is only drawn during the State `GameState::Menu` and is removed when that state is exited
 impl Plugin for BuildingPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::LoadingModel), (setup_scene))
+        app.add_systems(OnEnter(GameState::SelectingProjectAndModel), (setup_scene))
             .add_systems(OnEnter(GameState::ViewingModel), on_viewing_model)
-            .add_systems(Update, react_to_project_change)
+            .add_systems(
+                Update,
+                react_to_project_change.run_if(in_state(GameState::SelectingProjectAndModel)),
+            )
+            .add_systems(
+                Update,
+                react_to_model_change.run_if(in_state(GameState::SelectingProjectAndModel)),
+            )
             .add_observer(rebuild_tags)
             .add_observer(spawn_building);
     }
@@ -56,7 +65,10 @@ pub struct SpawnModelEvent {
     pub model_dto: ModelDto,
 }
 
-fn on_viewing_model(mut commands: Commands, query: Query<&ModelData, Changed<ModelData>>) {
+fn on_viewing_model(
+    mut commands: Commands,
+    query: Query<&ModelData, (Changed<ModelData>, With<ThisModelIsSelected>)>,
+) {
     for model_data in query.iter() {
         commands.trigger(GetTagsEvent {
             model_id: model_data.dto.id,
@@ -87,7 +99,6 @@ fn spawn_building(
             },
         ))
         .observe(add_tag);
-    commands.set_state(GameState::ViewingModel);
 }
 
 fn setup_scene(mut commands: Commands) {
@@ -103,18 +114,57 @@ fn setup_scene(mut commands: Commands) {
         Transform::from_translation(Vec3::new(0.0, 1.5, 5.0)),
         PanOrbitCamera::default(),
     ));
-    commands.trigger(GetProjectEvent { project_id: 0 });
 }
 
-fn react_to_project_change(mut commands: Commands, project_dto_res: Option<Res<ProjectDtoRes>>) {
-    let project_res = match project_dto_res {
+fn react_to_project_change(
+    mut commands: Commands,
+    selected_project_query: Option<
+        Single<(&ProjectData, &ThisProjectIsSelected), Added<ThisProjectIsSelected>>,
+    >,
+) {
+    let selected_project = match selected_project_query {
         Some(ok) => ok,
         None => return,
     };
-    if !project_res.is_changed() {
-        return;
-    }
-    commands.trigger(GetModelEvent { model_id: 16 });
+    bevy::log::info!("project changed");
+    commands.trigger(GetModelsEvent {
+        project_id: selected_project.0.dto.id,
+    });
+}
+
+fn react_to_model_change(
+    mut commands: Commands,
+    selected_model_query: Option<
+        Single<(Entity, &ModelData, &ThisModelIsSelected), Added<ThisModelIsSelected>>,
+    >,
+    asset_server: Res<AssetServer>,
+) {
+    let selected_model = match selected_model_query {
+        Some(ok) => ok,
+        None => return,
+    };
+    bevy::log::info!("model model");
+    commands.set_state(GameState::ViewingModel);
+
+    let model_dto = &selected_model.1.dto;
+    let gltf = asset_server.load(format!(
+        "{BACKEND_URL}/assets/model/{:?}.glb#Scene0",
+        model_dto.id
+    ));
+    commands
+        .entity(selected_model.0)
+        .insert((
+            SceneRoot(gltf),
+            Transform::from_translation(Vec3::ZERO).with_scale(Vec3::splat(0.25)),
+            // ColliderConstructorHierarchy::new(ColliderConstructor::ConvexHullFromMesh),
+            // PickableBundle::default(),
+            // AvianPickable,
+            // RigidBody::Static,
+            // ModelData {
+            //     dto: model_dto.clone(),
+            // },
+        ))
+        .observe(add_tag);
 }
 
 fn add_tag(
