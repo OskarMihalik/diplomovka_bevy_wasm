@@ -16,7 +16,6 @@ use bevy::app::App;
 use bevy::prelude::*;
 use bevy_panorbit_camera::PanOrbitCameraPlugin;
 use building::BuildingPlugin;
-use dto::project::ProjectDto;
 use gui::{gui::GuiPlugin, perf_ui::PerfUI};
 use utils::log_entity_components;
 // use gui::GuiPlugin;
@@ -31,11 +30,6 @@ pub enum GameState {
     SelectingProjectAndModel,
     // During this State the actual game logic is executed
     ViewingModel,
-}
-
-#[derive(Resource)]
-pub struct ProjectDtoRes {
-    pub project_dto: ProjectDto,
 }
 
 pub struct GamePlugin;

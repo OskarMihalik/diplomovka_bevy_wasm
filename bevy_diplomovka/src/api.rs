@@ -2,17 +2,15 @@ use bevy::prelude::*;
 use bevy_mod_reqwest::*;
 use dto::{
     default::{NewTagDto, TagDto, TagDtoResponse},
-    model::{ModelDto, ModelDtoResponse, ModelsDtoResponse},
+    model::{ModelDtoResponse, ModelsDtoResponse},
     project::{ProjectDtoResponse, ProjectsDtoResponse},
 };
 
 use crate::{
     building::{
-        ModelData, ProjectData, RebuildTagsEvent, SpawnModelEvent, TagData, ThisModelIsSelected,
-        ThisProjectIsSelected,
+        ModelData, ProjectData, RebuildTagsEvent, ThisModelIsSelected, ThisProjectIsSelected,
     },
-    gui::gui::{ShowErrorEvent, UiState},
-    ProjectDtoRes,
+    gui::gui::ShowErrorEvent,
 };
 
 pub const BACKEND_URL: &str = "http://localhost:4000";
@@ -142,12 +140,10 @@ fn get_model(trigger: Trigger<GetModelEvent>, mut client: BevyReqwest) {
         .on_response(
             move |trigger: Trigger<ReqwestResponseEvent>, mut commands: Commands| {
                 let response = trigger.event();
-                let status = response.status();
                 let data = response.as_str().unwrap();
-                bevy::log::info!("response: {status}, data: {data}");
                 let parsed: ModelDtoResponse = serde_json::from_str(data).unwrap();
                 match parsed {
-                    Ok(dto) => commands.trigger(SpawnModelEvent { model_dto: dto }),
+                    Ok(_) => (),
                     Err(error_dto) => commands.trigger(ShowErrorEvent {
                         message: error_dto.message,
                     }),
@@ -296,7 +292,7 @@ fn get_project(trigger: Trigger<GetProjectEvent>, mut client: BevyReqwest) {
                 let parsed: ProjectDtoResponse = serde_json::from_str(data).unwrap();
                 match parsed {
                     Ok(dto) => {
-                        commands.insert_resource(ProjectDtoRes { project_dto: dto });
+                        // TODO: update selected project
                     }
                     Err(error_dto) => commands.trigger(ShowErrorEvent {
                         message: error_dto.message,

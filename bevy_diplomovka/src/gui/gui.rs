@@ -1,10 +1,10 @@
-use bevy::{ecs::entity, prelude::*};
+use bevy::prelude::*;
 use bevy_egui::{
     egui::{self, Align2, Id, ScrollArea},
     EguiContexts, EguiPlugin,
 };
 use bevy_file_dialog::prelude::*;
-use dto::{default::TagDto, project::NewProjectDto};
+use dto::project::NewProjectDto;
 use egui_toast::{Toast, ToastKind, ToastOptions, Toasts};
 
 use crate::{
@@ -13,7 +13,7 @@ use crate::{
         ModelData, ProjectData, SelectedTag, TagData, ThisModelIsSelected, ThisProjectIsSelected,
     },
     utils::compare_by_created_at,
-    GameState, ProjectDtoRes,
+    GameState,
 };
 pub struct GuiPlugin;
 struct TextFileContents;
@@ -315,12 +315,11 @@ fn ui_example_system(
 fn ui_tag_windows(
     mut commands: Commands,
     mut contexts: EguiContexts,
-    mut ui_contexts: ResMut<UiContexts>,
     mut query_tags: Query<(Entity, &mut TagData, &SelectedTag), With<SelectedTag>>,
     query_models: Query<(Entity, &ModelData)>,
 ) {
     let ctx = contexts.ctx_mut();
-    for (entity, mut tag_data, selected_tag) in &mut query_tags {
+    for (entity, mut tag_data, _selected_tag) in &mut query_tags {
         egui::Window::new(tag_data.dto.title.clone())
             .id(Id::new(tag_data.dto.id))
             .show(ctx, |ui| {
@@ -332,7 +331,7 @@ fn ui_tag_windows(
                     let parent_entity = query_models
                         .iter()
                         .find(|model| model.1.dto.id == tag_data.dto.model_id);
-                    if let Some((target_entity, model_data)) = parent_entity {
+                    if let Some((target_entity, _model_data)) = parent_entity {
                         commands.trigger(UpdateTagEvent {
                             tag_dto: tag_data.dto.clone(),
                             parent_entity: target_entity,

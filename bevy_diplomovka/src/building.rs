@@ -1,7 +1,4 @@
-use crate::{
-    api::{GetModelsEvent, GetProjectEvent, BACKEND_URL},
-    ProjectDtoRes,
-};
+use crate::api::{GetModelsEvent, BACKEND_URL};
 use bevy::prelude::*;
 use bevy_panorbit_camera::PanOrbitCamera;
 use dto::{
@@ -11,7 +8,7 @@ use dto::{
 };
 
 use crate::{
-    api::{CreateNewTagEvent, GetModelEvent, GetTagsEvent},
+    api::{CreateNewTagEvent, GetTagsEvent},
     GameState,
 };
 
