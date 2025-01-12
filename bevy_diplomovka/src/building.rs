@@ -42,8 +42,9 @@ pub struct BuildingPlugin;
 /// The menu is only drawn during the State `GameState::Menu` and is removed when that state is exited
 impl Plugin for BuildingPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::SelectingProjectAndModel), (setup_scene))
+        app.add_systems(Startup, (setup_scene))
             .add_systems(OnEnter(GameState::ViewingModel), on_viewing_model)
+            .add_systems(OnExit(GameState::ViewingModel), on_exit_viewing_model)
             .add_systems(
                 Update,
                 react_to_project_change.run_if(in_state(GameState::SelectingProjectAndModel)),
@@ -60,6 +61,15 @@ impl Plugin for BuildingPlugin {
 #[derive(Event)]
 pub struct SpawnModelEvent {
     pub model_dto: ModelDto,
+}
+
+fn on_exit_viewing_model(
+    mut commands: Commands,
+    query: Query<Entity, (With<ModelData>, With<Transform>, With<SceneRoot>)>,
+) {
+    for entity in query.iter() {
+        commands.entity(entity).remove::<(Transform, SceneRoot)>();
+    }
 }
 
 fn on_viewing_model(

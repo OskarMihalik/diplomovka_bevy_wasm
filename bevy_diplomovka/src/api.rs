@@ -1,8 +1,10 @@
+use std::collections::HashMap;
+
 use bevy::prelude::*;
 use bevy_mod_reqwest::*;
 use dto::{
     default::{NewTagDto, TagDto, TagDtoResponse},
-    model::{ModelDtoResponse, ModelsDtoResponse},
+    model::{ModelDto, ModelDtoResponse, ModelsDtoResponse},
     project::{ProjectDtoResponse, ProjectsDtoResponse},
 };
 
@@ -55,9 +57,7 @@ fn get_tags(trigger: Trigger<GetTagsEvent>, mut client: BevyReqwest) {
              query_model: Single<(Entity, &ModelData, &ThisModelIsSelected)>| {
                 let parent_entity = query_model.0;
                 let response = trigger.event();
-                let status = response.status();
                 let data = response.as_str().unwrap();
-                bevy::log::info!("response: {status}, data: {data}");
                 let parsed: TagDtoResponse = serde_json::from_str(data).unwrap();
                 match parsed {
                     Ok(tags) => {
@@ -101,9 +101,7 @@ fn create_new_tag(trigger: Trigger<CreateNewTagEvent>, mut client: BevyReqwest) 
         .on_response(
             move |trigger: Trigger<ReqwestResponseEvent>, mut commands: Commands| {
                 let response = trigger.event();
-                let status = response.status();
                 let data = response.as_str().unwrap();
-                bevy::log::info!("response: {status}, data: {data}");
                 let parsed: TagDtoResponse = serde_json::from_str(data).unwrap();
                 match parsed {
                     Ok(tags) => {
@@ -172,14 +170,9 @@ fn get_models(trigger: Trigger<GetModelsEvent>, mut client: BevyReqwest) {
         .on_response(
             move |trigger: Trigger<ReqwestResponseEvent>,
                   mut commands: Commands,
-                  query_selected_model: Option<
-                Single<(Entity, &ModelData, &ThisModelIsSelected)>,
-            >,
                   query_models: Query<(Entity, &ModelData)>| {
                 let response = trigger.event();
-                let status = response.status();
                 let data = response.as_str().unwrap();
-                bevy::log::info!("response: {status}, data: {data}");
                 let parsed: ModelsDtoResponse = serde_json::from_str(data).unwrap();
                 let dtos = match parsed {
                     Ok(dto) => dto,
@@ -190,27 +183,29 @@ fn get_models(trigger: Trigger<GetModelsEvent>, mut client: BevyReqwest) {
                         return;
                     }
                 };
-                match query_selected_model {
-                    Some(selected) => {
-                        for (entity, _) in query_models.iter() {
-                            commands.entity(entity).despawn_recursive()
+                let mut dto_map: HashMap<i32, ModelDto> = HashMap::new();
+                for dto in dtos.iter() {
+                    dto_map.insert(dto.id, dto.clone());
+                }
+
+                for (entity, model_data) in query_models.iter() {
+                    let new_data = match dto_map.get(&model_data.dto.id) {
+                        Some(ok) => ok.clone(),
+                        None => {
+                            commands.entity(entity).despawn_recursive();
+                            dto_map.remove(&model_data.dto.id);
+                            continue;
                         }
-                        for dto in dtos {
-                            let dto_id = dto.id;
-                            let mut builder = commands.spawn(ModelData { dto });
-                            if dto_id == selected.1.dto.id {
-                                builder.insert(ThisModelIsSelected {});
-                            }
-                        }
-                    }
-                    None => {
-                        for (entity, _) in query_models.iter() {
-                            commands.entity(entity).despawn_recursive()
-                        }
-                        for dto in dtos {
-                            commands.spawn(ModelData { dto });
-                        }
-                    }
+                    };
+                    dto_map.remove(&new_data.id);
+                    commands
+                        .entity(entity)
+                        .remove::<ModelData>()
+                        .insert(ModelData { dto: new_data });
+                }
+                for (_key, dto) in dto_map {
+                    bevy::log::info!("spawning model: {:?}", dto);
+                    commands.spawn(ModelData { dto });
                 }
             },
         )
@@ -242,9 +237,7 @@ fn update_tag(trigger: Trigger<UpdateTagEvent>, mut client: BevyReqwest) {
         .on_response(
             move |trigger: Trigger<ReqwestResponseEvent>, mut commands: Commands| {
                 let response = trigger.event();
-                let status = response.status();
                 let data = response.as_str().unwrap();
-                bevy::log::info!("response: {status}, data: {data}");
                 let parsed: TagDtoResponse = serde_json::from_str(data).unwrap();
                 match parsed {
                     Ok(tags) => {
@@ -286,9 +279,7 @@ fn get_project(trigger: Trigger<GetProjectEvent>, mut client: BevyReqwest) {
         .on_response(
             |trigger: Trigger<ReqwestResponseEvent>, mut commands: Commands| {
                 let response = trigger.event();
-                let status = response.status();
                 let data = response.as_str().unwrap();
-                bevy::log::info!("response: {status}, data: {data}");
                 let parsed: ProjectDtoResponse = serde_json::from_str(data).unwrap();
                 match parsed {
                     Ok(dto) => {
@@ -330,9 +321,7 @@ fn get_projects(_trigger: Trigger<GetProjectsEvent>, mut client: BevyReqwest) {
             >,
              query_projects: Query<(Entity, &ProjectData)>| {
                 let response = trigger.event();
-                let status = response.status();
                 let data = response.as_str().unwrap();
-                bevy::log::info!("response: {status}, data: {data}");
                 let parsed: ProjectsDtoResponse = serde_json::from_str(data).unwrap();
                 let dtos = match parsed {
                     Ok(dtos) => dtos,

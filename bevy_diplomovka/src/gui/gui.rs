@@ -49,7 +49,7 @@ impl Plugin for GuiPlugin {
             )
             .add_systems(
                 Update,
-                (ui_example_system, ui_tag_windows).run_if(in_state(GameState::ViewingModel)),
+                (ui_viewing_model, ui_tag_windows).run_if(in_state(GameState::ViewingModel)),
             )
             .add_systems(
                 Update,
@@ -79,7 +79,7 @@ struct SelectedProject {
     pub project_id: i32,
 }
 
-the queries with ThisProjectIsSelected are adding complexity
+the queries with ThisProjectIsSelected are adding complexity but it works so whatever
 */
 fn ui_project_model_screen(
     mut commands: Commands,
@@ -209,6 +209,7 @@ fn ui_project_model_screen(
                     ui.horizontal(|ui| {
                         if ui.selectable_label(checked, format!("Open")).clicked() {
                             // if checked {
+                            bevy::log::info!("Open model clicked");
                             match current_selected_model_entity {
                                 Some(selected) => {
                                     commands.entity(selected).remove::<ThisModelIsSelected>();
@@ -254,7 +255,7 @@ fn setup_toasts(mut ui_context: ResMut<UiContexts>) {
         .direction(egui::Direction::TopDown);
 }
 
-fn ui_example_system(
+fn ui_viewing_model(
     mut commands: Commands,
     mut contexts: EguiContexts,
     mut ui_contexts: ResMut<UiContexts>,
@@ -266,6 +267,9 @@ fn ui_example_system(
         .resizable(true)
         .show(ctx, |ui| {
             ui.label("Some things");
+            if ui.button("Select model").clicked() {
+                commands.set_state(GameState::SelectingProjectAndModel);
+            }
             if ui.add(egui::widgets::Button::new("Load model")).clicked() {
                 commands
                     .dialog()
