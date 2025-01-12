@@ -4,12 +4,14 @@ use bevy_egui::{
     EguiContexts, EguiPlugin,
 };
 use bevy_file_dialog::prelude::*;
-use dto::default::TagDto;
+use dto::project::NewProjectDto;
 use egui_toast::{Toast, ToastKind, ToastOptions, Toasts};
 
 use crate::{
-    api::UpdateTagEvent,
-    building::{ModelData, SelectedTag, TagData},
+    api::{GetProjectsEvent, UpdateTagEvent},
+    building::{
+        ModelData, ProjectData, SelectedTag, TagData, ThisModelIsSelected, ThisProjectIsSelected,
+    },
     utils::compare_by_created_at,
     GameState,
 };
@@ -36,7 +38,15 @@ impl Plugin for GuiPlugin {
             )
             .init_resource::<UiState>()
             .init_resource::<UiContexts>()
-            .add_systems(OnEnter(GameState::ViewingModel), setup)
+            .add_systems(Startup, setup_toasts)
+            .add_systems(
+                OnEnter(GameState::SelectingProjectAndModel),
+                setup_selecting_project_and_model,
+            )
+            .add_systems(
+                Update,
+                ui_project_model_screen.run_if(in_state(GameState::SelectingProjectAndModel)),
+            )
             .add_systems(
                 Update,
                 (ui_example_system, ui_tag_windows).run_if(in_state(GameState::ViewingModel)),
@@ -54,7 +64,191 @@ impl Plugin for GuiPlugin {
     }
 }
 
-fn setup(mut ui_context: ResMut<UiContexts>) {
+fn setup_selecting_project_and_model(mut commands: Commands) {
+    bevy::log::info!("Setting up selecting project and model");
+    commands.trigger(GetProjectsEvent {});
+}
+
+// this would probably be better id it was in resourse or in single entity
+/*
+struct Projects {
+    pub project_dto: Vec<ProjectDto>,
+}
+
+struct SelectedProject {
+    pub project_id: i32,
+}
+
+the queries with ThisProjectIsSelected are adding complexity
+*/
+fn ui_project_model_screen(
+    mut commands: Commands,
+    mut contexts: EguiContexts,
+    window: Single<&Window>,
+    mut query_projects: Query<(Entity, &mut ProjectData, Option<&ThisProjectIsSelected>)>,
+    mut query_models: Query<(Entity, &mut ModelData, Option<&ThisModelIsSelected>)>,
+    mut modal_open: Local<bool>,
+    mut new_project_dto: Local<NewProjectDto>,
+) {
+    let ctx = contexts.ctx_mut();
+    let current_selected_project_entity = query_projects
+        .iter()
+        .find(|(_, _, selected)| selected.is_some())
+        .map(|(entity, _, _)| entity);
+
+    let current_selected_model_entity = query_models
+        .iter()
+        .find(|(_, _, selected)| selected.is_some())
+        .map(|(entity, _, _)| entity);
+
+    egui::TopBottomPanel::top("top_panel")
+        .resizable(true)
+        .min_height(32.0)
+        .show(ctx, |ui| {
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                ui.vertical_centered(|ui| {
+                    ui.heading("here will be user info");
+                });
+                // lorem_ipsum(ui);
+            });
+        });
+
+    egui::SidePanel::left("Projects")
+        .resizable(true)
+        .default_width(window.width() / 2.0)
+        .show(ctx, |ui| {
+            ui.vertical_centered(|ui| {
+                ui.heading("Projects");
+            });
+            if ui.button("Add new project").clicked() {
+                *modal_open = true;
+            }
+            ui.separator();
+
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                // lorem_ipsum(ui);
+                ui.vertical(|ui| {
+                    for (entity, mut project_data, selected_model) in query_projects
+                        .iter_mut()
+                        .sort_by::<&ProjectData>(
+                        |value_1, value_2| {
+                            compare_by_created_at(&value_1.dto.created_at, &value_2.dto.created_at)
+                        },
+                    ) {
+                        egui::Grid::new(Id::new(project_data.dto.id))
+                            .num_columns(2)
+                            .spacing([40.0, 4.0])
+                            .show(ui, |ui| {
+                                // self.gallery_grid_contents(ui);
+                                ui.label(format!("Name: "));
+                                ui.text_edit_singleline(&mut project_data.dto.name);
+                                ui.end_row();
+
+                                ui.label(format!("Description: "));
+                                ui.text_edit_multiline(&mut project_data.dto.description);
+                                ui.end_row();
+                            });
+                        let checked = selected_model.is_some();
+                        ui.horizontal(|ui| {
+                            if ui.selectable_label(checked, format!("Select")).clicked() {
+                                // if checked {
+                                match current_selected_project_entity {
+                                    Some(selected) => {
+                                        commands.entity(selected).remove::<ThisProjectIsSelected>();
+                                        commands.entity(entity).insert(ThisProjectIsSelected {});
+                                    }
+                                    None => {
+                                        commands.entity(entity).insert(ThisProjectIsSelected {});
+                                    }
+                                }
+                            }
+                            if ui.button("Submit").clicked() {
+                                // trigger update project
+                            }
+                        });
+
+                        ui.separator();
+                    }
+                })
+            });
+        });
+
+    egui::CentralPanel::default().show(ctx, |ui| {
+        ui.vertical_centered(|ui| {
+            ui.heading("Models");
+        });
+        ui.separator();
+
+        egui::ScrollArea::vertical().show(ui, |ui| {
+            // lorem_ipsum(ui);
+            ui.vertical(|ui| {
+                for (entity, mut model_data, selected_model) in query_models
+                    .iter_mut()
+                    .sort_by::<&ModelData>(|value_1, value_2| {
+                        compare_by_created_at(&value_1.dto.created_at, &value_2.dto.created_at)
+                    })
+                {
+                    egui::Grid::new(Id::new(model_data.dto.id))
+                        .num_columns(2)
+                        .spacing([40.0, 4.0])
+                        .show(ui, |ui| {
+                            // self.gallery_grid_contents(ui);
+                            ui.label(format!("Name: "));
+                            ui.text_edit_singleline(&mut model_data.dto.name);
+                            ui.end_row();
+
+                            ui.label(format!("Version: "));
+                            ui.label(&model_data.dto.version.to_string());
+                            ui.end_row();
+
+                            ui.label(format!("Id: "));
+                            ui.label(model_data.dto.id.to_string());
+                            ui.end_row();
+                        });
+                    let checked = selected_model.is_some();
+                    ui.horizontal(|ui| {
+                        if ui.selectable_label(checked, format!("Open")).clicked() {
+                            // if checked {
+                            match current_selected_model_entity {
+                                Some(selected) => {
+                                    commands.entity(selected).remove::<ThisModelIsSelected>();
+                                    commands.entity(entity).insert(ThisModelIsSelected {});
+                                }
+                                None => {
+                                    commands.entity(entity).insert(ThisModelIsSelected {});
+                                }
+                            }
+                        }
+                        if ui.button("Submit").clicked() {
+                            // trigger update project
+                        }
+                    });
+
+                    ui.separator();
+                }
+            })
+        });
+    });
+
+    egui::Window::new("Add new project")
+        .open(&mut modal_open)
+        .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
+        .show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.label(format!("Name: "));
+                ui.text_edit_singleline(&mut String::new());
+            });
+            ui.horizontal(|ui| {
+                ui.label(format!("Description: "));
+                ui.text_edit_multiline(&mut String::new());
+            });
+            if ui.button("Submit").clicked() {
+                // trigger add new project
+            }
+        });
+}
+
+fn setup_toasts(mut ui_context: ResMut<UiContexts>) {
     ui_context.toasts = Toasts::new()
         .anchor(Align2::RIGHT_TOP, (-10.0, -10.0)) // 10 units from the bottom right corner
         .direction(egui::Direction::TopDown);
@@ -63,7 +257,6 @@ fn setup(mut ui_context: ResMut<UiContexts>) {
 fn ui_example_system(
     mut commands: Commands,
     mut contexts: EguiContexts,
-    ui_state: Res<UiState>,
     mut ui_contexts: ResMut<UiContexts>,
     query_tags: Query<(Entity, &TagData, Option<&SelectedTag>)>,
 ) {
@@ -122,12 +315,11 @@ fn ui_example_system(
 fn ui_tag_windows(
     mut commands: Commands,
     mut contexts: EguiContexts,
-    mut ui_contexts: ResMut<UiContexts>,
     mut query_tags: Query<(Entity, &mut TagData, &SelectedTag), With<SelectedTag>>,
     query_models: Query<(Entity, &ModelData)>,
 ) {
     let ctx = contexts.ctx_mut();
-    for (entity, mut tag_data, selected_tag) in &mut query_tags {
+    for (entity, mut tag_data, _selected_tag) in &mut query_tags {
         egui::Window::new(tag_data.dto.title.clone())
             .id(Id::new(tag_data.dto.id))
             .show(ctx, |ui| {
@@ -139,7 +331,7 @@ fn ui_tag_windows(
                     let parent_entity = query_models
                         .iter()
                         .find(|model| model.1.dto.id == tag_data.dto.model_id);
-                    if let Some((target_entity, model_data)) = parent_entity {
+                    if let Some((target_entity, _model_data)) = parent_entity {
                         commands.trigger(UpdateTagEvent {
                             tag_dto: tag_data.dto.clone(),
                             parent_entity: target_entity,

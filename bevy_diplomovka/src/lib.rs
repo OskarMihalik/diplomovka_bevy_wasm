@@ -27,8 +27,7 @@ pub enum GameState {
     // During the loading State the LoadingPlugin will load our assets
     #[default]
     InitialLoading,
-
-    LoadingModel,
+    SelectingProjectAndModel,
     // During this State the actual game logic is executed
     ViewingModel,
 }
