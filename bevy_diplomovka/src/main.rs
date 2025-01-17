@@ -6,11 +6,12 @@ use bevy::asset::AssetMetaCheck;
 use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
-use bevy::winit::WinitWindows;
+use bevy::winit::{UpdateMode, WinitSettings, WinitWindows};
 use bevy::DefaultPlugins;
 use bevy_diplomovka::GamePlugin;
 use bevy_mod_reqwest::*;
 use std::io::Cursor;
+use std::time::Duration;
 use winit::window::Icon; // ToDo: Replace bevy_game with your new crate name.
                          // mod asset;
 
@@ -36,11 +37,17 @@ fn main() {
                     ..default()
                 }),
         ))
+        .add_systems(Startup, init_refresh_rate)
         .add_plugins(FrameTimeDiagnosticsPlugin::default())
         .add_plugins(ReqwestPlugin::default())
         .add_plugins(GamePlugin)
         .add_systems(Startup, set_window_icon)
         .run();
+}
+
+fn init_refresh_rate(mut winit: ResMut<WinitSettings>) {
+    winit.focused_mode = UpdateMode::reactive_low_power(Duration::from_secs_f32(1.0 / 30.0));
+    winit.unfocused_mode = UpdateMode::reactive_low_power(Duration::from_secs_f32(1.0 / 30.0));
 }
 
 // Sets the icon on windows and X11
