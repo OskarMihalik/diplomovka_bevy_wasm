@@ -32,6 +32,7 @@ impl Plugin for ApiPlugin {
             .add_observer(get_project)
             .add_observer(update_tag)
             .add_observer(get_models)
+            .add_observer(create_model)
             .add_observer(get_projects);
     }
 }
@@ -161,11 +162,47 @@ fn get_model(trigger: Trigger<GetModelEvent>, mut client: BevyReqwest) {
 
 #[derive(Event)]
 pub struct CreateModelEvent {
-    pub name: i32,
+    pub name: String,
+    pub project_id: i32,
     pub model_bytes: Vec<u8>,
 }
 
-fn create_model(trigger: Trigger<CreateModelEvent>, mut client: BevyReqwest) {}
+fn create_model(trigger: Trigger<CreateModelEvent>, mut client: BevyReqwest) {
+    let url = format!(
+        "{BACKEND_URL}/model/{}/{}",
+        trigger.project_id, trigger.name
+    );
+    let multipart = reqwest::multipart::Form::new().part(
+        "file",
+        reqwest::multipart::Part::bytes(trigger.model_bytes.clone()),
+    );
+    // let parent_entity = trigger.parent_entity.clone();
+    let reqwest_request = client.post(url).multipart(multipart).build().unwrap();
+
+    client
+        // Sends the created http request
+        .send(reqwest_request)
+        // The response from the http request can be reached using an observersystem,
+        // where the only requirement is that the first parameter in the system is the specific Trigger type
+        // the rest is the same as a regular system
+        .on_response(
+            move |trigger: Trigger<ReqwestResponseEvent>, mut commands: Commands| {
+                let parsed: ModelsDtoResponse = parse_response(trigger);
+                let dtos = match parsed {
+                    Ok(dto) => dto,
+                    Err(error_dto) => {
+                        commands.trigger(ShowErrorEvent {
+                            message: error_dto.message,
+                        });
+                        return;
+                    }
+                };
+                commands.trigger(UpdateModelsEvent { dtos });
+            },
+        )
+        // In case of request error, it can be reached using an observersystem as well
+        .on_error(on_reqwest_error);
+}
 
 #[derive(Event)]
 pub struct GetModelsEvent {

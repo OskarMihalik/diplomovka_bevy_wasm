@@ -16,3 +16,18 @@ pub struct ModelDto {
 pub type ModelDtoResponse = Result<ModelDto, ErrorDto>;
 
 pub type ModelsDtoResponse = Result<Vec<ModelDto>, ErrorDto>;
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct NewModelDto {
+    pub name: String,
+    pub project_id: i32,
+}
+
+impl Default for NewModelDto {
+    fn default() -> Self {
+        NewModelDto {
+            name: String::new(),
+            project_id: 0,
+        }
+    }
+}

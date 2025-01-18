@@ -4,11 +4,11 @@ use bevy_egui::{
     EguiContexts, EguiPlugin,
 };
 use bevy_file_dialog::prelude::*;
-use dto::project::NewProjectDto;
+use dto::model::NewModelDto;
 use egui_toast::{Toast, ToastKind, ToastOptions, Toasts};
 
 use crate::{
-    api::{GetProjectsEvent, UpdateTagEvent},
+    api::{CreateModelEvent, GetProjectsEvent, UpdateTagEvent},
     building::{
         ModelData, ProjectData, SelectedTag, TagData, ThisModelIsSelected, ThisProjectIsSelected,
     },
@@ -17,6 +17,12 @@ use crate::{
 };
 pub struct GuiPlugin;
 struct GlbFileContents;
+
+#[derive(Component)]
+pub struct UploadedGlbFile {
+    pub file_name: String,
+    pub contents: Vec<u8>,
+}
 
 #[derive(Default, Resource)]
 pub struct UiState {}
@@ -45,7 +51,8 @@ impl Plugin for GuiPlugin {
             )
             .add_systems(
                 Update,
-                ui_project_model_screen.run_if(in_state(GameState::SelectingProjectAndModel)),
+                (ui_model_screen, ui_project_screen)
+                    .run_if(in_state(GameState::SelectingProjectAndModel)),
             )
             .add_systems(
                 Update,
@@ -81,21 +88,25 @@ struct SelectedProject {
 
 the queries with ThisProjectIsSelected are adding complexity but it works so whatever
 */
-fn ui_project_model_screen(
+fn ui_model_screen(
     mut commands: Commands,
     mut contexts: EguiContexts,
-    window: Single<&Window>,
-    mut query_projects: Query<(Entity, &mut ProjectData, Option<&ThisProjectIsSelected>)>,
+    query_projects: Query<(Entity, &ProjectData, Option<&ThisProjectIsSelected>)>,
     mut query_models: Query<(Entity, &mut ModelData, Option<&ThisModelIsSelected>)>,
-    mut modal_open: Local<bool>,
     mut new_model_modal_open: Local<bool>,
-    // mut new_model_dto: Local,
+    mut new_model_dto: Local<NewModelDto>,
+    query_loaded_glb: Query<(Entity, &UploadedGlbFile)>,
 ) {
     let ctx = contexts.ctx_mut();
-    let current_selected_project_entity = query_projects
+    let current_selected_project = query_projects
         .iter()
         .find(|(_, _, selected)| selected.is_some())
-        .map(|(entity, _, _)| entity);
+        .map(|(entity, project_data, _)| (entity, project_data));
+
+    let (_, current_selected_project_dto) = match current_selected_project {
+        Some((entity, project_data)) => (Some(entity), Some(project_data)),
+        None => (None, None),
+    };
 
     let current_selected_model_entity = query_models
         .iter()
@@ -111,66 +122,6 @@ fn ui_project_model_screen(
                     ui.heading("here will be user info");
                 });
                 // lorem_ipsum(ui);
-            });
-        });
-
-    egui::SidePanel::left("Projects")
-        .resizable(true)
-        .default_width(window.width() / 2.0)
-        .show(ctx, |ui| {
-            ui.vertical_centered(|ui| {
-                ui.heading("Projects");
-            });
-            if ui.button("Add new project").clicked() {
-                *modal_open = true;
-            }
-            ui.separator();
-
-            egui::ScrollArea::vertical().show(ui, |ui| {
-                // lorem_ipsum(ui);
-                ui.vertical(|ui| {
-                    for (entity, mut project_data, selected_model) in query_projects
-                        .iter_mut()
-                        .sort_by::<&ProjectData>(
-                        |value_1, value_2| {
-                            compare_by_created_at(&value_1.dto.created_at, &value_2.dto.created_at)
-                        },
-                    ) {
-                        egui::Grid::new(Id::new(project_data.dto.id))
-                            .num_columns(2)
-                            .spacing([40.0, 4.0])
-                            .show(ui, |ui| {
-                                // self.gallery_grid_contents(ui);
-                                ui.label(format!("Name: "));
-                                ui.text_edit_singleline(&mut project_data.dto.name);
-                                ui.end_row();
-
-                                ui.label(format!("Description: "));
-                                ui.text_edit_multiline(&mut project_data.dto.description);
-                                ui.end_row();
-                            });
-                        let checked = selected_model.is_some();
-                        ui.horizontal(|ui| {
-                            if ui.selectable_label(checked, format!("Select")).clicked() {
-                                // if checked {
-                                match current_selected_project_entity {
-                                    Some(selected) => {
-                                        commands.entity(selected).remove::<ThisProjectIsSelected>();
-                                        commands.entity(entity).insert(ThisProjectIsSelected {});
-                                    }
-                                    None => {
-                                        commands.entity(entity).insert(ThisProjectIsSelected {});
-                                    }
-                                }
-                            }
-                            if ui.button("Submit").clicked() {
-                                // trigger update project
-                            }
-                        });
-
-                        ui.separator();
-                    }
-                })
             });
         });
 
@@ -235,11 +186,126 @@ fn ui_project_model_screen(
         });
     });
     if *new_model_modal_open {
-        let modal = egui::Modal::new(Id::new("Add new model modal")).show(ctx, |ui| {});
+        let modal = egui::Modal::new(Id::new("Add new model modal")).show(ctx, |ui| {
+            ui.label("Model name:");
+            ui.text_edit_singleline(&mut new_model_dto.name);
+            match query_loaded_glb.get_single() {
+                Ok((entity, uploaded_glb)) => {
+                    ui.label("Glb file loaded");
+                    ui.label(&uploaded_glb.file_name);
+                    if ui.button("Submit").clicked() {
+                        match current_selected_project_dto {
+                            Some(selected_project) => {
+                                commands.trigger(CreateModelEvent {
+                                    name: new_model_dto.name.clone(),
+                                    project_id: selected_project.dto.id,
+                                    model_bytes: uploaded_glb.contents.clone(),
+                                });
+                                commands.entity(entity).despawn_recursive();
+                            }
+                            None => {
+                                bevy::log::error!("No project selected");
+                            }
+                        }
+                        // commands.trigger(CreateModelEvent {
+                        //     name: new_model_dto.name.clone(),
+                        //     project_id: 0,
+                        //     model_bytes: uploaded_glb.contents.clone(),
+                        // });
+                        // commands.entity(entity).despawn_recursive();
+                    }
+                }
+                Err(_) => {
+                    ui.label("No glb file loaded");
+                    if ui.button("Load glb file").clicked() {
+                        commands
+                            .dialog()
+                            .add_filter("Glb", &["glb"])
+                            .load_file::<GlbFileContents>();
+                    }
+                }
+            }
+        });
         if modal.should_close() {
             *new_model_modal_open = false;
+            new_model_dto.name = String::new();
+            new_model_dto.project_id = 0;
         }
     }
+}
+
+fn ui_project_screen(
+    mut commands: Commands,
+    mut contexts: EguiContexts,
+    window: Single<&Window>,
+    mut query_projects: Query<(Entity, &mut ProjectData, Option<&ThisProjectIsSelected>)>,
+    mut modal_open: Local<bool>,
+) {
+    let ctx = contexts.ctx_mut();
+    let current_selected_project_entity = query_projects
+        .iter()
+        .find(|(_, _, selected)| selected.is_some())
+        .map(|(entity, _, _)| (entity));
+
+    egui::SidePanel::left("Projects")
+        .resizable(true)
+        .default_width(window.width() / 2.0)
+        .show(ctx, |ui| {
+            ui.vertical_centered(|ui| {
+                ui.heading("Projects");
+            });
+            if ui.button("Add new project").clicked() {
+                *modal_open = true;
+            }
+            ui.separator();
+
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                // lorem_ipsum(ui);
+                ui.vertical(|ui| {
+                    for (entity, mut project_data, selected_model) in query_projects
+                        .iter_mut()
+                        .sort_by::<&ProjectData>(
+                        |value_1, value_2| {
+                            compare_by_created_at(&value_1.dto.created_at, &value_2.dto.created_at)
+                        },
+                    ) {
+                        egui::Grid::new(Id::new(project_data.dto.id))
+                            .num_columns(2)
+                            .spacing([40.0, 4.0])
+                            .show(ui, |ui| {
+                                // self.gallery_grid_contents(ui);
+                                ui.label(format!("Name: "));
+                                ui.text_edit_singleline(&mut project_data.dto.name);
+                                ui.end_row();
+
+                                ui.label(format!("Description: "));
+                                ui.text_edit_multiline(&mut project_data.dto.description);
+                                ui.end_row();
+                            });
+                        let checked = selected_model.is_some();
+                        ui.horizontal(|ui| {
+                            if ui.selectable_label(checked, format!("Select")).clicked() {
+                                // if checked {
+                                match current_selected_project_entity {
+                                    Some(selected) => {
+                                        commands.entity(selected).remove::<ThisProjectIsSelected>();
+                                        commands.entity(entity).insert(ThisProjectIsSelected {});
+                                    }
+                                    None => {
+                                        commands.entity(entity).insert(ThisProjectIsSelected {});
+                                    }
+                                }
+                            }
+                            if ui.button("Submit").clicked() {
+                                // trigger update project
+                            }
+                        });
+
+                        ui.separator();
+                    }
+                })
+            });
+        });
 
     egui::Window::new("Add new project")
         .open(&mut modal_open)
@@ -368,13 +434,8 @@ pub struct ShowErrorEvent {
     pub message: String,
 }
 
-fn show_error(
-    trigger: Trigger<ShowErrorEvent>,
-    mut ui_contexts: ResMut<UiContexts>,
-    mut contexts: EguiContexts,
-) {
+fn show_error(trigger: Trigger<ShowErrorEvent>, mut ui_contexts: ResMut<UiContexts>) {
     let message = &trigger.event().message;
-    let ctx = contexts.ctx_mut();
     bevy::log::error!("Error: {}", message);
     ui_contexts.toasts.add(Toast {
         text: message.into(),
@@ -386,9 +447,16 @@ fn show_error(
     });
 }
 
-fn file_loaded(mut ev_loaded: EventReader<DialogFileLoaded<GlbFileContents>>) {
+fn file_loaded(
+    mut ev_loaded: EventReader<DialogFileLoaded<GlbFileContents>>,
+    mut commands: Commands,
+) {
     for ev in ev_loaded.read() {
-        bevy::log::info!("Loaded file {} with contents", ev.file_name,);
+        bevy::log::info!("Loaded file {} with contents", ev.file_name);
+        commands.spawn(UploadedGlbFile {
+            file_name: ev.file_name.clone(),
+            contents: ev.contents.clone(),
+        });
     }
 }
 

@@ -1315,8 +1315,7 @@ dependencies = [
 [[package]]
 name = "bevy_mod_reqwest"
 version = "0.18.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c8a1fb8aa9ae22a2bab204c8d8db50d776d8d17c0647e536ed7c94acabd676a0"
+source = "git+https://github.com/OskarMihalik/bevy_mod_reqwest.git#599f58692277362154774e018c379657ae76396e"
 dependencies = [
  "anyhow",
  "async-compat",
@@ -5187,6 +5186,7 @@ dependencies = [
  "js-sys",
  "log",
  "mime",
+ "mime_guess",
  "once_cell",
  "percent-encoding",
  "pin-project-lite",
