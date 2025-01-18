@@ -16,7 +16,7 @@ use crate::{
     GameState,
 };
 pub struct GuiPlugin;
-struct TextFileContents;
+struct GlbFileContents;
 
 #[derive(Default, Resource)]
 pub struct UiState {}
@@ -32,9 +32,9 @@ impl Plugin for GuiPlugin {
             .add_plugins(
                 FileDialogPlugin::new()
                     // allow saving of files marked with TextFileContents
-                    .with_save_file::<TextFileContents>()
+                    .with_save_file::<GlbFileContents>()
                     // allow loading of files marked with TextFileContents
-                    .with_load_file::<TextFileContents>(),
+                    .with_load_file::<GlbFileContents>(),
             )
             .init_resource::<UiState>()
             .init_resource::<UiContexts>()
@@ -88,7 +88,8 @@ fn ui_project_model_screen(
     mut query_projects: Query<(Entity, &mut ProjectData, Option<&ThisProjectIsSelected>)>,
     mut query_models: Query<(Entity, &mut ModelData, Option<&ThisModelIsSelected>)>,
     mut modal_open: Local<bool>,
-    mut new_project_dto: Local<NewProjectDto>,
+    mut new_model_modal_open: Local<bool>,
+    // mut new_model_dto: Local,
 ) {
     let ctx = contexts.ctx_mut();
     let current_selected_project_entity = query_projects
@@ -182,6 +183,9 @@ fn ui_project_model_screen(
         egui::ScrollArea::vertical().show(ui, |ui| {
             // lorem_ipsum(ui);
             ui.vertical(|ui| {
+                if ui.button("Add new model").clicked() {
+                    *new_model_modal_open = true;
+                }
                 for (entity, mut model_data, selected_model) in query_models
                     .iter_mut()
                     .sort_by::<&ModelData>(|value_1, value_2| {
@@ -230,6 +234,12 @@ fn ui_project_model_screen(
             })
         });
     });
+    if *new_model_modal_open {
+        let modal = egui::Modal::new(Id::new("Add new model modal")).show(ctx, |ui| {});
+        if modal.should_close() {
+            *new_model_modal_open = false;
+        }
+    }
 
     egui::Window::new("Add new project")
         .open(&mut modal_open)
@@ -273,17 +283,17 @@ fn ui_viewing_model(
             if ui.add(egui::widgets::Button::new("Load model")).clicked() {
                 commands
                     .dialog()
-                    .add_filter("Text", &["txt"])
-                    .load_file::<TextFileContents>();
+                    .add_filter("Glb", &["glb"])
+                    .load_file::<GlbFileContents>();
             }
 
-            if ui.add(egui::widgets::Button::new("Save model")).clicked() {
-                commands
-                    .dialog()
-                    .add_filter("Text", &["txt"])
-                    .set_file_name("hello.txt")
-                    .save_file::<TextFileContents>(b"hello".to_vec());
-            };
+            // if ui.add(egui::widgets::Button::new("Save model")).clicked() {
+            //     commands
+            //         .dialog()
+            //         .add_filter("Glb", &["glb"])
+            //         .set_file_name("hello.txt")
+            //         .save_file::<TextFileContents>(b"hello".to_vec());
+            // };
             ui.heading("Tags");
             ui.separator();
 
@@ -376,23 +386,19 @@ fn show_error(
     });
 }
 
-fn file_loaded(mut ev_loaded: EventReader<DialogFileLoaded<TextFileContents>>) {
+fn file_loaded(mut ev_loaded: EventReader<DialogFileLoaded<GlbFileContents>>) {
     for ev in ev_loaded.read() {
-        bevy::log::info!(
-            "Loaded file {} with contents '{}'",
-            ev.file_name,
-            std::str::from_utf8(&ev.contents).unwrap()
-        );
+        bevy::log::info!("Loaded file {} with contents", ev.file_name,);
     }
 }
 
-fn file_load_canceled(mut ev_canceled: EventReader<DialogFileLoadCanceled<TextFileContents>>) {
+fn file_load_canceled(mut ev_canceled: EventReader<DialogFileLoadCanceled<GlbFileContents>>) {
     for _ in ev_canceled.read() {
         bevy::log::info!("Text file content load canceled");
     }
 }
 
-fn file_saved(mut ev_saved: EventReader<DialogFileSaved<TextFileContents>>) {
+fn file_saved(mut ev_saved: EventReader<DialogFileSaved<GlbFileContents>>) {
     for ev in ev_saved.read() {
         match ev.result {
             Ok(_) => bevy::log::info!("File {} successfully saved", ev.file_name),
@@ -401,7 +407,7 @@ fn file_saved(mut ev_saved: EventReader<DialogFileSaved<TextFileContents>>) {
     }
 }
 
-fn file_save_canceled(mut ev_canceled: EventReader<DialogFileSaveCanceled<TextFileContents>>) {
+fn file_save_canceled(mut ev_canceled: EventReader<DialogFileSaveCanceled<GlbFileContents>>) {
     for _ in ev_canceled.read() {
         bevy::log::info!("Text file content save canceled");
     }

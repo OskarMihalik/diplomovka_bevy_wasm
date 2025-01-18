@@ -3,10 +3,7 @@ use axum::{
     Json,
 };
 use axum_macros::debug_handler;
-use dto::{
-    default::ErrorDto,
-    project::{ProjectDto, ProjectDtoResponse, ProjectsDtoResponse},
-};
+use dto::project::{ProjectDto, ProjectDtoResponse, ProjectsDtoResponse};
 use model::cornucopia::queries::tags::{select_project, select_projects};
 use tokio_postgres::GenericClient;
 

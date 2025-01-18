@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
-use bevy::prelude::*;
+use ::serde::de;
+use bevy::{prelude::*, reflect::serde, state::commands};
 use bevy_mod_reqwest::*;
 use dto::{
     default::{NewTagDto, TagDto, TagDtoResponse},
@@ -13,6 +14,7 @@ use crate::{
         ModelData, ProjectData, RebuildTagsEvent, ThisModelIsSelected, ThisProjectIsSelected,
     },
     gui::gui::ShowErrorEvent,
+    models::UpdateModelsEvent,
 };
 
 pub const BACKEND_URL: &str = "http://localhost:4000";
@@ -32,6 +34,23 @@ impl Plugin for ApiPlugin {
             .add_observer(get_models)
             .add_observer(get_projects);
     }
+}
+
+pub fn parse_response<T>(event: Trigger<'_, ReqwestResponseEvent>) -> T
+where
+    T: de::DeserializeOwned,
+{
+    let response = event.event();
+    let data = response.as_str().unwrap();
+    let parsed: T = serde_json::from_str(data).unwrap();
+    return parsed;
+}
+
+pub fn on_reqwest_error(trigger: Trigger<ReqwestErrorEvent>, mut commands: Commands) {
+    let e = &trigger.event().0;
+    commands.trigger(ShowErrorEvent {
+        message: e.to_string(),
+    })
 }
 
 #[derive(Event)]
@@ -56,9 +75,7 @@ fn get_tags(trigger: Trigger<GetTagsEvent>, mut client: BevyReqwest) {
              mut commands: Commands,
              query_model: Single<(Entity, &ModelData, &ThisModelIsSelected)>| {
                 let parent_entity = query_model.0;
-                let response = trigger.event();
-                let data = response.as_str().unwrap();
-                let parsed: TagDtoResponse = serde_json::from_str(data).unwrap();
+                let parsed = parse_response::<TagDtoResponse>(trigger);
                 match parsed {
                     Ok(tags) => {
                         commands.trigger(RebuildTagsEvent {
@@ -73,10 +90,7 @@ fn get_tags(trigger: Trigger<GetTagsEvent>, mut client: BevyReqwest) {
             },
         )
         // In case of request error, it can be reached using an observersystem as well
-        .on_error(|trigger: Trigger<ReqwestErrorEvent>| {
-            let e = &trigger.event().0;
-            bevy::log::info!("error: {e:?}");
-        });
+        .on_error(on_reqwest_error);
 }
 
 #[derive(Event)]
@@ -100,9 +114,7 @@ fn create_new_tag(trigger: Trigger<CreateNewTagEvent>, mut client: BevyReqwest) 
         // the rest is the same as a regular system
         .on_response(
             move |trigger: Trigger<ReqwestResponseEvent>, mut commands: Commands| {
-                let response = trigger.event();
-                let data = response.as_str().unwrap();
-                let parsed: TagDtoResponse = serde_json::from_str(data).unwrap();
+                let parsed: TagDtoResponse = parse_response(trigger);
                 match parsed {
                     Ok(tags) => {
                         commands.trigger(RebuildTagsEvent {
@@ -117,10 +129,7 @@ fn create_new_tag(trigger: Trigger<CreateNewTagEvent>, mut client: BevyReqwest) 
             },
         )
         // In case of request error, it can be reached using an observersystem as well
-        .on_error(|trigger: Trigger<ReqwestErrorEvent>| {
-            let e = &trigger.event().0;
-            bevy::log::info!("error: {e:?}");
-        });
+        .on_error(on_reqwest_error);
 }
 
 #[derive(Event)]
@@ -137,9 +146,7 @@ fn get_model(trigger: Trigger<GetModelEvent>, mut client: BevyReqwest) {
         .send(reqwest_request)
         .on_response(
             move |trigger: Trigger<ReqwestResponseEvent>, mut commands: Commands| {
-                let response = trigger.event();
-                let data = response.as_str().unwrap();
-                let parsed: ModelDtoResponse = serde_json::from_str(data).unwrap();
+                let parsed: ModelDtoResponse = parse_response(trigger);
                 match parsed {
                     Ok(_) => (),
                     Err(error_dto) => commands.trigger(ShowErrorEvent {
@@ -149,11 +156,16 @@ fn get_model(trigger: Trigger<GetModelEvent>, mut client: BevyReqwest) {
             },
         )
         // In case of request error, it can be reached using an observersystem as well
-        .on_error(|trigger: Trigger<ReqwestErrorEvent>| {
-            let e = &trigger.event().0;
-            bevy::log::info!("error: {e:?}");
-        });
+        .on_error(on_reqwest_error);
 }
+
+#[derive(Event)]
+pub struct CreateModelEvent {
+    pub name: i32,
+    pub model_bytes: Vec<u8>,
+}
+
+fn create_model(trigger: Trigger<CreateModelEvent>, mut client: BevyReqwest) {}
 
 #[derive(Event)]
 pub struct GetModelsEvent {
@@ -168,12 +180,8 @@ fn get_models(trigger: Trigger<GetModelsEvent>, mut client: BevyReqwest) {
     client
         .send(reqwest_request)
         .on_response(
-            move |trigger: Trigger<ReqwestResponseEvent>,
-                  mut commands: Commands,
-                  query_models: Query<(Entity, &ModelData)>| {
-                let response = trigger.event();
-                let data = response.as_str().unwrap();
-                let parsed: ModelsDtoResponse = serde_json::from_str(data).unwrap();
+            move |trigger: Trigger<ReqwestResponseEvent>, mut commands: Commands| {
+                let parsed: ModelsDtoResponse = parse_response(trigger);
                 let dtos = match parsed {
                     Ok(dto) => dto,
                     Err(error_dto) => {
@@ -183,37 +191,11 @@ fn get_models(trigger: Trigger<GetModelsEvent>, mut client: BevyReqwest) {
                         return;
                     }
                 };
-                let mut dto_map: HashMap<i32, ModelDto> = HashMap::new();
-                for dto in dtos.iter() {
-                    dto_map.insert(dto.id, dto.clone());
-                }
-
-                for (entity, model_data) in query_models.iter() {
-                    let new_data = match dto_map.get(&model_data.dto.id) {
-                        Some(ok) => ok.clone(),
-                        None => {
-                            commands.entity(entity).despawn_recursive();
-                            dto_map.remove(&model_data.dto.id);
-                            continue;
-                        }
-                    };
-                    dto_map.remove(&new_data.id);
-                    commands
-                        .entity(entity)
-                        .remove::<ModelData>()
-                        .insert(ModelData { dto: new_data });
-                }
-                for (_key, dto) in dto_map {
-                    bevy::log::info!("spawning model: {:?}", dto);
-                    commands.spawn(ModelData { dto });
-                }
+                commands.trigger(UpdateModelsEvent { dtos });
             },
         )
         // In case of request error, it can be reached using an observersystem as well
-        .on_error(|trigger: Trigger<ReqwestErrorEvent>| {
-            let e = &trigger.event().0;
-            bevy::log::info!("error: {e:?}");
-        });
+        .on_error(on_reqwest_error);
 }
 
 #[derive(Event)]
@@ -236,9 +218,7 @@ fn update_tag(trigger: Trigger<UpdateTagEvent>, mut client: BevyReqwest) {
         // the rest is the same as a regular system
         .on_response(
             move |trigger: Trigger<ReqwestResponseEvent>, mut commands: Commands| {
-                let response = trigger.event();
-                let data = response.as_str().unwrap();
-                let parsed: TagDtoResponse = serde_json::from_str(data).unwrap();
+                let parsed: TagDtoResponse = parse_response(trigger);
                 match parsed {
                     Ok(tags) => {
                         commands.trigger(RebuildTagsEvent {
@@ -253,10 +233,7 @@ fn update_tag(trigger: Trigger<UpdateTagEvent>, mut client: BevyReqwest) {
             },
         )
         // In case of request error, it can be reached using an observersystem as well
-        .on_error(|trigger: Trigger<ReqwestErrorEvent>| {
-            let e = &trigger.event().0;
-            bevy::log::info!("error: {e:?}");
-        });
+        .on_error(on_reqwest_error);
 }
 
 #[derive(Event)]
@@ -292,10 +269,7 @@ fn get_project(trigger: Trigger<GetProjectEvent>, mut client: BevyReqwest) {
             },
         )
         // In case of request error, it can be reached using an observersystem as well
-        .on_error(|trigger: Trigger<ReqwestErrorEvent>| {
-            let e = &trigger.event().0;
-            bevy::log::info!("error: {e:?}");
-        });
+        .on_error(on_reqwest_error);
 }
 
 #[derive(Event)]
@@ -357,8 +331,5 @@ fn get_projects(_trigger: Trigger<GetProjectsEvent>, mut client: BevyReqwest) {
             },
         )
         // In case of request error, it can be reached using an observersystem as well
-        .on_error(|trigger: Trigger<ReqwestErrorEvent>| {
-            let e = &trigger.event().0;
-            bevy::log::info!("error: {e:?}");
-        });
+        .on_error(on_reqwest_error);
 }

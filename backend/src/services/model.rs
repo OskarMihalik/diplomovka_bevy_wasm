@@ -132,7 +132,7 @@ pub async fn upload_new_model_service(
     };
 
     while let Ok(Some(field)) = multipart.next_field().await {
-        let file_name = if let Some(file_name) = field.file_name() {
+        let _file_name = if let Some(file_name) = field.file_name() {
             file_name.to_owned()
         } else {
             continue;

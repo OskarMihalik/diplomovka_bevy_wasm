@@ -5,6 +5,7 @@ mod asset;
 mod building;
 mod gui;
 mod loading;
+mod models;
 mod utils;
 
 use crate::loading::LoadingPlugin;
@@ -17,6 +18,7 @@ use bevy::prelude::*;
 use bevy_panorbit_camera::PanOrbitCameraPlugin;
 use building::BuildingPlugin;
 use gui::{gui::GuiPlugin, perf_ui::PerfUI};
+use models::ModelManagmentPlugin;
 use utils::log_entity_components;
 // use gui::GuiPlugin;
 // This example game uses States to separate logic
@@ -45,6 +47,7 @@ impl Plugin for GamePlugin {
                 MeshPickingPlugin,
                 GuiPlugin,
                 PerfUI,
+                ModelManagmentPlugin,
             ))
             .add_observer(log_entity_components);
 
