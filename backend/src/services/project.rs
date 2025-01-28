@@ -7,7 +7,7 @@ use dto::project::{ProjectDto, ProjectDtoResponse, ProjectsDtoResponse};
 use model::cornucopia::queries::tags::{select_project, select_projects};
 use tokio_postgres::GenericClient;
 
-use crate::ConnectionPool;
+use crate::{auth::claim::Claims, ConnectionPool};
 
 use super::utils::{map_err_pool_con, map_sql_error};
 
@@ -42,7 +42,10 @@ pub async fn get_project_service(
 }
 
 #[debug_handler]
-pub async fn get_projects_service(State(pool): State<ConnectionPool>) -> Json<ProjectsDtoResponse> {
+pub async fn get_projects_service(
+    claims: Claims,
+    State(pool): State<ConnectionPool>,
+) -> Json<ProjectsDtoResponse> {
     let connection = match pool.get().await {
         Ok(connection) => connection,
         Err(error) => return map_err_pool_con(error),

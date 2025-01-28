@@ -14,9 +14,7 @@ use model::cornucopia::queries::tags::{insert_tag, select_tags, update_tag};
 use tokio_postgres::{Client, Error, GenericClient};
 
 pub fn map_err(error: RunError<Error>) -> Json<TagDtoResponse> {
-    Json(TagDtoResponse::Err(ErrorDto {
-        message: format!("{:?}", error),
-    }))
+    Json(TagDtoResponse::Err(ErrorDto::new(format!("{:?}", error))))
 }
 
 #[debug_handler]
@@ -54,9 +52,7 @@ pub async fn insert_tag_service(
         .await;
 
     if let Err(error) = result {
-        return Json(TagDtoResponse::Err(ErrorDto {
-            message: format!("{:?}", error),
-        }));
+        return Json(TagDtoResponse::Err(ErrorDto::new(format!("{:?}", error))));
     }
 
     get_tags(connection.client(), &dto.model_id).await
@@ -81,9 +77,7 @@ async fn get_tags(client: &Client, model_id: &i32) -> Json<TagDtoResponse> {
                 .collect();
             Json(TagDtoResponse::Ok(tag_dtos))
         }
-        Err(error) => Json(TagDtoResponse::Err(ErrorDto {
-            message: format!("{:?}", error),
-        })),
+        Err(error) => Json(TagDtoResponse::Err(ErrorDto::new(format!("{:?}", error)))),
     }
 }
 
@@ -108,9 +102,7 @@ pub async fn update_tag_service(
         .await;
 
     if let Err(error) = result {
-        return Json(TagDtoResponse::Err(ErrorDto {
-            message: format!("{:?}", error),
-        }));
+        return Json(TagDtoResponse::Err(ErrorDto::new(format!("{:?}", error))));
     }
 
     get_tags(connection.client(), &dto.model_id).await
