@@ -22,4 +22,4 @@ pub struct LoginDto {
     pub password: String,
 }
 
-pub type RegisterDtoResponse = Result<UserDto, ErrorDto>;
+pub type AuthDtoResponse = Result<UserDto, ErrorDto>;

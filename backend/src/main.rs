@@ -43,6 +43,7 @@ async fn main() {
             .route("/project/{project_id}", get(get_project_service))
             .route("/project", get(get_projects_service))
             .route("/login", post(services::auth::login))
+            .route("/register", post(services::auth::register))
             .route(
                 "/model/{project_id}/{model_name}",
                 post(upload_new_model_service).layer(DefaultBodyLimit::max(1024 * 1024 * 1024)),
