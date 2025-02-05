@@ -60,7 +60,7 @@ async fn main() {
                         Method::OPTIONS,
                         Method::PATCH,
                     ])
-                    .allow_headers([http::header::CONTENT_TYPE]),
+                    .allow_headers([http::header::CONTENT_TYPE, http::header::AUTHORIZATION]),
             );
         serve(app, 4000).await;
     };

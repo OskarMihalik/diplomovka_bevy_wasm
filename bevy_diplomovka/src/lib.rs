@@ -6,6 +6,7 @@ mod building;
 mod gui;
 mod loading;
 mod models;
+mod users;
 mod utils;
 
 use crate::loading::LoadingPlugin;
@@ -26,6 +27,7 @@ use utils::log_entity_components;
 // Or https://github.com/bevyengine/bevy/blob/main/examples/ecs/state.rs
 #[derive(States, Default, Clone, Eq, PartialEq, Debug, Hash)]
 pub enum GameState {
+    Auth,
     // During the loading State the LoadingPlugin will load our assets
     #[default]
     InitialLoading,
