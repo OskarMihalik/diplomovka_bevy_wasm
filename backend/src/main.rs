@@ -16,7 +16,7 @@ use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 use services::{
     model::{get_model_service, get_models_service, upload_new_model_service},
-    project::{get_project_service, get_projects_service},
+    project::{get_project_service, get_projects_service, insert_project_service},
     tags::{get_tag_service, insert_tag_service, update_tag_service},
 };
 use std::net::SocketAddr;
@@ -42,6 +42,7 @@ async fn main() {
             .route("/models/{project_id}", get(get_models_service))
             .route("/project/{project_id}", get(get_project_service))
             .route("/project", get(get_projects_service))
+            .route("/project", post(insert_project_service))
             .route("/login", post(services::auth::login))
             .route("/register", post(services::auth::register))
             .route(

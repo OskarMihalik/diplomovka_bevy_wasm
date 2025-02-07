@@ -41,11 +41,11 @@ pub fn create_argon() -> Result<Argon2<'static>, ErrorDto> {
     return Ok(a);
 }
 
-pub fn create_claim(email: String) -> Claims {
+pub fn create_claim(email: String, id: i32) -> Claims {
     let exp = (Utc::now().naive_utc() + chrono::naive::Days::new(1))
         .and_utc()
         .timestamp() as usize;
-    Claims { email, exp }
+    Claims { email, exp, id }
 }
 
 #[debug_handler]
@@ -84,7 +84,7 @@ pub async fn login(
 
     // // create the timestamp for the expiry time - here the expiry time is 1 day
     // // in production you may not want to have such a long JWT life
-    let claim = create_claim(payload.email.clone());
+    let claim = create_claim(payload.email.clone(), user.id);
     // // Create the authorization token
     let token = match encode(&Header::default(), &claim, &KEYS.encoding) {
         Ok(ok) => ok,
@@ -148,7 +148,7 @@ pub async fn register(
 
     // // create the timestamp for the expiry time - here the expiry time is 1 day
     // // in production you may not want to have such a long JWT life
-    let claim = create_claim(payload.email.clone());
+    let claim = create_claim(payload.email.clone(), user_id);
 
     // // Create the authorization token
     let token = match encode(&Header::default(), &claim, &KEYS.encoding) {

@@ -4,11 +4,11 @@ use bevy_egui::{
     EguiContexts, EguiPlugin,
 };
 use bevy_file_dialog::prelude::*;
-use dto::model::NewModelDto;
+use dto::{model::NewModelDto, project::NewProjectDto};
 use egui_toast::{Toast, ToastKind, ToastOptions, Toasts};
 
 use crate::{
-    api::{CreateModelEvent, GetProjectsEvent, UpdateTagEvent},
+    api::{CreateModelEvent, GetProjectsEvent, NewProjectEvent, UpdateTagEvent},
     building::{
         ModelData, ProjectData, SelectedTag, TagData, ThisModelIsSelected, ThisProjectIsSelected,
     },
@@ -244,6 +244,7 @@ fn ui_project_screen(
     window: Single<&Window>,
     mut query_projects: Query<(Entity, &mut ProjectData, Option<&ThisProjectIsSelected>)>,
     mut modal_open: Local<bool>,
+    mut new_project_dto: Local<NewProjectDto>,
 ) {
     let ctx = contexts.ctx_mut();
     let current_selected_project_entity = query_projects
@@ -317,14 +318,16 @@ fn ui_project_screen(
         .show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.label(format!("Name: "));
-                ui.text_edit_singleline(&mut String::new());
+                ui.text_edit_singleline(&mut new_project_dto.name);
             });
             ui.horizontal(|ui| {
                 ui.label(format!("Description: "));
-                ui.text_edit_multiline(&mut String::new());
+                ui.text_edit_multiline(&mut new_project_dto.description);
             });
             if ui.button("Submit").clicked() {
-                // trigger add new project
+                commands.trigger(NewProjectEvent {
+                    dto: new_project_dto.clone(),
+                });
             }
         });
 }

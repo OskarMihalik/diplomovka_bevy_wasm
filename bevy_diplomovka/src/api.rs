@@ -7,7 +7,7 @@ use dto::{
     auth::{AuthDtoResponse, LoginDto, RegisterDto},
     default::{NewTagDto, TagDto, TagDtoResponse},
     model::{ModelDto, ModelDtoResponse, ModelsDtoResponse},
-    project::{ProjectDtoResponse, ProjectsDtoResponse},
+    project::{NewProjectDto, ProjectDtoResponse, ProjectsDtoResponse},
 };
 
 use crate::{
@@ -38,6 +38,7 @@ impl Plugin for ApiPlugin {
             .add_observer(create_model)
             .add_observer(login_user)
             .add_observer(register_user)
+            .add_observer(insert_project)
             .add_observer(get_projects);
     }
 }
@@ -384,6 +385,43 @@ fn get_projects(
             },
         )
         // In case of request error, it can be reached using an observersystem as well
+        .on_error(on_reqwest_error);
+}
+
+#[derive(Event)]
+pub struct NewProjectEvent {
+    pub dto: NewProjectDto,
+}
+
+fn insert_project(
+    trigger: Trigger<NewProjectEvent>,
+    mut client: BevyReqwest,
+    query_user: Option<Single<(Entity, &LoggedUser)>>,
+) {
+    let url: String = format!("{BACKEND_URL}/project");
+    let token = match query_user {
+        Some(user) => user.1.dto.token.clone(),
+        None => "".to_string(),
+    };
+    // use regular reqwest http calls, then poll them to completion.
+    let reqwest_request = client
+        .post(url)
+        .json(&trigger.dto)
+        .header("authorization", token)
+        .build()
+        .unwrap();
+    client
+        .send(reqwest_request)
+        .on_json_response(
+            |trigger: Trigger<JsonResponse<ProjectsDtoResponse>>, mut commands: Commands| {
+                match &trigger.0 {
+                    Ok(_) => commands.trigger(GetProjectsEvent {}),
+                    Err(error) => commands.trigger(ShowErrorEvent {
+                        message: error.message.clone(),
+                    }),
+                }
+            },
+        )
         .on_error(on_reqwest_error);
 }
 

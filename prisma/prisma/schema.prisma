@@ -18,6 +18,10 @@ model User {
   created_at  DateTime      @default(now())
   updated_at  DateTime      @default(now()) @updatedAt
   ProjectUser ProjectUser[]
+  Tag         Tag[]
+  TagMessage  TagMessage[]
+  Project     Project[]
+  Model       Model[]
 }
 
 model ProjectUser {
@@ -32,45 +36,53 @@ model ProjectUser {
 }
 
 model Project {
-  id          Int           @id @default(autoincrement())
-  name        String
-  description String?
-  created_at  DateTime      @default(now())
-  updated_at  DateTime      @default(now()) @updatedAt
-  Model       Model[]
-  ProjectUser ProjectUser[]
+  id            Int           @id @default(autoincrement())
+  name          String
+  description   String?
+  created_at    DateTime      @default(now())
+  updated_at    DateTime      @default(now()) @updatedAt
+  Model         Model[]
+  ProjectUser   ProjectUser[]
+  created_by    User          @relation(fields: [created_by_id], references: [id])
+  created_by_id Int
 }
 
 model Model {
-  id         Int      @id @default(autoincrement())
-  version    Int
-  model_link String
-  name       String
-  created_at DateTime @default(now())
-  updated_at DateTime @default(now()) @updatedAt
-  project    Project  @relation(fields: [project_id], references: [id])
-  project_id Int
-  Tag        Tag[]
+  id            Int      @id @default(autoincrement())
+  version       Int
+  model_link    String
+  name          String
+  created_at    DateTime @default(now())
+  updated_at    DateTime @default(now()) @updatedAt
+  project       Project  @relation(fields: [project_id], references: [id])
+  project_id    Int
+  Tag           Tag[]
+  created_by    User     @relation(fields: [created_by_id], references: [id])
+  created_by_id Int
 }
 
 model Tag {
-  id         Int          @id @default(autoincrement())
-  title      String
-  created_at DateTime     @default(now())
-  updated_at DateTime     @default(now()) @updatedAt
-  position_x Float        @db.Real
-  position_y Float        @db.Real
-  position_z Float        @db.Real
-  TagMessage TagMessage[]
-  model      Model        @relation(fields: [model_id], references: [id])
-  model_id   Int
+  id            Int          @id @default(autoincrement())
+  title         String
+  created_at    DateTime     @default(now())
+  updated_at    DateTime     @default(now()) @updatedAt
+  position_x    Float        @db.Real
+  position_y    Float        @db.Real
+  position_z    Float        @db.Real
+  TagMessage    TagMessage[]
+  model         Model        @relation(fields: [model_id], references: [id])
+  model_id      Int
+  created_by    User         @relation(fields: [created_by_id], references: [id])
+  created_by_id Int
 }
 
 model TagMessage {
-  id         Int      @id @default(autoincrement())
-  text       String
-  created_at DateTime @default(now())
-  updated_at DateTime @default(now()) @updatedAt
-  tag        Tag      @relation(fields: [tag_id], references: [id])
-  tag_id     Int
+  id            Int      @id @default(autoincrement())
+  text          String
+  created_at    DateTime @default(now())
+  updated_at    DateTime @default(now()) @updatedAt
+  tag           Tag      @relation(fields: [tag_id], references: [id])
+  tag_id        Int
+  created_by    User     @relation(fields: [created_by_id], references: [id])
+  created_by_id Int
 }

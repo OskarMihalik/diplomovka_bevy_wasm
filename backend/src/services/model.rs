@@ -10,7 +10,7 @@ use std::io;
 use tokio::{fs::File, io::BufWriter};
 use tokio_util::io::StreamReader;
 
-use crate::ConnectionPool;
+use crate::{auth::claim::Claims, ConnectionPool};
 use dto::{
     default::ErrorDto,
     model::{ModelDto, ModelDtoResponse, ModelsDtoResponse},
@@ -96,6 +96,7 @@ pub async fn get_models_service(
 // TODO: what if success to db but not succesfull to storage
 #[debug_handler]
 pub async fn upload_new_model_service(
+    claims: Claims,
     Path((project_id, model_name)): Path<(i32, String)>,
     State(pool): State<ConnectionPool>,
     mut multipart: Multipart,
@@ -117,6 +118,7 @@ pub async fn upload_new_model_service(
             &"model_link",
             &model_name,
             &project_id,
+            &claims.id,
         )
         .one()
         .await

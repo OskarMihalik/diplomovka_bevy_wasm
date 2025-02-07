@@ -10,6 +10,7 @@ use super::{auth_error::ErrorReason, keys::KEYS};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
+    pub id: i32,
     pub email: String,
     pub exp: usize,
 }

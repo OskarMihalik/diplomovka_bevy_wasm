@@ -3,9 +3,9 @@ use axum::{
     Json,
 };
 use axum_macros::debug_handler;
-use dto::project::{ProjectDto, ProjectDtoResponse, ProjectsDtoResponse};
-use model::cornucopia::queries::tags::{select_project, select_projects};
-use tokio_postgres::GenericClient;
+use dto::project::{NewProjectDto, ProjectDto, ProjectDtoResponse, ProjectsDtoResponse};
+use model::cornucopia::queries::tags::{insert_project, select_project, select_projects};
+use tokio_postgres::{Client, GenericClient};
 
 use crate::{auth::claim::Claims, ConnectionPool};
 
@@ -13,6 +13,7 @@ use super::utils::{map_err_pool_con, map_sql_error};
 
 #[debug_handler]
 pub async fn get_project_service(
+    claims: Claims,
     Path(project_id): Path<i32>,
     State(pool): State<ConnectionPool>,
 ) -> Json<ProjectDtoResponse> {
@@ -51,11 +52,11 @@ pub async fn get_projects_service(
         Err(error) => return map_err_pool_con(error),
     };
 
-    let result = match select_projects()
-        .bind(connection.client(), &100, &0)
-        .all()
-        .await
-    {
+    return get_projects(connection.client()).await;
+}
+
+pub async fn get_projects(client: &Client) -> Json<ProjectsDtoResponse> {
+    let result = match select_projects().bind(client, &100, &0).all().await {
         Ok(ok) => ok,
         Err(error) => return map_sql_error(error),
     };
@@ -70,6 +71,27 @@ pub async fn get_projects_service(
             updated_at: project.updated_at,
         })
         .collect();
-
     return Json(ProjectsDtoResponse::Ok(dto));
+}
+
+#[debug_handler]
+pub async fn insert_project_service(
+    claims: Claims,
+    State(pool): State<ConnectionPool>,
+    Json(dto): Json<NewProjectDto>,
+) -> Json<ProjectsDtoResponse> {
+    let connection = match pool.get().await {
+        Ok(connection) => connection,
+        Err(error) => return map_err_pool_con(error),
+    };
+
+    let _result = match insert_project()
+        .bind(connection.client(), &dto.name, &dto.description, &claims.id)
+        .await
+    {
+        Ok(ok) => ok,
+        Err(error) => return map_sql_error(error),
+    };
+
+    return get_projects(connection.client()).await;
 }

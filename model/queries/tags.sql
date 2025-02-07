@@ -3,10 +3,10 @@ SELECT * FROM public."Tag" where model_id = :model_id order by created_at DESC
 LIMIT :limit
 OFFSET :offset;
 
---! insert_tag (title, model_id, position_z, position_x, position_y)
+--! insert_tag (title, model_id, position_z, position_x, position_y, created_by_id)
 INSERT INTO public."Tag"
-(title, model_id, position_x, position_y, position_z)
-VALUES(:title, :model_id, :position_x, :position_y, :position_z);
+(title, model_id, position_x, position_y, position_z, created_by_id)
+VALUES(:title, :model_id, :position_x, :position_y, :position_z, :created_by_id);
 
 --! update_tag (id, title, position_x, position_y, position_z)
 UPDATE public."Tag"
@@ -19,10 +19,10 @@ FROM public."Model" WHERE id=(:id) order by created_at DESC
 LIMIT :limit
 OFFSET :offset;
 
---! insert_model(version, model_link, name, project_id)
+--! insert_model(version, model_link, name, project_id, created_by_id)
 INSERT INTO public."Model"
-("version", model_link, "name", project_id)
-VALUES(:version, :model_link, :name, :project_id)
+("version", model_link, "name", project_id, created_by_id)
+VALUES(:version, :model_link, :name, :project_id, :created_by_id)
 RETURNING id;
 
 --! select_models(project_id, limit, offset)
@@ -42,3 +42,8 @@ SELECT id, "name", description, created_at, updated_at
 FROM public."Project" order by created_at DESC
 LIMIT :limit
 OFFSET :offset;
+
+--! insert_project (name, description, created_by_id)
+INSERT INTO public."Project" 
+(name, description, created_by_id)
+VALUES (:name, :description, :created_by_id);

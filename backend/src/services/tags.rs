@@ -7,7 +7,7 @@ use axum_macros::debug_handler;
 
 // use crate::ConnectionPool;
 
-use crate::ConnectionPool;
+use crate::{auth::claim::Claims, ConnectionPool};
 use bb8::RunError;
 use dto::default::{ErrorDto, NewTagDto, TagDto, TagDtoResponse};
 use model::cornucopia::queries::tags::{insert_tag, select_tags, update_tag};
@@ -32,6 +32,7 @@ pub async fn get_tag_service(
 
 #[debug_handler]
 pub async fn insert_tag_service(
+    claims: Claims,
     State(pool): State<ConnectionPool>,
     Json(dto): Json<NewTagDto>,
 ) -> Json<TagDtoResponse> {
@@ -48,6 +49,7 @@ pub async fn insert_tag_service(
             &dto.position_x,
             &dto.position_y,
             &dto.position_z,
+            &claims.id,
         )
         .await;
 

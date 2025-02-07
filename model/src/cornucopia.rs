@@ -133,12 +133,12 @@ SelectUser, 1>
         |row| { SelectUserBorrowed { id: row.get(0),email: row.get(1),username: row.get(2),password: row.get(3),salt: row.get(4),} }, mapper: |it| { <SelectUser>::from(it) },
     }
 } }}pub mod tags
-{ use futures::{{StreamExt, TryStreamExt}};use futures; use cornucopia_async::GenericClient;#[derive(Clone,Copy, Debug)] pub struct SelectTagsParams<> { pub model_id: i32,pub limit: i64,pub offset: i64,}#[derive( Debug)] pub struct InsertTagParams<T1: cornucopia_async::StringSql,> { pub title: T1,pub model_id: i32,pub position_x: f32,pub position_y: f32,pub position_z: f32,}#[derive( Debug)] pub struct UpdateTagParams<T1: cornucopia_async::StringSql,> { pub title: T1,pub position_x: f32,pub position_y: f32,pub position_z: f32,pub id: i32,}#[derive(Clone,Copy, Debug)] pub struct SelectModelParams<> { pub id: i32,pub limit: i64,pub offset: i64,}#[derive( Debug)] pub struct InsertModelParams<T1: cornucopia_async::StringSql,T2: cornucopia_async::StringSql,> { pub version: i32,pub model_link: T1,pub name: T2,pub project_id: i32,}#[derive(Clone,Copy, Debug)] pub struct SelectModelsParams<> { pub project_id: i32,pub limit: i64,pub offset: i64,}#[derive(Clone,Copy, Debug)] pub struct SelectProjectsParams<> { pub limit: i64,pub offset: i64,}#[derive( Debug, Clone, PartialEq,)] pub struct SelectTags
-{ pub id : i32,pub title : String,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,pub position_x : f32,pub position_y : f32,pub position_z : f32,pub model_id : i32,}pub struct SelectTagsBorrowed<'a> { pub id : i32,pub title : &'a str,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,pub position_x : f32,pub position_y : f32,pub position_z : f32,pub model_id : i32,}
+{ use futures::{{StreamExt, TryStreamExt}};use futures; use cornucopia_async::GenericClient;#[derive(Clone,Copy, Debug)] pub struct SelectTagsParams<> { pub model_id: i32,pub limit: i64,pub offset: i64,}#[derive( Debug)] pub struct InsertTagParams<T1: cornucopia_async::StringSql,> { pub title: T1,pub model_id: i32,pub position_x: f32,pub position_y: f32,pub position_z: f32,pub created_by_id: i32,}#[derive( Debug)] pub struct UpdateTagParams<T1: cornucopia_async::StringSql,> { pub title: T1,pub position_x: f32,pub position_y: f32,pub position_z: f32,pub id: i32,}#[derive(Clone,Copy, Debug)] pub struct SelectModelParams<> { pub id: i32,pub limit: i64,pub offset: i64,}#[derive( Debug)] pub struct InsertModelParams<T1: cornucopia_async::StringSql,T2: cornucopia_async::StringSql,> { pub version: i32,pub model_link: T1,pub name: T2,pub project_id: i32,pub created_by_id: i32,}#[derive(Clone,Copy, Debug)] pub struct SelectModelsParams<> { pub project_id: i32,pub limit: i64,pub offset: i64,}#[derive(Clone,Copy, Debug)] pub struct SelectProjectsParams<> { pub limit: i64,pub offset: i64,}#[derive( Debug)] pub struct InsertProjectParams<T1: cornucopia_async::StringSql,T2: cornucopia_async::StringSql,> { pub name: T1,pub description: T2,pub created_by_id: i32,}#[derive( Debug, Clone, PartialEq,)] pub struct SelectTags
+{ pub id : i32,pub title : String,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,pub position_x : f32,pub position_y : f32,pub position_z : f32,pub model_id : i32,pub created_by_id : i32,}pub struct SelectTagsBorrowed<'a> { pub id : i32,pub title : &'a str,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,pub position_x : f32,pub position_y : f32,pub position_z : f32,pub model_id : i32,pub created_by_id : i32,}
 impl<'a> From<SelectTagsBorrowed<'a>> for SelectTags
 {
-    fn from(SelectTagsBorrowed { id,title,created_at,updated_at,position_x,position_y,position_z,model_id,}: SelectTagsBorrowed<'a>) ->
-    Self { Self { id,title: title.into(),created_at,updated_at,position_x,position_y,position_z,model_id,} }
+    fn from(SelectTagsBorrowed { id,title,created_at,updated_at,position_x,position_y,position_z,model_id,created_by_id,}: SelectTagsBorrowed<'a>) ->
+    Self { Self { id,title: title.into(),created_at,updated_at,position_x,position_y,position_z,model_id,created_by_id,} }
 }pub struct SelectTagsQuery<'a, C: GenericClient, T, const N: usize>
 {
     client: &'a  C, params:
@@ -410,7 +410,7 @@ SelectTags, 3>
     SelectTagsQuery
     {
         client, params: [model_id,limit,offset,], stmt: &mut self.0, extractor:
-        |row| { SelectTagsBorrowed { id: row.get(0),title: row.get(1),created_at: row.get(2),updated_at: row.get(3),position_x: row.get(4),position_y: row.get(5),position_z: row.get(6),model_id: row.get(7),} }, mapper: |it| { <SelectTags>::from(it) },
+        |row| { SelectTagsBorrowed { id: row.get(0),title: row.get(1),created_at: row.get(2),updated_at: row.get(3),position_x: row.get(4),position_y: row.get(5),position_z: row.get(6),model_id: row.get(7),created_by_id: row.get(8),} }, mapper: |it| { <SelectTags>::from(it) },
     }
 } }impl <'a, C: GenericClient,> cornucopia_async::Params<'a,
 SelectTagsParams<>, SelectTagsQuery<'a, C,
@@ -423,16 +423,16 @@ SelectTags, 3>, C> for SelectTagsStmt
     { self.bind(client, &params.model_id,&params.limit,&params.offset,) }
 }pub fn insert_tag() -> InsertTagStmt
 { InsertTagStmt(cornucopia_async::private::Stmt::new("INSERT INTO public.\"Tag\"
-(title, model_id, position_x, position_y, position_z)
-VALUES($1, $2, $3, $4, $5)")) } pub struct
+(title, model_id, position_x, position_y, position_z, created_by_id)
+VALUES($1, $2, $3, $4, $5, $6)")) } pub struct
 InsertTagStmt(cornucopia_async::private::Stmt); impl InsertTagStmt
 { pub async fn bind<'a, C:
 GenericClient,T1:
 cornucopia_async::StringSql,>(&'a mut self, client: &'a  C,
-title: &'a T1,model_id: &'a i32,position_x: &'a f32,position_y: &'a f32,position_z: &'a f32,) -> Result<u64, tokio_postgres::Error>
+title: &'a T1,model_id: &'a i32,position_x: &'a f32,position_y: &'a f32,position_z: &'a f32,created_by_id: &'a i32,) -> Result<u64, tokio_postgres::Error>
 {
     let stmt = self.0.prepare(client).await?;
-    client.execute(stmt, &[title,model_id,position_x,position_y,position_z,]).await
+    client.execute(stmt, &[title,model_id,position_x,position_y,position_z,created_by_id,]).await
 } }impl <'a, C: GenericClient + Send + Sync, T1: cornucopia_async::StringSql,>
 cornucopia_async::Params<'a, InsertTagParams<T1,>, std::pin::Pin<Box<dyn futures::Future<Output = Result<u64,
 tokio_postgres::Error>> + Send + 'a>>, C> for InsertTagStmt
@@ -441,7 +441,7 @@ tokio_postgres::Error>> + Send + 'a>>, C> for InsertTagStmt
     params(&'a mut self, client: &'a  C, params: &'a
     InsertTagParams<T1,>) -> std::pin::Pin<Box<dyn futures::Future<Output = Result<u64,
     tokio_postgres::Error>> + Send + 'a>>
-    { Box::pin(self.bind(client, &params.title,&params.model_id,&params.position_x,&params.position_y,&params.position_z,)) }
+    { Box::pin(self.bind(client, &params.title,&params.model_id,&params.position_x,&params.position_y,&params.position_z,&params.created_by_id,)) }
 }pub fn update_tag() -> UpdateTagStmt
 { UpdateTagStmt(cornucopia_async::private::Stmt::new("UPDATE public.\"Tag\"
 SET title=$1, position_x=$2, position_y=$3, position_z=$4
@@ -490,31 +490,31 @@ SelectModel, 3>, C> for SelectModelStmt
     { self.bind(client, &params.id,&params.limit,&params.offset,) }
 }pub fn insert_model() -> InsertModelStmt
 { InsertModelStmt(cornucopia_async::private::Stmt::new("INSERT INTO public.\"Model\"
-(\"version\", model_link, \"name\", project_id)
-VALUES($1, $2, $3, $4)
+(\"version\", model_link, \"name\", project_id, created_by_id)
+VALUES($1, $2, $3, $4, $5)
 RETURNING id")) } pub struct
 InsertModelStmt(cornucopia_async::private::Stmt); impl InsertModelStmt
 { pub fn bind<'a, C:
 GenericClient,T1:
 cornucopia_async::StringSql,T2:
 cornucopia_async::StringSql,>(&'a mut self, client: &'a  C,
-version: &'a i32,model_link: &'a T1,name: &'a T2,project_id: &'a i32,) -> I32Query<'a,C,
-i32, 4>
+version: &'a i32,model_link: &'a T1,name: &'a T2,project_id: &'a i32,created_by_id: &'a i32,) -> I32Query<'a,C,
+i32, 5>
 {
     I32Query
     {
-        client, params: [version,model_link,name,project_id,], stmt: &mut self.0, extractor:
+        client, params: [version,model_link,name,project_id,created_by_id,], stmt: &mut self.0, extractor:
         |row| { row.get(0) }, mapper: |it| { it },
     }
 } }impl <'a, C: GenericClient,T1: cornucopia_async::StringSql,T2: cornucopia_async::StringSql,> cornucopia_async::Params<'a,
 InsertModelParams<T1,T2,>, I32Query<'a, C,
-i32, 4>, C> for InsertModelStmt
+i32, 5>, C> for InsertModelStmt
 {
     fn
     params(&'a mut self, client: &'a  C, params: &'a
     InsertModelParams<T1,T2,>) -> I32Query<'a, C,
-    i32, 4>
-    { self.bind(client, &params.version,&params.model_link,&params.name,&params.project_id,) }
+    i32, 5>
+    { self.bind(client, &params.version,&params.model_link,&params.name,&params.project_id,&params.created_by_id,) }
 }pub fn select_models() -> SelectModelsStmt
 { SelectModelsStmt(cornucopia_async::private::Stmt::new("SELECT id, \"version\", model_link, \"name\", created_at, updated_at, project_id
 FROM public.\"Model\"
@@ -581,4 +581,26 @@ SelectProjects, 2>, C> for SelectProjectsStmt
     SelectProjectsParams<>) -> SelectProjectsQuery<'a, C,
     SelectProjects, 2>
     { self.bind(client, &params.limit,&params.offset,) }
+}pub fn insert_project() -> InsertProjectStmt
+{ InsertProjectStmt(cornucopia_async::private::Stmt::new("INSERT INTO public.\"Project\" 
+(name, description, created_by_id)
+VALUES ($1, $2, $3)")) } pub struct
+InsertProjectStmt(cornucopia_async::private::Stmt); impl InsertProjectStmt
+{ pub async fn bind<'a, C:
+GenericClient,T1:
+cornucopia_async::StringSql,T2:
+cornucopia_async::StringSql,>(&'a mut self, client: &'a  C,
+name: &'a T1,description: &'a T2,created_by_id: &'a i32,) -> Result<u64, tokio_postgres::Error>
+{
+    let stmt = self.0.prepare(client).await?;
+    client.execute(stmt, &[name,description,created_by_id,]).await
+} }impl <'a, C: GenericClient + Send + Sync, T1: cornucopia_async::StringSql,T2: cornucopia_async::StringSql,>
+cornucopia_async::Params<'a, InsertProjectParams<T1,T2,>, std::pin::Pin<Box<dyn futures::Future<Output = Result<u64,
+tokio_postgres::Error>> + Send + 'a>>, C> for InsertProjectStmt
+{
+    fn
+    params(&'a mut self, client: &'a  C, params: &'a
+    InsertProjectParams<T1,T2,>) -> std::pin::Pin<Box<dyn futures::Future<Output = Result<u64,
+    tokio_postgres::Error>> + Send + 'a>>
+    { Box::pin(self.bind(client, &params.name,&params.description,&params.created_by_id,)) }
 }}}
