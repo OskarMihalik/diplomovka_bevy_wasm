@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 
 use ::serde::de;
-use bevy::{prelude::*, reflect::serde, state::commands};
+use bevy::prelude::*;
 use bevy_mod_reqwest::*;
 use dto::{
+    auth::{AuthDtoResponse, LoginDto, RegisterDto},
     default::{NewTagDto, TagDto, TagDtoResponse},
     model::{ModelDto, ModelDtoResponse, ModelsDtoResponse},
     project::{ProjectDtoResponse, ProjectsDtoResponse},
@@ -15,6 +16,8 @@ use crate::{
     },
     gui::gui::ShowErrorEvent,
     models::UpdateModelsEvent,
+    users::LoggedUser,
+    GameState,
 };
 
 pub const BACKEND_URL: &str = "http://localhost:4000";
@@ -33,6 +36,8 @@ impl Plugin for ApiPlugin {
             .add_observer(update_tag)
             .add_observer(get_models)
             .add_observer(create_model)
+            .add_observer(login_user)
+            .add_observer(register_user)
             .add_observer(get_projects);
     }
 }
@@ -312,12 +317,23 @@ fn get_project(trigger: Trigger<GetProjectEvent>, mut client: BevyReqwest) {
 #[derive(Event)]
 pub struct GetProjectsEvent {}
 
-fn get_projects(_trigger: Trigger<GetProjectsEvent>, mut client: BevyReqwest) {
-    let url = format!("{BACKEND_URL}/project");
-
+fn get_projects(
+    _trigger: Trigger<GetProjectsEvent>,
+    mut client: BevyReqwest,
+    query_user: Option<Single<(Entity, &LoggedUser)>>,
+) {
+    let url: String = format!("{BACKEND_URL}/project");
+    let token = match query_user {
+        Some(user) => user.1.dto.token.clone(),
+        None => "".to_string(),
+    };
     // use regular reqwest http calls, then poll them to completion.
     bevy::log::info!("sending request to {url}");
-    let reqwest_request = client.get(url).build().unwrap();
+    let reqwest_request = client
+        .get(url)
+        .header("authorization", token)
+        .build()
+        .unwrap();
     client
         // Sends the created http request
         .send(reqwest_request)
@@ -368,5 +384,76 @@ fn get_projects(_trigger: Trigger<GetProjectsEvent>, mut client: BevyReqwest) {
             },
         )
         // In case of request error, it can be reached using an observersystem as well
+        .on_error(on_reqwest_error);
+}
+
+#[derive(Event)]
+pub struct LoginEvent {
+    pub dto: LoginDto,
+}
+
+fn login_user(trigger: Trigger<LoginEvent>, mut client: BevyReqwest) {
+    let url = format!("{BACKEND_URL}/login");
+
+    // use regular reqwest http calls, then poll them to completion.
+    let reqwest_request = client.post(url).json(&trigger.dto).build().unwrap();
+
+    client
+        .send(reqwest_request)
+        .on_response(
+            |trigger: Trigger<ReqwestResponseEvent>,
+             mut commands: Commands,
+             query_user: Option<Single<(Entity, &LoggedUser)>>| {
+                let parsed = parse_response::<AuthDtoResponse>(trigger);
+                match parsed {
+                    Ok(user_dto) => {
+                        if let Some(query_user) = query_user {
+                            commands.entity(query_user.0).despawn_recursive();
+                        }
+                        commands.spawn(LoggedUser { dto: user_dto });
+                        commands.set_state(GameState::SelectingProjectAndModel);
+                    }
+                    Err(error_dto) => commands.trigger(ShowErrorEvent {
+                        message: error_dto.message,
+                    }),
+                };
+            },
+        )
+        .on_error(on_reqwest_error);
+}
+
+// todo register
+#[derive(Event)]
+pub struct RegisterEvent {
+    pub dto: RegisterDto,
+}
+// todo
+fn register_user(trigger: Trigger<RegisterEvent>, mut client: BevyReqwest) {
+    let url = format!("{BACKEND_URL}/register");
+
+    // use regular reqwest http calls, then poll them to completion.
+    let reqwest_request = client.post(url).json(&trigger.dto).build().unwrap();
+
+    client
+        .send(reqwest_request)
+        .on_response(
+            |trigger: Trigger<ReqwestResponseEvent>,
+             mut commands: Commands,
+             query_user: Option<Single<(Entity, &LoggedUser)>>| {
+                let parsed = parse_response::<AuthDtoResponse>(trigger);
+                match parsed {
+                    Ok(user_dto) => {
+                        if let Some(query_user) = query_user {
+                            commands.entity(query_user.0).despawn_recursive();
+                        }
+                        commands.spawn(LoggedUser { dto: user_dto });
+                        commands.set_state(GameState::SelectingProjectAndModel);
+                    }
+                    Err(error_dto) => commands.trigger(ShowErrorEvent {
+                        message: error_dto.message,
+                    }),
+                };
+            },
+        )
         .on_error(on_reqwest_error);
 }

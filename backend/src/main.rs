@@ -4,6 +4,7 @@
 //! cargo run -p example-cors
 //! ```
 
+mod auth;
 mod services;
 use axum::{
     extract::DefaultBodyLimit,
@@ -41,6 +42,8 @@ async fn main() {
             .route("/models/{project_id}", get(get_models_service))
             .route("/project/{project_id}", get(get_project_service))
             .route("/project", get(get_projects_service))
+            .route("/login", post(services::auth::login))
+            .route("/register", post(services::auth::register))
             .route(
                 "/model/{project_id}/{model_name}",
                 post(upload_new_model_service).layer(DefaultBodyLimit::max(1024 * 1024 * 1024)),
@@ -57,7 +60,7 @@ async fn main() {
                         Method::OPTIONS,
                         Method::PATCH,
                     ])
-                    .allow_headers([http::header::CONTENT_TYPE]),
+                    .allow_headers([http::header::CONTENT_TYPE, http::header::AUTHORIZATION]),
             );
         serve(app, 4000).await;
     };

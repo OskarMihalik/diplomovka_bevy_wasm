@@ -49,11 +49,7 @@ pub async fn get_model_service(
             };
             return Json(ModelDtoResponse::Ok(dto));
         }
-        Err(error) => {
-            return Json(ModelDtoResponse::Err(ErrorDto {
-                message: format!("{:?}", error),
-            }))
-        }
+        Err(error) => return Json(ModelDtoResponse::Err(ErrorDto::new(format!("{:?}", error)))),
     }
 }
 
@@ -89,9 +85,10 @@ pub async fn get_models_service(
             return Json(ModelsDtoResponse::Ok(dtos));
         }
         Err(error) => {
-            return Json(ModelsDtoResponse::Err(ErrorDto {
-                message: format!("{:?}", error),
-            }))
+            return Json(ModelsDtoResponse::Err(ErrorDto::new(format!(
+                "{:?}",
+                error
+            ))))
         }
     }
 }
@@ -106,9 +103,10 @@ pub async fn upload_new_model_service(
     let connection = match pool.get().await {
         Ok(connection) => connection,
         Err(error) => {
-            return Json(ModelsDtoResponse::Err(ErrorDto {
-                message: format!("{:?}", error),
-            }))
+            return Json(ModelsDtoResponse::Err(ErrorDto::new(format!(
+                "{:?}",
+                error
+            ))))
         }
     };
 
@@ -125,9 +123,10 @@ pub async fn upload_new_model_service(
     {
         Ok(ok) => ok,
         Err(error) => {
-            return Json(ModelsDtoResponse::Err(ErrorDto {
-                message: format!("{:?}", error),
-            }))
+            return Json(ModelsDtoResponse::Err(ErrorDto::new(format!(
+                "{:?}",
+                error
+            ))))
         }
     };
 
@@ -140,11 +139,7 @@ pub async fn upload_new_model_service(
 
         match stream_to_file(&format!("{inserted_model_id}.glb"), field).await {
             Ok(ok) => ok,
-            Err(err) => {
-                return Json(Err(ErrorDto {
-                    message: format!("{:?}", err),
-                }))
-            }
+            Err(err) => return Json(Err(ErrorDto::new(format!("{:?}", err)))),
         };
     }
 
@@ -170,9 +165,10 @@ pub async fn upload_new_model_service(
             return Json(ModelsDtoResponse::Ok(dtos));
         }
         Err(error) => {
-            return Json(ModelsDtoResponse::Err(ErrorDto {
-                message: format!("{:?}", error),
-            }))
+            return Json(ModelsDtoResponse::Err(ErrorDto::new(format!(
+                "{:?}",
+                error
+            ))))
         }
     }
 }

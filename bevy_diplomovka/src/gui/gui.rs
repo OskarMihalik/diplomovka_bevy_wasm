@@ -15,6 +15,8 @@ use crate::{
     utils::compare_by_created_at,
     GameState,
 };
+
+use super::auth_screen::login_screen;
 pub struct GuiPlugin;
 struct GlbFileContents;
 
@@ -49,6 +51,7 @@ impl Plugin for GuiPlugin {
                 OnEnter(GameState::SelectingProjectAndModel),
                 setup_selecting_project_and_model,
             )
+            .add_systems(Update, (login_screen).run_if(in_state(GameState::Auth)))
             .add_systems(
                 Update,
                 (ui_model_screen, ui_project_screen)
@@ -65,6 +68,7 @@ impl Plugin for GuiPlugin {
                     file_saved,
                     file_load_canceled,
                     file_save_canceled,
+                    show_toasts,
                 ),
             )
             .add_observer(show_error);
@@ -388,8 +392,6 @@ fn ui_viewing_model(
             });
             ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
         });
-
-    ui_contexts.toasts.show(ctx);
 }
 
 fn ui_tag_windows(
@@ -445,6 +447,11 @@ fn show_error(trigger: Trigger<ShowErrorEvent>, mut ui_contexts: ResMut<UiContex
             .show_progress(true),
         ..Default::default()
     });
+}
+
+fn show_toasts(mut contexts: EguiContexts, mut ui_contexts: ResMut<UiContexts>) {
+    let ctx = contexts.ctx_mut();
+    ui_contexts.toasts.show(ctx);
 }
 
 fn file_loaded(

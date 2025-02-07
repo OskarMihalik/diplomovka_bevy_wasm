@@ -1,3 +1,5 @@
+use std::default;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -6,11 +8,28 @@ pub struct Test {
     pub age: i32,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ErrorDto {
-    pub message: String,
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub enum ErrorReason {
+    #[default]
+    BadRequest,
+    Unauthorized,
+    BadCredentials,
+    InvalidToken,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ErrorDto {
+    pub reason: ErrorReason,
+    pub message: String,
+}
+impl ErrorDto {
+    pub fn new(message: String) -> Self {
+        ErrorDto {
+            reason: ErrorReason::default(),
+            message,
+        }
+    }
+}
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TagDto {
     pub id: i32,
