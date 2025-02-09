@@ -1,6 +1,8 @@
 use bevy::prelude::*;
 use time::PrimitiveDateTime;
 
+use crate::users::LoggedUser;
+
 #[derive(Event)]
 pub struct LogEntityComponents {
     pub entity: Entity,
@@ -21,4 +23,12 @@ pub fn compare_by_created_at(
     } else {
         std::cmp::Ordering::Greater
     }
+}
+
+pub fn get_token_from_user(query_user: Option<Single<(Entity, &LoggedUser)>>) -> String {
+    let token = match query_user {
+        Some(user) => user.1.dto.token.clone(),
+        None => "".to_string(),
+    };
+    return token;
 }

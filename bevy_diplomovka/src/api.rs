@@ -17,6 +17,7 @@ use crate::{
     gui::gui::ShowErrorEvent,
     models::UpdateModelsEvent,
     users::LoggedUser,
+    utils::get_token_from_user,
     GameState,
 };
 
@@ -65,11 +66,19 @@ pub struct GetTagsEvent {
     pub model_id: i32,
 }
 
-fn get_tags(trigger: Trigger<GetTagsEvent>, mut client: BevyReqwest) {
+fn get_tags(
+    trigger: Trigger<GetTagsEvent>,
+    mut client: BevyReqwest,
+    query_user: Option<Single<(Entity, &LoggedUser)>>,
+) {
     let url = format!("{BACKEND_URL}/tags/{:?}", trigger.model_id);
 
     // use regular reqwest http calls, then poll them to completion.
-    let reqwest_request = client.get(url).build().unwrap();
+    let reqwest_request = client
+        .get(url)
+        .header("authorization", get_token_from_user(query_user))
+        .build()
+        .unwrap();
 
     client
         // Sends the created http request
@@ -106,12 +115,21 @@ pub struct CreateNewTagEvent {
     pub parent_entity: Entity,
 }
 
-fn create_new_tag(trigger: Trigger<CreateNewTagEvent>, mut client: BevyReqwest) {
+fn create_new_tag(
+    trigger: Trigger<CreateNewTagEvent>,
+    mut client: BevyReqwest,
+    query_user: Option<Single<(Entity, &LoggedUser)>>,
+) {
     let url = format!("{BACKEND_URL}/tags");
     let body = trigger.new_tag_dto.clone();
     let parent_entity = trigger.parent_entity.clone();
     // use regular reqwest http calls, then poll them to completion.
-    let reqwest_request = client.post(url).json(&body).build().unwrap();
+    let reqwest_request = client
+        .post(url)
+        .json(&body)
+        .header("authorization", get_token_from_user(query_user))
+        .build()
+        .unwrap();
 
     client
         // Sends the created http request
@@ -144,10 +162,18 @@ pub struct GetModelEvent {
     pub model_id: i32,
 }
 
-fn get_model(trigger: Trigger<GetModelEvent>, mut client: BevyReqwest) {
+fn get_model(
+    trigger: Trigger<GetModelEvent>,
+    mut client: BevyReqwest,
+    query_user: Option<Single<(Entity, &LoggedUser)>>,
+) {
     let url = format!("{BACKEND_URL}/model/{:?}", trigger.model_id);
     // use regular reqwest http calls, then poll them to completion.
-    let reqwest_request = client.get(url).build().unwrap();
+    let reqwest_request = client
+        .get(url)
+        .header("authorization", get_token_from_user(query_user))
+        .build()
+        .unwrap();
 
     client
         .send(reqwest_request)
@@ -173,7 +199,11 @@ pub struct CreateModelEvent {
     pub model_bytes: Vec<u8>,
 }
 
-fn create_model(trigger: Trigger<CreateModelEvent>, mut client: BevyReqwest) {
+fn create_model(
+    trigger: Trigger<CreateModelEvent>,
+    mut client: BevyReqwest,
+    query_user: Option<Single<(Entity, &LoggedUser)>>,
+) {
     let url = format!(
         "{BACKEND_URL}/model/{}/{}",
         trigger.project_id, trigger.name
@@ -183,7 +213,12 @@ fn create_model(trigger: Trigger<CreateModelEvent>, mut client: BevyReqwest) {
         reqwest::multipart::Part::bytes(trigger.model_bytes.clone()),
     );
     // let parent_entity = trigger.parent_entity.clone();
-    let reqwest_request = client.post(url).multipart(multipart).build().unwrap();
+    let reqwest_request = client
+        .post(url)
+        .header("authorization", get_token_from_user(query_user))
+        .multipart(multipart)
+        .build()
+        .unwrap();
 
     client
         // Sends the created http request
@@ -215,10 +250,18 @@ pub struct GetModelsEvent {
     pub project_id: i32,
 }
 
-fn get_models(trigger: Trigger<GetModelsEvent>, mut client: BevyReqwest) {
+fn get_models(
+    trigger: Trigger<GetModelsEvent>,
+    mut client: BevyReqwest,
+    query_user: Option<Single<(Entity, &LoggedUser)>>,
+) {
     let url = format!("{BACKEND_URL}/models/{:?}", trigger.project_id);
     // use regular reqwest http calls, then poll them to completion.
-    let reqwest_request = client.get(url).build().unwrap();
+    let reqwest_request = client
+        .get(url)
+        .header("authorization", get_token_from_user(query_user))
+        .build()
+        .unwrap();
 
     client
         .send(reqwest_request)
@@ -247,11 +290,20 @@ pub struct UpdateTagEvent {
     pub parent_entity: Entity,
 }
 
-fn update_tag(trigger: Trigger<UpdateTagEvent>, mut client: BevyReqwest) {
+fn update_tag(
+    trigger: Trigger<UpdateTagEvent>,
+    mut client: BevyReqwest,
+    query_user: Option<Single<(Entity, &LoggedUser)>>,
+) {
     let url = format!("{BACKEND_URL}/tags");
     let body = trigger.tag_dto.clone();
     let parent_entity = trigger.parent_entity.clone();
-    let reqwest_request = client.patch(url).json(&body).build().unwrap();
+    let reqwest_request = client
+        .patch(url)
+        .json(&body)
+        .header("authorization", get_token_from_user(query_user))
+        .build()
+        .unwrap();
 
     client
         // Sends the created http request
@@ -284,11 +336,19 @@ pub struct GetProjectEvent {
     pub project_id: i32,
 }
 
-fn get_project(trigger: Trigger<GetProjectEvent>, mut client: BevyReqwest) {
+fn get_project(
+    trigger: Trigger<GetProjectEvent>,
+    mut client: BevyReqwest,
+    query_user: Option<Single<(Entity, &LoggedUser)>>,
+) {
     let url = format!("{BACKEND_URL}/project/{:?}", trigger.project_id);
 
     // use regular reqwest http calls, then poll them to completion.
-    let reqwest_request = client.get(url).build().unwrap();
+    let reqwest_request = client
+        .get(url)
+        .header("authorization", get_token_from_user(query_user))
+        .build()
+        .unwrap();
 
     client
         // Sends the created http request
@@ -324,15 +384,12 @@ fn get_projects(
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
     let url: String = format!("{BACKEND_URL}/project");
-    let token = match query_user {
-        Some(user) => user.1.dto.token.clone(),
-        None => "".to_string(),
-    };
+
     // use regular reqwest http calls, then poll them to completion.
     bevy::log::info!("sending request to {url}");
     let reqwest_request = client
         .get(url)
-        .header("authorization", token)
+        .header("authorization", get_token_from_user(query_user))
         .build()
         .unwrap();
     client
@@ -399,15 +456,11 @@ fn insert_project(
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
     let url: String = format!("{BACKEND_URL}/project");
-    let token = match query_user {
-        Some(user) => user.1.dto.token.clone(),
-        None => "".to_string(),
-    };
     // use regular reqwest http calls, then poll them to completion.
     let reqwest_request = client
         .post(url)
         .json(&trigger.dto)
-        .header("authorization", token)
+        .header("authorization", get_token_from_user(query_user))
         .build()
         .unwrap();
     client
