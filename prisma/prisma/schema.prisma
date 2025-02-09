@@ -25,12 +25,14 @@ model User {
 }
 
 model ProjectUser {
-  id         Int     @id @default(autoincrement())
-  project    Project @relation(fields: [project_id], references: [id])
+  id         Int      @id @default(autoincrement())
+  project    Project  @relation(fields: [project_id], references: [id])
   project_id Int
-  user       User    @relation(fields: [user_id], references: [id])
+  user       User     @relation(fields: [user_id], references: [id])
   is_admin   Boolean
   user_id    Int
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
 
   @@unique([project_id, is_admin], name: "unique_admin_per_project")
 }
