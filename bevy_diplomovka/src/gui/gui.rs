@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_egui::{
     egui::{self, Align2, Id, ScrollArea},
-    EguiContexts, EguiPlugin,
+    EguiContexts,
 };
 use bevy_file_dialog::prelude::*;
 use dto::{model::NewModelDto, project::NewProjectDto};
@@ -36,42 +36,42 @@ pub struct UiContexts {
 
 impl Plugin for GuiPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(EguiPlugin)
-            .add_plugins(
-                FileDialogPlugin::new()
-                    // allow saving of files marked with TextFileContents
-                    .with_save_file::<GlbFileContents>()
-                    // allow loading of files marked with TextFileContents
-                    .with_load_file::<GlbFileContents>(),
-            )
-            .init_resource::<UiState>()
-            .init_resource::<UiContexts>()
-            .add_systems(Startup, setup_toasts)
-            .add_systems(
-                OnEnter(GameState::SelectingProjectAndModel),
-                setup_selecting_project_and_model,
-            )
-            .add_systems(Update, (login_screen).run_if(in_state(GameState::Auth)))
-            .add_systems(
-                Update,
-                (ui_model_screen, ui_project_screen)
-                    .run_if(in_state(GameState::SelectingProjectAndModel)),
-            )
-            .add_systems(
-                Update,
-                (ui_viewing_model, ui_tag_windows).run_if(in_state(GameState::ViewingModel)),
-            )
-            .add_systems(
-                Update,
-                (
-                    file_loaded,
-                    file_saved,
-                    file_load_canceled,
-                    file_save_canceled,
-                    show_toasts,
-                ),
-            )
-            .add_observer(show_error);
+        app.add_plugins(
+            FileDialogPlugin::new()
+                // allow saving of files marked with TextFileContents
+                .with_save_file::<GlbFileContents>()
+                // allow loading of files marked with TextFileContents
+                .with_load_file::<GlbFileContents>(),
+        )
+        .init_resource::<UiState>()
+        .init_resource::<UiContexts>()
+        .add_systems(Startup, setup_toasts)
+        .add_systems(
+            OnEnter(GameState::SelectingProjectAndModel),
+            setup_selecting_project_and_model,
+        )
+        .add_systems(Update, (login_screen).run_if(in_state(GameState::Auth)))
+        .add_systems(
+            Update,
+            (ui_project_screen, ui_model_screen)
+                .chain()
+                .run_if(in_state(GameState::SelectingProjectAndModel)),
+        )
+        .add_systems(
+            Update,
+            (ui_viewing_model, ui_tag_windows).run_if(in_state(GameState::ViewingModel)),
+        )
+        .add_systems(
+            Update,
+            (
+                file_loaded,
+                file_saved,
+                file_load_canceled,
+                file_save_canceled,
+                show_toasts,
+            ),
+        )
+        .add_observer(show_error);
     }
 }
 

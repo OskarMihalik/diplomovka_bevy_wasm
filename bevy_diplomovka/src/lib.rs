@@ -16,6 +16,7 @@ use bevy::app::App;
 #[cfg(debug_assertions)]
 // use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::prelude::*;
+use bevy_inspector_egui::quick::{StateInspectorPlugin, WorldInspectorPlugin};
 use bevy_panorbit_camera::PanOrbitCameraPlugin;
 use building::BuildingPlugin;
 use gui::{gui::GuiPlugin, perf_ui::PerfUI};
@@ -25,7 +26,7 @@ use utils::log_entity_components;
 // This example game uses States to separate logic
 // See https://bevy-cheatbook.github.io/programming/states.html
 // Or https://github.com/bevyengine/bevy/blob/main/examples/ecs/state.rs
-#[derive(States, Default, Clone, Eq, PartialEq, Debug, Hash)]
+#[derive(States, Default, Clone, Eq, PartialEq, Debug, Hash, Reflect)]
 pub enum GameState {
     Auth,
     // During the loading State the LoadingPlugin will load our assets
@@ -42,6 +43,9 @@ impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(ApiPlugin)
             .init_state::<GameState>()
+            .register_type::<GameState>()
+            .add_plugins(WorldInspectorPlugin::new())
+            .add_plugins(StateInspectorPlugin::<GameState>::default())
             .add_plugins((
                 PanOrbitCameraPlugin,
                 LoadingPlugin,
