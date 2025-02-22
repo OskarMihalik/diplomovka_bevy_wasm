@@ -17,7 +17,8 @@ use winit::window::Icon; // ToDo: Replace bevy_game with your new crate name.
                          // mod asset;
 
 fn main() {
-    env::set_var("RUST_BACKTRACE", "1");
+    // this breaks the wasm build
+    // env::set_var("RUST_BACKTRACE", "1");
     App::new()
         .add_plugins((
             http_source_plugin,

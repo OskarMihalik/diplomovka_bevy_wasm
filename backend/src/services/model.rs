@@ -156,7 +156,15 @@ pub async fn upload_new_model_service(
         };
     }
     let result = select_models()
-        .bind(connection.client(), &claims.id, &project_id, &100, &0)
+        .params(
+            connection.client(),
+            &SelectModelsParams {
+                user_id: claims.id,
+                project_id: project_id,
+                limit: 100,
+                offset: 0,
+            },
+        )
         .all()
         .await;
 
