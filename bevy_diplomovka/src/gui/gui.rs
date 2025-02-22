@@ -4,7 +4,11 @@ use bevy_egui::{
     EguiContexts,
 };
 use bevy_file_dialog::prelude::*;
-use dto::{model::NewModelDto, project::NewProjectDto};
+use dto::{
+    model::NewModelDto,
+    project::{self, NewProjectDto},
+    users::{OtherUserDto, ProjectUserDto},
+};
 use egui_toast::{Toast, ToastKind, ToastOptions, Toasts};
 
 use crate::{
@@ -12,6 +16,7 @@ use crate::{
     building::{
         ModelData, ProjectData, SelectedTag, TagData, ThisModelIsSelected, ThisProjectIsSelected,
     },
+    users::UsersInProject,
     utils::compare_by_created_at,
     GameState,
 };
@@ -116,18 +121,6 @@ fn ui_model_screen(
         .iter()
         .find(|(_, _, selected)| selected.is_some())
         .map(|(entity, _, _)| entity);
-
-    egui::TopBottomPanel::top("top_panel")
-        .resizable(true)
-        .min_height(32.0)
-        .show(ctx, |ui| {
-            egui::ScrollArea::vertical().show(ui, |ui| {
-                ui.vertical_centered(|ui| {
-                    ui.heading("here will be user info");
-                });
-                // lorem_ipsum(ui);
-            });
-        });
 
     egui::CentralPanel::default().show(ctx, |ui| {
         ui.vertical_centered(|ui| {
@@ -244,13 +237,51 @@ fn ui_project_screen(
     window: Single<&Window>,
     mut query_projects: Query<(Entity, &mut ProjectData, Option<&ThisProjectIsSelected>)>,
     mut modal_open: Local<bool>,
+    mut modal_add_user_open: Local<bool>,
     mut new_project_dto: Local<NewProjectDto>,
+    query_project_users: Option<Single<(Entity, &UsersInProject)>>,
 ) {
     let ctx = contexts.ctx_mut();
     let current_selected_project_entity = query_projects
         .iter()
         .find(|(_, _, selected)| selected.is_some())
         .map(|(entity, _, _)| (entity));
+
+    let project_dto = query_projects
+        .iter()
+        .find(|(_, _, selected)| selected.is_some())
+        .map(|(_, project_data, _)| (project_data.dto.clone()));
+
+    let project_users = match query_project_users {
+        Some(some) => &some.1.dtos,
+        None => &Vec::<ProjectUserDto>::new(),
+    };
+
+    egui::TopBottomPanel::top("top_panel")
+        .resizable(true)
+        .min_height(32.0)
+        .show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                if ui.button("Add user").clicked() {
+                    *modal_add_user_open = true;
+                }
+                egui::ScrollArea::horizontal().show(ui, |ui| {
+                    for user in project_users {
+                        ui.vertical_centered(|ui| {
+                            ui.label(user.username.clone());
+                            ui.label(user.email.clone());
+                            if let Some(dto) = &project_dto {
+                                if user.is_admin {
+                                    ui.label("Admin");
+                                } else {
+                                    ui.label("User");
+                                }
+                            }
+                        });
+                    }
+                })
+            })
+        });
 
     egui::SidePanel::left("Projects")
         .resizable(true)
@@ -330,6 +361,13 @@ fn ui_project_screen(
                 });
             }
         });
+
+    if *modal_add_user_open {
+        let modal = egui::Modal::new(Id::new("Add user to project modal")).show(ctx, |ui| {});
+        if modal.should_close() {
+            *modal_add_user_open = false;
+        }
+    }
 }
 
 fn setup_toasts(mut ui_context: ResMut<UiContexts>) {

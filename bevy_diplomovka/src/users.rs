@@ -1,5 +1,8 @@
 use bevy::prelude::*;
-use dto::auth::UserDto;
+use dto::{
+    auth::UserDto,
+    users::{OtherUserDto, ProjectUserDto},
+};
 
 pub struct UsersPlugin;
 
@@ -14,4 +17,14 @@ impl Plugin for UsersPlugin {
 #[derive(Component)]
 pub struct LoggedUser {
     pub dto: UserDto,
+}
+
+#[derive(Component)]
+pub struct OtherUsers {
+    pub dtos: Vec<OtherUserDto>,
+}
+
+#[derive(Component)]
+pub struct UsersInProject {
+    pub dtos: Vec<ProjectUserDto>,
 }

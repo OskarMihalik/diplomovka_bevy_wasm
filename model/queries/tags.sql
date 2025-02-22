@@ -46,4 +46,5 @@ OFFSET :offset;
 --! insert_project (name, description, created_by_id)
 INSERT INTO public."Project" 
 (name, description, created_by_id)
-VALUES (:name, :description, :created_by_id);
+VALUES (:name, :description, :created_by_id)
+RETURNING id;

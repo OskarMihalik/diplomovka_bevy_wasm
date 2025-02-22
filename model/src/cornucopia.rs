@@ -584,25 +584,30 @@ SelectProjects, 2>, C> for SelectProjectsStmt
 }pub fn insert_project() -> InsertProjectStmt
 { InsertProjectStmt(cornucopia_async::private::Stmt::new("INSERT INTO public.\"Project\" 
 (name, description, created_by_id)
-VALUES ($1, $2, $3)")) } pub struct
+VALUES ($1, $2, $3)
+RETURNING id")) } pub struct
 InsertProjectStmt(cornucopia_async::private::Stmt); impl InsertProjectStmt
-{ pub async fn bind<'a, C:
+{ pub fn bind<'a, C:
 GenericClient,T1:
 cornucopia_async::StringSql,T2:
 cornucopia_async::StringSql,>(&'a mut self, client: &'a  C,
-name: &'a T1,description: &'a T2,created_by_id: &'a i32,) -> Result<u64, tokio_postgres::Error>
+name: &'a T1,description: &'a T2,created_by_id: &'a i32,) -> I32Query<'a,C,
+i32, 3>
 {
-    let stmt = self.0.prepare(client).await?;
-    client.execute(stmt, &[name,description,created_by_id,]).await
-} }impl <'a, C: GenericClient + Send + Sync, T1: cornucopia_async::StringSql,T2: cornucopia_async::StringSql,>
-cornucopia_async::Params<'a, InsertProjectParams<T1,T2,>, std::pin::Pin<Box<dyn futures::Future<Output = Result<u64,
-tokio_postgres::Error>> + Send + 'a>>, C> for InsertProjectStmt
+    I32Query
+    {
+        client, params: [name,description,created_by_id,], stmt: &mut self.0, extractor:
+        |row| { row.get(0) }, mapper: |it| { it },
+    }
+} }impl <'a, C: GenericClient,T1: cornucopia_async::StringSql,T2: cornucopia_async::StringSql,> cornucopia_async::Params<'a,
+InsertProjectParams<T1,T2,>, I32Query<'a, C,
+i32, 3>, C> for InsertProjectStmt
 {
     fn
     params(&'a mut self, client: &'a  C, params: &'a
-    InsertProjectParams<T1,T2,>) -> std::pin::Pin<Box<dyn futures::Future<Output = Result<u64,
-    tokio_postgres::Error>> + Send + 'a>>
-    { Box::pin(self.bind(client, &params.name,&params.description,&params.created_by_id,)) }
+    InsertProjectParams<T1,T2,>) -> I32Query<'a, C,
+    i32, 3>
+    { self.bind(client, &params.name,&params.description,&params.created_by_id,) }
 }}pub mod users
 { use futures::{{StreamExt, TryStreamExt}};use futures; use cornucopia_async::GenericClient;#[derive( Debug)] pub struct SelectUsersParams<T1: cornucopia_async::StringSql,> { pub email: T1,pub limit: i64,pub offset: i64,}#[derive(Clone,Copy, Debug)] pub struct SelectUsersInProjectParams<> { pub project_id: i32,pub limit: i64,pub offset: i64,}#[derive(Clone,Copy, Debug)] pub struct InsertProjectUserParams<> { pub project_id: i32,pub user_id: i32,pub is_admin: bool,}#[derive( Debug, Clone, PartialEq,)] pub struct SelectUsers
 { pub id : i32,pub email : String,pub username : String,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,}pub struct SelectUsersBorrowed<'a> { pub id : i32,pub email : &'a str,pub username : &'a str,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,}
@@ -650,11 +655,11 @@ GenericClient
         Ok(it)
     }
 }#[derive( Debug, Clone, PartialEq,)] pub struct SelectUsersInProject
-{ pub id : i32,pub email : String,pub username : String,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,}pub struct SelectUsersInProjectBorrowed<'a> { pub id : i32,pub email : &'a str,pub username : &'a str,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,}
+{ pub id : i32,pub email : String,pub username : String,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,pub is_admin : bool,}pub struct SelectUsersInProjectBorrowed<'a> { pub id : i32,pub email : &'a str,pub username : &'a str,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,pub is_admin : bool,}
 impl<'a> From<SelectUsersInProjectBorrowed<'a>> for SelectUsersInProject
 {
-    fn from(SelectUsersInProjectBorrowed { id,email,username,created_at,updated_at,}: SelectUsersInProjectBorrowed<'a>) ->
-    Self { Self { id,email: email.into(),username: username.into(),created_at,updated_at,} }
+    fn from(SelectUsersInProjectBorrowed { id,email,username,created_at,updated_at,is_admin,}: SelectUsersInProjectBorrowed<'a>) ->
+    Self { Self { id,email: email.into(),username: username.into(),created_at,updated_at,is_admin,} }
 }pub struct SelectUsersInProjectQuery<'a, C: GenericClient, T, const N: usize>
 {
     client: &'a  C, params:
@@ -668,6 +673,51 @@ GenericClient
     SelectUsersInProjectQuery<'a,C,R,N>
     {
         SelectUsersInProjectQuery
+        {
+            client: self.client, params: self.params, stmt: self.stmt,
+            extractor: self.extractor, mapper,
+        }
+    } pub async fn one(self) -> Result<T, tokio_postgres::Error>
+    {
+        let stmt = self.stmt.prepare(self.client).await?; let row =
+        self.client.query_one(stmt, &self.params).await?;
+        Ok((self.mapper)((self.extractor)(&row)))
+    } pub async fn all(self) -> Result<Vec<T>, tokio_postgres::Error>
+    { self.iter().await?.try_collect().await } pub async fn opt(self) ->
+    Result<Option<T>, tokio_postgres::Error>
+    {
+        let stmt = self.stmt.prepare(self.client).await?;
+        Ok(self.client.query_opt(stmt, &self.params) .await?
+        .map(|row| (self.mapper)((self.extractor)(&row))))
+    } pub async fn iter(self,) -> Result<impl futures::Stream<Item = Result<T,
+    tokio_postgres::Error>> + 'a, tokio_postgres::Error>
+    {
+        let stmt = self.stmt.prepare(self.client).await?; let it =
+        self.client.query_raw(stmt,
+        cornucopia_async::private::slice_iter(&self.params)) .await?
+        .map(move |res|
+        res.map(|row| (self.mapper)((self.extractor)(&row)))) .into_stream();
+        Ok(it)
+    }
+}#[derive( Debug, Clone, PartialEq,)] pub struct SelectUserById
+{ pub id : i32,pub email : String,pub username : String,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,}pub struct SelectUserByIdBorrowed<'a> { pub id : i32,pub email : &'a str,pub username : &'a str,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,}
+impl<'a> From<SelectUserByIdBorrowed<'a>> for SelectUserById
+{
+    fn from(SelectUserByIdBorrowed { id,email,username,created_at,updated_at,}: SelectUserByIdBorrowed<'a>) ->
+    Self { Self { id,email: email.into(),username: username.into(),created_at,updated_at,} }
+}pub struct SelectUserByIdQuery<'a, C: GenericClient, T, const N: usize>
+{
+    client: &'a  C, params:
+    [&'a (dyn postgres_types::ToSql + Sync); N], stmt: &'a mut
+    cornucopia_async::private::Stmt, extractor: fn(&tokio_postgres::Row) -> SelectUserByIdBorrowed,
+    mapper: fn(SelectUserByIdBorrowed) -> T,
+} impl<'a, C, T:'a, const N: usize> SelectUserByIdQuery<'a, C, T, N> where C:
+GenericClient
+{
+    pub fn map<R>(self, mapper: fn(SelectUserByIdBorrowed) -> R) ->
+    SelectUserByIdQuery<'a,C,R,N>
+    {
+        SelectUserByIdQuery
         {
             client: self.client, params: self.params, stmt: self.stmt,
             extractor: self.extractor, mapper,
@@ -723,7 +773,7 @@ SelectUsers, 3>, C> for SelectUsersStmt
     SelectUsers, 3>
     { self.bind(client, &params.email,&params.limit,&params.offset,) }
 }pub fn select_users_in_project() -> SelectUsersInProjectStmt
-{ SelectUsersInProjectStmt(cornucopia_async::private::Stmt::new("SELECT u.id, u.\"email\", u.username, u.created_at, u.updated_at
+{ SelectUsersInProjectStmt(cornucopia_async::private::Stmt::new("SELECT u.id, u.\"email\", u.username, u.created_at, u.updated_at, projectUser.is_admin
 FROM public.\"User\" as u
 JOIN public.\"ProjectUser\" as projectUser ON projectUser.user_id = u.id
 WHERE projectUser.project_id = $1
@@ -739,7 +789,7 @@ SelectUsersInProject, 3>
     SelectUsersInProjectQuery
     {
         client, params: [project_id,limit,offset,], stmt: &mut self.0, extractor:
-        |row| { SelectUsersInProjectBorrowed { id: row.get(0),email: row.get(1),username: row.get(2),created_at: row.get(3),updated_at: row.get(4),} }, mapper: |it| { <SelectUsersInProject>::from(it) },
+        |row| { SelectUsersInProjectBorrowed { id: row.get(0),email: row.get(1),username: row.get(2),created_at: row.get(3),updated_at: row.get(4),is_admin: row.get(5),} }, mapper: |it| { <SelectUsersInProject>::from(it) },
     }
 } }impl <'a, C: GenericClient,> cornucopia_async::Params<'a,
 SelectUsersInProjectParams<>, SelectUsersInProjectQuery<'a, C,
@@ -750,7 +800,22 @@ SelectUsersInProject, 3>, C> for SelectUsersInProjectStmt
     SelectUsersInProjectParams<>) -> SelectUsersInProjectQuery<'a, C,
     SelectUsersInProject, 3>
     { self.bind(client, &params.project_id,&params.limit,&params.offset,) }
-}pub fn insert_projectUser() -> InsertProjectUserStmt
+}pub fn select_user_by_id() -> SelectUserByIdStmt
+{ SelectUserByIdStmt(cornucopia_async::private::Stmt::new("SELECT u.id, u.\"email\", u.username, u.created_at, u.updated_at
+FROM public.\"User\" AS u
+WHERE id = $1")) } pub struct
+SelectUserByIdStmt(cornucopia_async::private::Stmt); impl SelectUserByIdStmt
+{ pub fn bind<'a, C:
+GenericClient,>(&'a mut self, client: &'a  C,
+id: &'a i32,) -> SelectUserByIdQuery<'a,C,
+SelectUserById, 1>
+{
+    SelectUserByIdQuery
+    {
+        client, params: [id,], stmt: &mut self.0, extractor:
+        |row| { SelectUserByIdBorrowed { id: row.get(0),email: row.get(1),username: row.get(2),created_at: row.get(3),updated_at: row.get(4),} }, mapper: |it| { <SelectUserById>::from(it) },
+    }
+} }pub fn insert_project_user() -> InsertProjectUserStmt
 { InsertProjectUserStmt(cornucopia_async::private::Stmt::new("INSERT INTO public.\"ProjectUser\" 
 (project_id, user_id, is_admin)
 VALUES ($1, $2, $3)")) } pub struct

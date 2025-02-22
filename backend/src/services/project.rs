@@ -1,15 +1,18 @@
+use crate::{auth::claim::Claims, ConnectionPool};
 use axum::{
     extract::{Path, State},
     Json,
 };
 use axum_macros::debug_handler;
+use cornucopia_async::Params;
 use dto::project::{NewProjectDto, ProjectDto, ProjectDtoResponse, ProjectsDtoResponse};
-use model::cornucopia::queries::tags::{insert_project, select_project, select_projects};
+use model::cornucopia::queries::{
+    tags::{insert_project, select_project, select_projects},
+    users::{insert_project_user, InsertProjectUserParams},
+};
 use tokio_postgres::{Client, GenericClient};
 
-use crate::{auth::claim::Claims, ConnectionPool};
-
-use super::utils::{map_err_pool_con, map_sql_error};
+use super::utils::{map_err_pool_con, map_error_reason, map_sql_error};
 
 #[debug_handler]
 pub async fn get_project_service(
@@ -85,13 +88,30 @@ pub async fn insert_project_service(
         Err(error) => return map_err_pool_con(error),
     };
 
-    let _result = match insert_project()
+    let new_project_id = match insert_project()
         .bind(connection.client(), &dto.name, &dto.description, &claims.id)
+        .one()
         .await
     {
         Ok(ok) => ok,
         Err(error) => return map_sql_error(error),
     };
+
+    let result = insert_project_user()
+        .params(
+            connection.client(),
+            &InsertProjectUserParams {
+                project_id: new_project_id,
+                user_id: claims.id,
+                is_admin: true,
+            },
+        )
+        .await;
+
+    match result {
+        Ok(_) => (),
+        Err(error) => return map_sql_error(error),
+    }
 
     return get_projects(connection.client()).await;
 }

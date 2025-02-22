@@ -18,6 +18,7 @@ use services::{
     model::{get_model_service, get_models_service, upload_new_model_service},
     project::{get_project_service, get_projects_service, insert_project_service},
     tags::{get_tag_service, insert_tag_service, update_tag_service},
+    users::{add_user_to_project_service, get_users_in_project_service, get_users_service},
 };
 use std::net::SocketAddr;
 use tokio_postgres::NoTls;
@@ -45,6 +46,9 @@ async fn main() {
             .route("/project", post(insert_project_service))
             .route("/login", post(services::auth::login))
             .route("/register", post(services::auth::register))
+            .route("/users", get(get_users_service))
+            .route("/project_user", post(add_user_to_project_service))
+            .route("/users/{project_id}", get(get_users_in_project_service))
             .route(
                 "/model/{project_id}/{model_name}",
                 post(upload_new_model_service).layer(DefaultBodyLimit::max(1024 * 1024 * 1024)),

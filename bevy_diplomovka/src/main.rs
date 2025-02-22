@@ -10,12 +10,14 @@ use bevy::winit::{UpdateMode, WinitSettings, WinitWindows};
 use bevy::DefaultPlugins;
 use bevy_diplomovka::GamePlugin;
 use bevy_mod_reqwest::*;
+use std::env;
 use std::io::Cursor;
 use std::time::Duration;
 use winit::window::Icon; // ToDo: Replace bevy_game with your new crate name.
                          // mod asset;
 
 fn main() {
+    env::set_var("RUST_BACKTRACE", "1");
     App::new()
         .add_plugins((
             http_source_plugin,

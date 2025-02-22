@@ -1,4 +1,4 @@
-use crate::api::{GetModelsEvent, BACKEND_URL};
+use crate::api::{GetModelsEvent, GetUsersInProjectEvent, BACKEND_URL};
 use bevy::prelude::*;
 use bevy_panorbit_camera::PanOrbitCamera;
 use dto::{
@@ -135,6 +135,9 @@ fn react_to_project_change(
     };
     bevy::log::info!("project changed");
     commands.trigger(GetModelsEvent {
+        project_id: selected_project.0.dto.id,
+    });
+    commands.trigger(GetUsersInProjectEvent {
         project_id: selected_project.0.dto.id,
     });
 }
