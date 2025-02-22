@@ -10,15 +10,17 @@ use std::io;
 use tokio::{fs::File, io::BufWriter};
 use tokio_util::io::StreamReader;
 
+use super::utils::map_err_pool_con;
 use crate::{auth::claim::Claims, ConnectionPool};
+use cornucopia_async::Params;
 use dto::{
     default::ErrorDto,
     model::{ModelDto, ModelDtoResponse, ModelsDtoResponse},
 };
-use model::cornucopia::queries::tags::{insert_model, select_model, select_models};
+use model::cornucopia::queries::tags::{
+    insert_model, select_model, select_models, SelectModelsParams,
+};
 use tokio_postgres::GenericClient;
-
-use super::utils::map_err_pool_con;
 
 pub const UPLOADS_DIRECTORY: &str = "backend/assets/models";
 
@@ -55,6 +57,7 @@ pub async fn get_model_service(
 
 #[debug_handler]
 pub async fn get_models_service(
+    claims: Claims,
     Path(project_id): Path<i32>,
     State(pool): State<ConnectionPool>,
 ) -> Json<ModelsDtoResponse> {
@@ -62,9 +65,18 @@ pub async fn get_models_service(
         Ok(connection) => connection,
         Err(error) => return map_err_pool_con(error),
     };
+    println!("{:?}, {:?}, {:?}, {:?}", &claims.id, &project_id, &100, &0);
 
     let result = select_models()
-        .bind(connection.client(), &project_id, &100, &0)
+        .params(
+            connection.client(),
+            &SelectModelsParams {
+                user_id: claims.id,
+                project_id: project_id,
+                limit: 100,
+                offset: 0,
+            },
+        )
         .all()
         .await;
 
@@ -144,9 +156,9 @@ pub async fn upload_new_model_service(
             Err(err) => return Json(Err(ErrorDto::new(format!("{:?}", err)))),
         };
     }
-
+    println!("{:?}, {:?}, {:?}, {:?}", &claims.id, &project_id, &100, &0);
     let result = select_models()
-        .bind(connection.client(), &project_id, &100, &0)
+        .bind(connection.client(), &claims.id, &project_id, &100, &0)
         .all()
         .await;
 

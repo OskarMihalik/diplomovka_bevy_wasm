@@ -55,11 +55,15 @@ pub async fn get_projects_service(
         Err(error) => return map_err_pool_con(error),
     };
 
-    return get_projects(connection.client()).await;
+    return get_projects(connection.client(), &claims.id).await;
 }
 
-pub async fn get_projects(client: &Client) -> Json<ProjectsDtoResponse> {
-    let result = match select_projects().bind(client, &100, &0).all().await {
+pub async fn get_projects(client: &Client, user_id: &i32) -> Json<ProjectsDtoResponse> {
+    let result = match select_projects()
+        .bind(client, user_id, &100, &0)
+        .all()
+        .await
+    {
         Ok(ok) => ok,
         Err(error) => return map_sql_error(error),
     };
@@ -113,5 +117,5 @@ pub async fn insert_project_service(
         Err(error) => return map_sql_error(error),
     }
 
-    return get_projects(connection.client()).await;
+    return get_projects(connection.client(), &claims.id).await;
 }

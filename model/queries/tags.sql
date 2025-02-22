@@ -25,10 +25,11 @@ INSERT INTO public."Model"
 VALUES(:version, :model_link, :name, :project_id, :created_by_id)
 RETURNING id;
 
---! select_models(project_id, limit, offset)
-SELECT id, "version", model_link, "name", created_at, updated_at, project_id
-FROM public."Model"
-WHERE project_id=(:project_id) order by created_at DESC 
+--! select_models(user_id, project_id, limit, offset)
+SELECT model.id, model."version", model.model_link, model."name", model.created_at, model.updated_at, model.project_id
+FROM public."Model" model
+JOIN public."ProjectUser" projectUser ON model.project_id = projectUser.project_id
+WHERE model.project_id=(:project_id) AND projectUser.user_id=(:user_id) order by created_at DESC 
 LIMIT :limit
 OFFSET :offset;
 
@@ -37,9 +38,12 @@ SELECT id, "name", description, created_at, updated_at
 FROM public."Project"
 WHERE id=(:id);
 
---! select_projects (limit, offset)
-SELECT id, "name", description, created_at, updated_at
-FROM public."Project" order by created_at DESC
+--! select_projects (user_id, limit, offset)
+SELECT project.id, project."name", project.description, project.created_at, project.updated_at
+FROM public."Project" project
+JOIN public."ProjectUser" projectUser ON project.id = projectUser.project_id
+WHERE projectUser.user_id = (:user_id)
+order by created_at DESC
 LIMIT :limit
 OFFSET :offset;
 
