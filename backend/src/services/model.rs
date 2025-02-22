@@ -65,7 +65,6 @@ pub async fn get_models_service(
         Ok(connection) => connection,
         Err(error) => return map_err_pool_con(error),
     };
-    println!("{:?}, {:?}, {:?}, {:?}", &claims.id, &project_id, &100, &0);
 
     let result = select_models()
         .params(
@@ -156,7 +155,6 @@ pub async fn upload_new_model_service(
             Err(err) => return Json(Err(ErrorDto::new(format!("{:?}", err)))),
         };
     }
-    println!("{:?}, {:?}, {:?}, {:?}", &claims.id, &project_id, &100, &0);
     let result = select_models()
         .bind(connection.client(), &claims.id, &project_id, &100, &0)
         .all()
