@@ -46,7 +46,7 @@ async fn main() {
             .route("/project", post(insert_project_service))
             .route("/login", post(services::auth::login))
             .route("/register", post(services::auth::register))
-            .route("/users", get(get_users_service))
+            .route("/users", post(get_users_service))
             .route("/project_user", post(add_user_to_project_service))
             .route("/users/{project_id}", get(get_users_in_project_service))
             .route(

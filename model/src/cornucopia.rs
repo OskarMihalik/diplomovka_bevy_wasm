@@ -558,7 +558,7 @@ SelectProject, 1>
         |row| { SelectProjectBorrowed { id: row.get(0),name: row.get(1),description: row.get(2),created_at: row.get(3),updated_at: row.get(4),} }, mapper: |it| { <SelectProject>::from(it) },
     }
 } }pub fn select_projects() -> SelectProjectsStmt
-{ SelectProjectsStmt(cornucopia_async::private::Stmt::new("SELECT project.id, project.\"name\", project.description, project.created_at, project.updated_at
+{ SelectProjectsStmt(cornucopia_async::private::Stmt::new("SELECT DISTINCT project.id, project.\"name\", project.description, project.created_at, project.updated_at
 FROM public.\"Project\" project
 JOIN public.\"ProjectUser\" projectUser ON project.id = projectUser.project_id
 WHERE projectUser.user_id = ($1)

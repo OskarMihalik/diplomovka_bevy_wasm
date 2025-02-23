@@ -64,6 +64,7 @@ where
 
 pub fn on_reqwest_error(trigger: Trigger<ReqwestErrorEvent>, mut commands: Commands) {
     let e = &trigger.event().0;
+    bevy::log::error!("Error: {:?}", &trigger.event());
     commands.trigger(ShowErrorEvent {
         message: e.to_string(),
     })
@@ -569,7 +570,7 @@ fn get_users(
     let url = format!("{BACKEND_URL}/users");
     // use regular reqwest http calls, then poll them to completion.
     let reqwest_request = client
-        .get(url)
+        .post(url)
         .json(&trigger.dto)
         .header("authorization", get_token_from_user(query_user))
         .build()

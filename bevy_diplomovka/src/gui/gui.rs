@@ -7,19 +7,23 @@ use bevy_file_dialog::prelude::*;
 use dto::{
     model::NewModelDto,
     project::{self, NewProjectDto},
-    users::{OtherUserDto, ProjectUserDto},
+    users::{GetUsersDto, OtherUserDto, ProjectUserDto, UserToProjectDto},
 };
 use egui_toast::{Toast, ToastKind, ToastOptions, Toasts};
 
 use crate::{
-    api::{CreateModelEvent, GetProjectsEvent, NewProjectEvent, UpdateTagEvent},
+    api::{
+        AddUserToProjectEvent, CreateModelEvent, GetProjectsEvent, GetUsersEvent,
+        GetUsersInProjectEvent, NewProjectEvent, UpdateTagEvent,
+    },
     building::{
         ModelData, ProjectData, SelectedTag, TagData, ThisModelIsSelected, ThisProjectIsSelected,
     },
-    users::UsersInProject,
+    users::{LoggedUser, OtherUsers, UsersInProject},
     utils::compare_by_created_at,
     GameState,
 };
+use egui_extras::{Column, TableBuilder};
 
 use super::auth_screen::login_screen;
 pub struct GuiPlugin;
@@ -240,8 +244,23 @@ fn ui_project_screen(
     mut modal_add_user_open: Local<bool>,
     mut new_project_dto: Local<NewProjectDto>,
     query_project_users: Option<Single<(Entity, &UsersInProject)>>,
+    mut user_email: Local<String>,
+    other_users: Option<Single<(Entity, &OtherUsers)>>,
+    query_logged_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
     let ctx = contexts.ctx_mut();
+    let logged_user = match query_logged_user {
+        Some(some) => some.1,
+        None => {
+            egui::Modal::new(Id::new("No logged in user")).show(ctx, |ui| {
+                ui.label("No logged user");
+                if ui.button("Go back to login").clicked() {
+                    commands.set_state(GameState::Auth);
+                }
+            });
+            return;
+        }
+    };
     let current_selected_project_entity = query_projects
         .iter()
         .find(|(_, _, selected)| selected.is_some())
@@ -262,13 +281,17 @@ fn ui_project_screen(
         .min_height(32.0)
         .show(ctx, |ui| {
             ui.horizontal(|ui| {
-                if ui.button("Add user").clicked() {
+                if project_dto.is_some() && ui.button("Add user").clicked() {
                     *modal_add_user_open = true;
+                    commands.trigger(GetUsersEvent {
+                        dto: GetUsersDto {
+                            email: "".to_string(),
+                        },
+                    });
                 }
                 egui::ScrollArea::horizontal().show(ui, |ui| {
                     for user in project_users {
-                        ui.vertical_centered(|ui| {
-                            ui.label(user.username.clone());
+                        ui.horizontal(|ui| {
                             ui.label(user.email.clone());
                             if let Some(dto) = &project_dto {
                                 if user.is_admin {
@@ -277,6 +300,7 @@ fn ui_project_screen(
                                     ui.label("User");
                                 }
                             }
+                            ui.add(egui::Separator::default().vertical());
                         });
                     }
                 })
@@ -363,7 +387,44 @@ fn ui_project_screen(
         });
 
     if *modal_add_user_open {
-        let modal = egui::Modal::new(Id::new("Add user to project modal")).show(ctx, |ui| {});
+        let modal = egui::Modal::new(Id::new("Add user to project modal")).show(ctx, |ui| {
+            ui.label("User email:");
+            ui.text_edit_singleline(&mut *user_email);
+            if ui.button("Search").clicked() {
+                commands.trigger(GetUsersEvent {
+                    dto: GetUsersDto {
+                        email: user_email.clone(),
+                    },
+                });
+            }
+            let other_users = match other_users {
+                Some(some) => &some.1.dtos,
+                None => &Vec::<OtherUserDto>::new(),
+            };
+            match project_dto {
+                Some(some_project_dto) => {
+                    for other_user in other_users {
+                        ui.horizontal(|ui| {
+                            ui.label(other_user.username.clone());
+                            ui.label(other_user.email.clone());
+                            if ui.button("Add").clicked() {
+                                commands.trigger(AddUserToProjectEvent {
+                                    dto: UserToProjectDto {
+                                        project_id: some_project_dto.id,
+                                        user_id: other_user.id,
+                                    },
+                                });
+                            }
+                        });
+                    }
+                    ui.separator();
+                    if other_users.is_empty() {
+                        ui.label("No users found");
+                    }
+                }
+                None => (),
+            };
+        });
         if modal.should_close() {
             *modal_add_user_open = false;
         }

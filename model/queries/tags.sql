@@ -39,7 +39,7 @@ FROM public."Project"
 WHERE id=(:id);
 
 --! select_projects (user_id, limit, offset)
-SELECT project.id, project."name", project.description, project.created_at, project.updated_at
+SELECT DISTINCT project.id, project."name", project.description, project.created_at, project.updated_at
 FROM public."Project" project
 JOIN public."ProjectUser" projectUser ON project.id = projectUser.project_id
 WHERE projectUser.user_id = (:user_id)

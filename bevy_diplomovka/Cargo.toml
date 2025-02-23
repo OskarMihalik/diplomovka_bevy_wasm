@@ -106,6 +106,7 @@ log = { version = "0.4", features = [
     "max_level_debug",
     "release_max_level_warn",
 ] }
+egui_extras = { version = "0.30.0", default-features = false }
 
 [build-dependencies]
 embed-resource = "1"
