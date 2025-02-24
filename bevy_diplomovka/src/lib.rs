@@ -13,8 +13,6 @@ use crate::loading::LoadingPlugin;
 
 use api::ApiPlugin;
 use bevy::app::App;
-#[cfg(debug_assertions)]
-// use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::prelude::*;
 use bevy_inspector_egui::quick::{StateInspectorPlugin, WorldInspectorPlugin};
 use bevy_panorbit_camera::PanOrbitCameraPlugin;
