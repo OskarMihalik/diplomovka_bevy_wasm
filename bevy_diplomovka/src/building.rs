@@ -182,6 +182,7 @@ fn add_tag(
     mut commands: Commands,
     query: Query<(&SceneRoot, &Transform, &Children)>,
     query_model: Query<&ModelData>,
+    query_tags: Query<(Entity, &TagData, Option<&SelectedTag>)>,
 ) {
     let target_entity = pick_hit.entity();
     if pick_hit.duration.as_millis() >= 100 {
@@ -205,8 +206,21 @@ fn add_tag(
 
     bevy::log::info!("hit: {:?}", pick_hit.hit.position);
 
-    match pick_hit.hit.position {
-        Some(position) => {
+    let position = match pick_hit.hit.position {
+        Some(position) => position,
+        None => return,
+    };
+
+    match query_tags.get(pick_hit.target) {
+        Ok(components) => {
+            bevy::log::info!("tag already exists");
+            if let Some(_selected) = components.2 {
+                commands.entity(pick_hit.target).remove::<SelectedTag>();
+                return;
+            }
+            commands.entity(pick_hit.target).insert(SelectedTag {});
+        }
+        Err(_) => {
             commands.trigger(CreateNewTagEvent {
                 new_tag_dto: NewTagDto {
                     title: "new taaag".to_string(),
@@ -218,8 +232,7 @@ fn add_tag(
                 parent_entity: target_entity,
             });
         }
-        None => (),
-    };
+    }
 }
 
 #[derive(Event)]

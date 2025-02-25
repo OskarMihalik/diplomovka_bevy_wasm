@@ -37,6 +37,7 @@ dev = ["bevy/dynamic_linking"]
 ureq = { version = "2.12", default-features = true }
 
 [dependencies]
+transform-gizmo = { git = "https://github.com/ethereumdegen/transform-gizmo.git" }
 bevy-inspector-egui = "0.29"
 js-sys = "0.3.66"
 wasm-bindgen-futures = "0.4.39"
