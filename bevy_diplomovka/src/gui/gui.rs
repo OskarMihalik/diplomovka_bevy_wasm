@@ -27,6 +27,7 @@ use egui_extras::{Column, TableBuilder};
 
 use super::{
     auth_screen::login_screen,
+    theme::theme_picker,
     viewing_model::{ui_tag_windows, ui_viewing_model},
 };
 pub struct GuiPlugin;
@@ -76,6 +77,7 @@ impl Plugin for GuiPlugin {
         .add_systems(
             Update,
             (
+                theme_picker,
                 file_loaded,
                 file_saved,
                 file_load_canceled,
