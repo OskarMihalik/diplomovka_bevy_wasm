@@ -51,3 +51,26 @@ pub struct NewTagDto {
     pub position_y: f32,
     pub position_z: f32,
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TagMessageDto {
+    pub id: i32,
+    pub text: String,
+    pub created_at: time::PrimitiveDateTime,
+    pub updated_at: time::PrimitiveDateTime,
+    pub tag_id: i32,
+    pub created_by_id: i32,
+    pub email: String,
+    pub username: String,
+    pub is_admin: bool,
+}
+
+pub type TagMessagesDtoResponse = Result<Vec<TagMessageDto>, ErrorDto>;
+pub type TagMessageDtoResponse = Result<TagMessageDto, ErrorDto>;
+pub type CreatedTagMessageDtoResponse = Result<(), ErrorDto>;
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct NewTagMessageDto {
+    pub text: String,
+    pub tag_id: i32,
+}

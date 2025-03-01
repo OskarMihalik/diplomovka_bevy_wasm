@@ -52,3 +52,22 @@ INSERT INTO public."Project"
 (name, description, created_by_id)
 VALUES (:name, :description, :created_by_id)
 RETURNING id;
+
+
+--! insert_tag_message (text, tag_id, created_by_id)
+INSERT INTO public."TagMessage"
+("text", tag_id, created_by_id)
+VALUES(:text, :tag_id, :created_by_id);
+
+--! select_tag_messages (tag_id, user_id, limit, offset)
+SELECT DISTINCT tagMessage.id, tagMessage."text", tagMessage.created_at, tagMessage.updated_at, "user".username, "user".id as user_id, "user".email, projectUser.is_admin, tagMessage.created_by_id
+FROM public."TagMessage" tagMessage
+JOIN public."Tag" tag ON tagMessage.tag_id = tag.id
+JOIN public."Model" model ON tag.model_id = model.id
+JOIN public."Project" project ON model.project_id = project.id
+JOIN public."ProjectUser" projectUser ON project.id = projectUser.project_id
+JOIN public."User" "user" ON tagMessage.created_by_id = "user".id
+WHERE tagMessage.tag_id = (:tag_id) AND projectUser.user_id = (:user_id)
+order by tagMessage.created_at DESC
+LIMIT :limit
+OFFSET :offset;

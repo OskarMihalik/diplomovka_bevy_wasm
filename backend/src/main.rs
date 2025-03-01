@@ -17,6 +17,7 @@ use bb8_postgres::PostgresConnectionManager;
 use services::{
     model::{get_model_service, get_models_service, upload_new_model_service},
     project::{get_project_service, get_projects_service, insert_project_service},
+    tag_message::{create_tag_message_service, get_tag_messages_service},
     tags::{get_tag_service, insert_tag_service, update_tag_service},
     users::{add_user_to_project_service, get_users_in_project_service, get_users_service},
 };
@@ -37,7 +38,13 @@ async fn main() {
     let backend = async {
         let app = Router::new()
             .nest_service("/assets/model/", ServeDir::new("backend/assets/models"))
+            .nest_service(
+                "/assets/attachments/",
+                ServeDir::new("backend/assets/attachments"),
+            )
             .route("/tags", post(insert_tag_service).patch(update_tag_service))
+            .route("/tag_message/{tag_id}", get(get_tag_messages_service))
+            .route("/tag_message", post(create_tag_message_service))
             .route("/tags/{model_id}", get(get_tag_service))
             .route("/model/{model_id}", get(get_model_service))
             .route("/models/{project_id}", get(get_models_service))

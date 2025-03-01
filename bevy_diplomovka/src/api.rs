@@ -5,7 +5,10 @@ use bevy::prelude::*;
 use bevy_mod_reqwest::*;
 use dto::{
     auth::{AuthDtoResponse, LoginDto, RegisterDto},
-    default::{NewTagDto, TagDto, TagDtoResponse},
+    default::{
+        CreatedTagMessageDtoResponse, NewTagDto, NewTagMessageDto, TagDto, TagDtoResponse,
+        TagMessageDto, TagMessagesDtoResponse,
+    },
     model::{ModelDto, ModelDtoResponse, ModelsDtoResponse},
     project::{NewProjectDto, ProjectDtoResponse, ProjectsDtoResponse},
     users::{
@@ -16,7 +19,8 @@ use dto::{
 
 use crate::{
     building::{
-        ModelData, ProjectData, RebuildTagsEvent, ThisModelIsSelected, ThisProjectIsSelected,
+        ModelData, ProjectData, RebuildTagsEvent, TagData, TagMessagesData, ThisModelIsSelected,
+        ThisProjectIsSelected,
     },
     gui::gui::ShowErrorEvent,
     models::UpdateModelsEvent,
@@ -47,6 +51,8 @@ impl Plugin for ApiPlugin {
             .add_observer(get_users)
             .add_observer(get_users_in_project)
             .add_observer(add_user_to_project)
+            .add_observer(get_tag_messages)
+            .add_observer(create_tag_message)
             .add_observer(get_projects);
     }
 }
@@ -681,6 +687,118 @@ fn add_user_to_project(
                     commands.trigger(GetUsersInProjectEvent {
                         project_id: selected_project_query.0.dto.id,
                     });
+                }
+            },
+        )
+        // In case of request error, it can be reached using an observersystem as well
+        .on_error(on_reqwest_error);
+}
+
+#[derive(Event)]
+pub struct CreateTagMessageEvent {
+    pub dto: NewTagMessageDto,
+}
+
+fn create_tag_message(
+    trigger: Trigger<CreateTagMessageEvent>,
+    mut client: BevyReqwest,
+    query_user: Option<Single<(Entity, &LoggedUser)>>,
+) {
+    let url = format!("{BACKEND_URL}/tag_message");
+    let body = trigger.dto.clone();
+    let reqwest_request = client
+        .post(url)
+        .json(&body)
+        .header("authorization", get_token_from_user(query_user))
+        .build()
+        .unwrap();
+
+    client
+        // Sends the created http request
+        .send(reqwest_request)
+        // The response from the http request can be reached using an observersystem,
+        // where the only requirement is that the first parameter in the system is the specific Trigger type
+        // the rest is the same as a regular system
+        .on_response(
+            move |trigger: Trigger<ReqwestResponseEvent>,
+                  mut commands: Commands,
+                  query_tags: Query<(Entity, &TagData, Option<&TagMessagesData>)>| {
+                let parsed: CreatedTagMessageDtoResponse = parse_response(trigger);
+                bevy::log::info!("CreatedTagMessageDtoResponse: {:?}", parsed);
+                match parsed {
+                    Ok(_) => {
+                        commands.trigger(GetTagMessagesEvent {
+                            tag_id: body.tag_id,
+                        });
+                    }
+                    Err(error_dto) => commands.trigger(ShowErrorEvent {
+                        message: error_dto.message,
+                    }),
+                };
+            },
+        )
+        // In case of request error, it can be reached using an observersystem as well
+        .on_error(on_reqwest_error);
+}
+
+#[derive(Event)]
+pub struct GetTagMessagesEvent {
+    pub tag_id: i32,
+}
+
+fn get_tag_messages(
+    trigger: Trigger<GetTagMessagesEvent>,
+    mut client: BevyReqwest,
+    query_user: Option<Single<(Entity, &LoggedUser)>>,
+) {
+    let url = format!("{BACKEND_URL}/tag_message/{:?}", trigger.tag_id);
+    let tag_id = trigger.tag_id;
+    let reqwest_request = client
+        .get(url)
+        .header("authorization", get_token_from_user(query_user))
+        .build()
+        .unwrap();
+
+    client
+        // Sends the created http request
+        .send(reqwest_request)
+        // The response from the http request can be reached using an observersystem,
+        // where the only requirement is that the first parameter in the system is the specific Trigger type
+        // the rest is the same as a regular system
+        .on_response(
+            move |trigger: Trigger<ReqwestResponseEvent>,
+                  mut commands: Commands,
+                  mut query_tags: Query<(Entity, &TagData, Option<&mut TagMessagesData>)>| {
+                let parsed = match parse_response::<TagMessagesDtoResponse>(trigger) {
+                    Ok(ok) => ok,
+                    Err(error_dto) => {
+                        commands.trigger(ShowErrorEvent {
+                            message: error_dto.message,
+                        });
+                        return;
+                    }
+                };
+
+                let tag = match query_tags.iter_mut().find(|query| query.1.dto.id == tag_id) {
+                    Some(ok) => ok,
+                    None => {
+                        return;
+                    }
+                };
+
+                match tag.2 {
+                    Some(mut tag_message) => {
+                        tag_message.dtos.clear();
+                        tag_message.dtos.extend(parsed);
+                        bevy::log::info!("tag_message.dtos: {:?}", tag_message.dtos);
+                    }
+                    None => {
+                        if let Some(mut entity) = commands.get_entity(tag.0) {
+                            entity.insert(TagMessagesData { dtos: parsed.clone() });
+                            bevy::log::info!("TagMessagesData: {:?}", parsed);
+
+                        }
+                    }
                 }
             },
         )

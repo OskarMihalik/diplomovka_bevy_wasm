@@ -4,10 +4,11 @@ use bevy_egui::{
     EguiContexts,
 };
 use bevy_file_dialog::prelude::*;
+use dto::default::NewTagMessageDto;
 
 use crate::{
-    api::UpdateTagEvent,
-    building::{ModelData, SelectedTag, TagData},
+    api::{CreateTagMessageEvent, UpdateTagEvent},
+    building::{ModelData, SelectedTag, TagData, TagMessagesData},
     utils::compare_by_created_at,
     GameState,
 };
@@ -75,13 +76,17 @@ pub fn ui_tag_windows(
             &mut Transform,
             &GlobalTransform,
             &SelectedTag,
+            Option<&TagMessagesData>,
         ),
         With<SelectedTag>,
     >,
     query_models: Query<(Entity, &ModelData)>,
+    mut new_message_text: Local<String>,
 ) {
     let ctx = contexts.ctx_mut();
-    for (entity, mut tag_data, mut transform, g_transform, _selected_tag) in &mut query_tags {
+    for (entity, mut tag_data, mut transform, g_transform, _selected_tag, tag_messages) in
+        &mut query_tags
+    {
         egui::Window::new(tag_data.dto.title.clone())
             .id(Id::new(tag_data.dto.id))
             .show(ctx, |ui| {
@@ -107,6 +112,8 @@ pub fn ui_tag_windows(
                             .range(f32::MIN..=f32::MAX),
                     );
                 });
+                ui.label("New comment:");
+                ui.text_edit_multiline(&mut *new_message_text);
 
                 if ui.button("Submit").clicked() {
                     let parent_entity = query_models
@@ -121,15 +128,34 @@ pub fn ui_tag_windows(
                             tag_dto,
                             parent_entity: target_entity,
                         });
+                        commands.trigger(CreateTagMessageEvent {
+                            dto: NewTagMessageDto {
+                                text: new_message_text.clone(),
+                                tag_id: tag_data.dto.id,
+                            },
+                        });
                     }
                 }
                 if ui.button("Close").clicked() {
                     commands.entity(entity).remove::<SelectedTag>();
                 }
-                let scroll_area = ScrollArea::vertical();
-                scroll_area.show(ui, |ui| {
+
+                ui.heading("Comments:");
+                ui.vertical(|ui| {
                     ui.set_max_height(400.0);
-                });
+                    egui::ScrollArea::vertical().show(ui, |ui| {
+                        if let Some(tag_messages) = tag_messages {
+                            for tag_message in &tag_messages.dtos {
+                                ui.vertical(|ui| {
+                                    ui.text_edit_multiline(&mut tag_message.text.as_ref());
+                                    ui.label(tag_message.email.clone());
+                                    ui.separator();
+                                    ui.separator();
+                                });
+                            }
+                        }
+                    });
+                })
             });
     }
 }

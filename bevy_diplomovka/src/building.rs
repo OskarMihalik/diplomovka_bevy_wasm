@@ -2,7 +2,7 @@ use crate::api::{GetModelsEvent, GetUsersInProjectEvent, BACKEND_URL};
 use bevy::prelude::*;
 use bevy_panorbit_camera::PanOrbitCamera;
 use dto::{
-    default::{NewTagDto, TagDto},
+    default::{NewTagDto, TagDto, TagMessageDto},
     model::ModelDto,
     project::ProjectDto,
 };
@@ -15,6 +15,11 @@ use crate::{
 #[derive(Component)]
 pub struct TagData {
     pub dto: TagDto,
+}
+
+#[derive(Component)]
+pub struct TagMessagesData {
+    pub dtos: Vec<TagMessageDto>,
 }
 
 #[derive(Component)]
