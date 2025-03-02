@@ -39,6 +39,14 @@ pub struct TagDto {
     pub position_x: f32,
     pub position_y: f32,
     pub position_z: f32,
+    pub created_by_id: i32,
+    pub email: String,
+    pub username: String,
+    pub status_title: String,
+    pub status_id: i32,
+    pub status_color_r: f32,
+    pub status_color_g: f32,
+    pub status_color_b: f32,
 }
 
 pub type TagDtoResponse = Result<Vec<TagDto>, ErrorDto>;

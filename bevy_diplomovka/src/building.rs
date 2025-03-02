@@ -283,6 +283,14 @@ fn rebuild_tags(
                     position_x: tag_dto.position_x,
                     position_y: tag_dto.position_y,
                     position_z: tag_dto.position_z,
+                    created_by_id: tag_dto.created_by_id,
+                    email: tag_dto.email.clone(),
+                    username: tag_dto.username.clone(),
+                    status_title: tag_dto.status_title.clone(),
+                    status_id: tag_dto.status_id,
+                    status_color_r: tag_dto.status_color_r,
+                    status_color_g: tag_dto.status_color_g,
+                    status_color_b: tag_dto.status_color_b,
                 },
             },
         ));
@@ -290,6 +298,7 @@ fn rebuild_tags(
         builder.set_parent_in_place(parent_entity.clone());
         if selected_tags_id.contains(&tag_dto.id) {
             builder.insert(SelectedTag {});
+            commands.trigger(GetTagMessagesEvent { tag_id: tag_dto.id });
         }
     }
 }

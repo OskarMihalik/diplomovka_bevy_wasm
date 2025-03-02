@@ -134,11 +134,11 @@ SelectUser, 1>
     }
 } }}pub mod tags
 { use futures::{{StreamExt, TryStreamExt}};use futures; use cornucopia_async::GenericClient;#[derive(Clone,Copy, Debug)] pub struct SelectTagsParams<> { pub model_id: i32,pub limit: i64,pub offset: i64,}#[derive( Debug)] pub struct InsertTagParams<T1: cornucopia_async::StringSql,> { pub title: T1,pub model_id: i32,pub position_x: f32,pub position_y: f32,pub position_z: f32,pub created_by_id: i32,}#[derive( Debug)] pub struct UpdateTagParams<T1: cornucopia_async::StringSql,> { pub title: T1,pub position_x: f32,pub position_y: f32,pub position_z: f32,pub id: i32,}#[derive(Clone,Copy, Debug)] pub struct SelectModelParams<> { pub id: i32,pub limit: i64,pub offset: i64,}#[derive( Debug)] pub struct InsertModelParams<T1: cornucopia_async::StringSql,T2: cornucopia_async::StringSql,> { pub version: i32,pub model_link: T1,pub name: T2,pub project_id: i32,pub created_by_id: i32,}#[derive(Clone,Copy, Debug)] pub struct SelectModelsParams<> { pub project_id: i32,pub user_id: i32,pub limit: i64,pub offset: i64,}#[derive(Clone,Copy, Debug)] pub struct SelectProjectsParams<> { pub user_id: i32,pub limit: i64,pub offset: i64,}#[derive( Debug)] pub struct InsertProjectParams<T1: cornucopia_async::StringSql,T2: cornucopia_async::StringSql,> { pub name: T1,pub description: T2,pub created_by_id: i32,}#[derive( Debug)] pub struct InsertTagMessageParams<T1: cornucopia_async::StringSql,> { pub text: T1,pub tag_id: i32,pub created_by_id: i32,}#[derive(Clone,Copy, Debug)] pub struct SelectTagMessagesParams<> { pub tag_id: i32,pub user_id: i32,pub limit: i64,pub offset: i64,}#[derive( Debug, Clone, PartialEq,)] pub struct SelectTags
-{ pub id : i32,pub title : String,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,pub position_x : f32,pub position_y : f32,pub position_z : f32,pub model_id : i32,pub created_by_id : i32,}pub struct SelectTagsBorrowed<'a> { pub id : i32,pub title : &'a str,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,pub position_x : f32,pub position_y : f32,pub position_z : f32,pub model_id : i32,pub created_by_id : i32,}
+{ pub id : i32,pub email : String,pub username : String,pub title : String,pub model_id : i32,pub position_x : f32,pub position_y : f32,pub position_z : f32,pub created_by_id : i32,pub created_at : time::PrimitiveDateTime,pub status_title : String,pub status_id : i32,pub status_color_r : f32,pub status_color_g : f32,pub status_color_b : f32,}pub struct SelectTagsBorrowed<'a> { pub id : i32,pub email : &'a str,pub username : &'a str,pub title : &'a str,pub model_id : i32,pub position_x : f32,pub position_y : f32,pub position_z : f32,pub created_by_id : i32,pub created_at : time::PrimitiveDateTime,pub status_title : &'a str,pub status_id : i32,pub status_color_r : f32,pub status_color_g : f32,pub status_color_b : f32,}
 impl<'a> From<SelectTagsBorrowed<'a>> for SelectTags
 {
-    fn from(SelectTagsBorrowed { id,title,created_at,updated_at,position_x,position_y,position_z,model_id,created_by_id,}: SelectTagsBorrowed<'a>) ->
-    Self { Self { id,title: title.into(),created_at,updated_at,position_x,position_y,position_z,model_id,created_by_id,} }
+    fn from(SelectTagsBorrowed { id,email,username,title,model_id,position_x,position_y,position_z,created_by_id,created_at,status_title,status_id,status_color_r,status_color_g,status_color_b,}: SelectTagsBorrowed<'a>) ->
+    Self { Self { id,email: email.into(),username: username.into(),title: title.into(),model_id,position_x,position_y,position_z,created_by_id,created_at,status_title: status_title.into(),status_id,status_color_r,status_color_g,status_color_b,} }
 }pub struct SelectTagsQuery<'a, C: GenericClient, T, const N: usize>
 {
     client: &'a  C, params:
@@ -443,7 +443,13 @@ GenericClient
         Ok(it)
     }
 }pub fn select_tags() -> SelectTagsStmt
-{ SelectTagsStmt(cornucopia_async::private::Stmt::new("SELECT * FROM public.\"Tag\" where model_id = $1 order by created_at DESC 
+{ SelectTagsStmt(cornucopia_async::private::Stmt::new("SELECT tag.id, \"user\".\"email\", \"user\".username, tag.title, tag.model_id, tag.position_x, tag.position_y, tag.position_z, tag.created_by_id, tag.created_at, 
+\"status\".title as status_title, \"status\".id as status_id, \"status\".color_r as status_color_r, \"status\".color_g as status_color_g, \"status\".color_b as status_color_b
+FROM public.\"Tag\" tag
+JOIN public.\"User\" \"user\" ON tag.created_by_id = \"user\".id
+LEFT JOIN public.\"Status\" \"status\" on tag.status_id = \"status\".id
+where tag.model_id = $1
+order by tag.created_at DESC 
 LIMIT $2
 OFFSET $3")) } pub struct
 SelectTagsStmt(cornucopia_async::private::Stmt); impl SelectTagsStmt
@@ -455,7 +461,7 @@ SelectTags, 3>
     SelectTagsQuery
     {
         client, params: [model_id,limit,offset,], stmt: &mut self.0, extractor:
-        |row| { SelectTagsBorrowed { id: row.get(0),title: row.get(1),created_at: row.get(2),updated_at: row.get(3),position_x: row.get(4),position_y: row.get(5),position_z: row.get(6),model_id: row.get(7),created_by_id: row.get(8),} }, mapper: |it| { <SelectTags>::from(it) },
+        |row| { SelectTagsBorrowed { id: row.get(0),email: row.get(1),username: row.get(2),title: row.get(3),model_id: row.get(4),position_x: row.get(5),position_y: row.get(6),position_z: row.get(7),created_by_id: row.get(8),created_at: row.get(9),status_title: row.get(10),status_id: row.get(11),status_color_r: row.get(12),status_color_g: row.get(13),status_color_b: row.get(14),} }, mapper: |it| { <SelectTags>::from(it) },
     }
 } }impl <'a, C: GenericClient,> cornucopia_async::Params<'a,
 SelectTagsParams<>, SelectTagsQuery<'a, C,

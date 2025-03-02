@@ -1,5 +1,11 @@
 --! select_tags (model_id, limit, offset)
-SELECT * FROM public."Tag" where model_id = :model_id order by created_at DESC 
+SELECT tag.id, "user"."email", "user".username, tag.title, tag.model_id, tag.position_x, tag.position_y, tag.position_z, tag.created_by_id, tag.created_at, 
+"status".title as ?status_title, "status".id as status_id, "status".color_r as status_color_r, "status".color_g as status_color_g, "status".color_b as status_color_b
+FROM public."Tag" tag
+JOIN public."User" "user" ON tag.created_by_id = "user".id
+LEFT JOIN public."Status" "status" on tag.status_id = "status".id
+where tag.model_id = :model_id
+order by tag.created_at DESC 
 LIMIT :limit
 OFFSET :offset;
 

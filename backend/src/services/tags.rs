@@ -75,6 +75,14 @@ async fn get_tags(client: &Client, model_id: &i32) -> Json<TagDtoResponse> {
                     position_x: tag.position_x,
                     position_y: tag.position_y,
                     position_z: tag.position_z,
+                    created_by_id: tag.created_by_id,
+                    email: tag.email,
+                    username: tag.username,
+                    status_title: tag.status_title,
+                    status_id: tag.status_id,
+                    status_color_r: tag.status_color_r,
+                    status_color_g: tag.status_color_g,
+                    status_color_b: tag.status_color_b,
                 })
                 .collect();
             Json(TagDtoResponse::Ok(tag_dtos))

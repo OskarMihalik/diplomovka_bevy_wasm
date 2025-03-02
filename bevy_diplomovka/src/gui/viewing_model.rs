@@ -94,6 +94,11 @@ pub fn ui_tag_windows(
                     ui.label(format!("Title: "));
                     ui.text_edit_singleline(&mut tag_data.dto.title);
                 });
+
+                ui.horizontal(|ui| {
+                    ui.label("Created by: ");
+                    ui.label(&tag_data.dto.email);
+                });
                 ui.horizontal(|ui| {
                     ui.label("XYZ:");
                     ui.add(
@@ -128,12 +133,14 @@ pub fn ui_tag_windows(
                             tag_dto,
                             parent_entity: target_entity,
                         });
-                        commands.trigger(CreateTagMessageEvent {
-                            dto: NewTagMessageDto {
-                                text: new_message_text.clone(),
-                                tag_id: tag_data.dto.id,
-                            },
-                        });
+                        if !new_message_text.is_empty() {
+                            commands.trigger(CreateTagMessageEvent {
+                                dto: NewTagMessageDto {
+                                    text: new_message_text.clone(),
+                                    tag_id: tag_data.dto.id,
+                                },
+                            });
+                        }
                     }
                 }
                 if ui.button("Close").clicked() {

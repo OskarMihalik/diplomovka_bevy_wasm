@@ -47,6 +47,7 @@ model Project {
   ProjectUser   ProjectUser[]
   created_by    User          @relation(fields: [created_by_id], references: [id])
   created_by_id Int
+  Status        Status[]
 }
 
 model Model {
@@ -76,6 +77,8 @@ model Tag {
   model_id      Int
   created_by    User         @relation(fields: [created_by_id], references: [id])
   created_by_id Int
+  status_id     Int?
+  status        Status?      @relation(fields: [status_id], references: [id])
 }
 
 model TagMessage {
@@ -87,4 +90,19 @@ model TagMessage {
   tag_id        Int
   created_by    User     @relation(fields: [created_by_id], references: [id])
   created_by_id Int
+}
+
+model Status {
+  id         Int      @id @default(autoincrement())
+  title      String
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+  color_r    Float    @db.Real
+  color_g    Float    @db.Real
+  color_b    Float    @db.Real
+  project_id Int
+  project    Project  @relation(fields: [project_id], references: [id])
+  Tag        Tag[]
+
+  @@unique([title, project_id], name: "unique_title_per_project")
 }
