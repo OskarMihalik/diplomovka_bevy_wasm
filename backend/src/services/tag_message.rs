@@ -68,8 +68,8 @@ pub async fn get_tag_messages_service(
             &SelectTagMessagesParams {
                 tag_id: tag_id,
                 user_id: claims.id,
-                limit: 0,
-                offset: 100,
+                limit: 100,
+                offset: 0,
             },
         )
         .all()

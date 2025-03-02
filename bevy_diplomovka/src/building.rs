@@ -1,4 +1,4 @@
-use crate::api::{GetModelsEvent, GetUsersInProjectEvent, BACKEND_URL};
+use crate::api::{GetModelsEvent, GetTagMessagesEvent, GetUsersInProjectEvent, BACKEND_URL};
 use bevy::prelude::*;
 use bevy_panorbit_camera::PanOrbitCamera;
 use dto::{
@@ -224,6 +224,9 @@ fn add_tag(
                 return;
             }
             commands.entity(pick_hit.target).insert(SelectedTag {});
+            commands.trigger(GetTagMessagesEvent {
+                tag_id: components.1.dto.id,
+            });
         }
         Err(_) => {
             commands.trigger(CreateNewTagEvent {
