@@ -7,7 +7,7 @@ use bevy_file_dialog::prelude::*;
 use dto::default::NewTagMessageDto;
 
 use crate::{
-    api::{CreateTagMessageEvent, UpdateTagEvent},
+    api::{CreateTagMessageEvent, GetTagMessagesEvent, UpdateTagEvent},
     building::{ModelData, SelectedTag, TagData, TagMessagesData},
     utils::compare_by_created_at,
     GameState,
@@ -139,8 +139,14 @@ pub fn ui_tag_windows(
                 if ui.button("Close").clicked() {
                     commands.entity(entity).remove::<SelectedTag>();
                 }
-
-                ui.heading("Comments:");
+                ui.horizontal(|ui| {
+                    ui.heading("Comments:");
+                    if ui.button("Refresh").clicked() {
+                        commands.trigger(GetTagMessagesEvent {
+                            tag_id: tag_data.dto.id,
+                        });
+                    };
+                });
                 ui.vertical(|ui| {
                     ui.set_max_height(400.0);
                     egui::ScrollArea::vertical().show(ui, |ui| {
