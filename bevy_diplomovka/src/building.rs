@@ -73,7 +73,7 @@ fn on_exit_viewing_model(
     query: Query<Entity, (With<ModelData>, With<Transform>, With<SceneRoot>)>,
 ) {
     for entity in query.iter() {
-        commands.entity(entity).remove::<(Transform, SceneRoot)>();
+        commands.entity(entity).despawn_recursive();
     }
 }
 

@@ -42,11 +42,11 @@ pub struct TagDto {
     pub created_by_id: i32,
     pub email: String,
     pub username: String,
-    pub status_title: String,
-    pub status_id: i32,
-    pub status_color_r: f32,
-    pub status_color_g: f32,
-    pub status_color_b: f32,
+    pub status_title: Option<String>,
+    pub status_id: Option<i32>,
+    pub status_color_r: Option<f32>,
+    pub status_color_g: Option<f32>,
+    pub status_color_b: Option<f32>,
 }
 
 pub type TagDtoResponse = Result<Vec<TagDto>, ErrorDto>;

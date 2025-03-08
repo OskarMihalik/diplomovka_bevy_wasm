@@ -99,6 +99,12 @@ pub fn ui_tag_windows(
                     ui.label("Created by: ");
                     ui.label(&tag_data.dto.email);
                 });
+
+                ui.horizontal(|ui| {
+                    ui.label("Status: ");
+                    ui.label(&tag_data.dto.email);
+                });
+
                 ui.horizontal(|ui| {
                     ui.label("XYZ:");
                     ui.add(
