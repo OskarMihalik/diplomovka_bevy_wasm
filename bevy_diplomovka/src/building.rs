@@ -2,7 +2,7 @@ use crate::api::{GetModelsEvent, GetTagMessagesEvent, GetUsersInProjectEvent, BA
 use bevy::prelude::*;
 use bevy_panorbit_camera::PanOrbitCamera;
 use dto::{
-    default::{NewTagDto, TagDto, TagMessageDto},
+    default::{NewTagDto, StatusDto, TagDto, TagMessageDto},
     model::ModelDto,
     project::ProjectDto,
 };
@@ -286,11 +286,7 @@ fn rebuild_tags(
                     created_by_id: tag_dto.created_by_id,
                     email: tag_dto.email.clone(),
                     username: tag_dto.username.clone(),
-                    status_title: tag_dto.status_title.clone(),
-                    status_id: tag_dto.status_id,
-                    status_color_r: tag_dto.status_color_r,
-                    status_color_g: tag_dto.status_color_g,
-                    status_color_b: tag_dto.status_color_b,
+                    status_dto: tag_dto.status_dto.clone(),
                 },
             },
         ));

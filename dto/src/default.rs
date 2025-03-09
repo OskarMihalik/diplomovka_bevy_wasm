@@ -42,11 +42,16 @@ pub struct TagDto {
     pub created_by_id: i32,
     pub email: String,
     pub username: String,
-    pub status_title: Option<String>,
-    pub status_id: Option<i32>,
-    pub status_color_r: Option<f32>,
-    pub status_color_g: Option<f32>,
-    pub status_color_b: Option<f32>,
+    pub status_dto: Option<StatusDto>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct StatusDto {
+    pub title: String,
+    pub id: i32,
+    pub color_r: f32,
+    pub color_g: f32,
+    pub color_b: f32,
 }
 
 pub type TagDtoResponse = Result<Vec<TagDto>, ErrorDto>;

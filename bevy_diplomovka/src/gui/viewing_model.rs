@@ -1,10 +1,10 @@
 use bevy::prelude::*;
 use bevy_egui::{
-    egui::{self, Id, ScrollArea},
+    egui::{self, Id, ScrollArea, Ui},
     EguiContexts,
 };
 use bevy_file_dialog::prelude::*;
-use dto::default::NewTagMessageDto;
+use dto::default::{NewTagMessageDto, StatusDto};
 
 use crate::{
     api::{CreateTagMessageEvent, GetTagMessagesEvent, UpdateTagEvent},
@@ -99,11 +99,22 @@ pub fn ui_tag_windows(
                     ui.label("Created by: ");
                     ui.label(&tag_data.dto.email);
                 });
-
-                ui.horizontal(|ui| {
-                    ui.label("Status: ");
-                    ui.label(&tag_data.dto.email);
-                });
+                match &tag_data.dto.status_dto {
+                    Some(status_dto) => {
+                        // ui.horizontal(|ui| {
+                        // let child_ui =
+                        //     ui.child_ui(ui.available_rect_before_wrap(), *ui.layout(), None);
+                        // commands.run_system_cached_with(status_widget, &mut child_ui);
+                        // });
+                        status_widget(ui, status_dto);
+                    }
+                    None => {
+                        ui.horizontal(|ui| {
+                            ui.label("Status: ");
+                            ui.label("No status");
+                        });
+                    }
+                }
 
                 ui.horizontal(|ui| {
                     ui.label("XYZ:");
@@ -177,4 +188,12 @@ pub fn ui_tag_windows(
                 })
             });
     }
+}
+
+fn status_widget(ui: &mut egui::Ui, status_dto: &StatusDto) {
+    // Put the buttons and label on the same row:
+    ui.horizontal(|ui| {
+        ui.label("Hello world");
+        ui.label(status_dto.title.clone());
+    });
 }

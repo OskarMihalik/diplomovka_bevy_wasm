@@ -9,7 +9,7 @@ use axum_macros::debug_handler;
 
 use crate::{auth::claim::Claims, ConnectionPool};
 use bb8::RunError;
-use dto::default::{ErrorDto, NewTagDto, TagDto, TagDtoResponse};
+use dto::default::{ErrorDto, NewTagDto, StatusDto, TagDto, TagDtoResponse};
 use model::cornucopia::queries::tags::{insert_tag, select_tags, update_tag};
 use tokio_postgres::{Client, Error, GenericClient};
 
@@ -67,22 +67,39 @@ async fn get_tags(client: &Client, model_id: &i32) -> Json<TagDtoResponse> {
         Ok(tags) => {
             let tag_dtos: Vec<TagDto> = tags
                 .into_iter()
-                .map(|tag| TagDto {
-                    id: tag.id,
-                    title: tag.title,
-                    model_id: tag.model_id,
-                    created_at: tag.created_at,
-                    position_x: tag.position_x,
-                    position_y: tag.position_y,
-                    position_z: tag.position_z,
-                    created_by_id: tag.created_by_id,
-                    email: tag.email,
-                    username: tag.username,
-                    status_title: tag.status_title,
-                    status_id: tag.status_id,
-                    status_color_r: tag.status_color_r,
-                    status_color_g: tag.status_color_g,
-                    status_color_b: tag.status_color_b,
+                .map(|tag| {
+                    let status_dto = match (
+                        tag.status_title,
+                        tag.status_id,
+                        tag.status_color_r,
+                        tag.status_color_g,
+                        tag.status_color_b,
+                    ) {
+                        (Some(title), Some(id), Some(color_r), Some(color_g), Some(color_b)) => {
+                            Some(StatusDto {
+                                title,
+                                id,
+                                color_r,
+                                color_g,
+                                color_b,
+                            })
+                        }
+                        _ => None,
+                    };
+
+                    TagDto {
+                        id: tag.id,
+                        title: tag.title,
+                        model_id: tag.model_id,
+                        created_at: tag.created_at,
+                        position_x: tag.position_x,
+                        position_y: tag.position_y,
+                        position_z: tag.position_z,
+                        created_by_id: tag.created_by_id,
+                        email: tag.email,
+                        username: tag.username,
+                        status_dto,
+                    }
                 })
                 .collect();
             Json(TagDtoResponse::Ok(tag_dtos))
