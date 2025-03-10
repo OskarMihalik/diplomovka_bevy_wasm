@@ -269,10 +269,25 @@ fn rebuild_tags(
     for tag_dto in tags.iter() {
         let mut builder = commands.spawn((
             Mesh3d(meshes.add(Cuboid::new(0.3, 0.3, 0.3))),
-            MeshMaterial3d(materials.add(StandardMaterial {
-                base_color: Color::srgb(1.0, 0.0, 0.0),
-                ..Default::default()
-            })),
+            MeshMaterial3d(
+                materials.add(StandardMaterial {
+                    base_color: Color::srgb(
+                        tag_dto
+                            .status_dto
+                            .clone()
+                            .map_or(1.0, |status| status.color_r),
+                        tag_dto
+                            .status_dto
+                            .clone()
+                            .map_or(0.0, |status| status.color_g),
+                        tag_dto
+                            .status_dto
+                            .clone()
+                            .map_or(0.0, |status| status.color_b),
+                    ),
+                    ..Default::default()
+                }),
+            ),
             GlobalTransform::from_xyz(tag_dto.position_x, tag_dto.position_y, tag_dto.position_z),
             TagData {
                 dto: TagDto {

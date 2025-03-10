@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_egui::{
-    egui::{self, Id, ScrollArea, Ui},
+    egui::{self, Id, Rounding, ScrollArea, Ui},
     EguiContexts,
 };
 use bevy_file_dialog::prelude::*;
@@ -9,7 +9,7 @@ use dto::default::{NewTagMessageDto, StatusDto};
 use crate::{
     api::{CreateTagMessageEvent, GetTagMessagesEvent, UpdateTagEvent},
     building::{ModelData, SelectedTag, TagData, TagMessagesData},
-    utils::compare_by_created_at,
+    utils::{compare_by_created_at, convert_color_to_egui},
     GameState,
 };
 
@@ -101,12 +101,10 @@ pub fn ui_tag_windows(
                 });
                 match &tag_data.dto.status_dto {
                     Some(status_dto) => {
-                        // ui.horizontal(|ui| {
-                        // let child_ui =
-                        //     ui.child_ui(ui.available_rect_before_wrap(), *ui.layout(), None);
-                        // commands.run_system_cached_with(status_widget, &mut child_ui);
-                        // });
-                        status_widget(ui, status_dto);
+                        ui.horizontal(|ui| {
+                            ui.label("Status: ");
+                            status_widget(ui, status_dto);
+                        });
                     }
                     None => {
                         ui.horizontal(|ui| {
@@ -191,9 +189,27 @@ pub fn ui_tag_windows(
 }
 
 fn status_widget(ui: &mut egui::Ui, status_dto: &StatusDto) {
+    let color = (
+        convert_color_to_egui(status_dto.color_r),
+        convert_color_to_egui(status_dto.color_g),
+        convert_color_to_egui(status_dto.color_b),
+    );
+
+    let egui_color_bg = egui::Color32::from_rgba_unmultiplied(color.0, color.1, color.2, 50);
+    let egui_color = egui::Color32::from_rgba_unmultiplied(color.0, color.1, color.2, 255);
     // Put the buttons and label on the same row:
-    ui.horizontal(|ui| {
-        ui.label("Hello world");
-        ui.label(status_dto.title.clone());
-    });
+    egui::Frame::default()
+        .inner_margin(5.)
+        .outer_margin(0.)
+        .fill(egui_color_bg.clone())
+        .stroke(egui::Stroke::new(1.0, egui_color.clone()))
+        .rounding(Rounding {
+            nw: 14.,
+            ne: 14.,
+            sw: 14.,
+            se: 14.,
+        })
+        .show(ui, |ui| {
+            ui.label(egui::RichText::new(&status_dto.title).color(egui_color.clone()));
+        });
 }

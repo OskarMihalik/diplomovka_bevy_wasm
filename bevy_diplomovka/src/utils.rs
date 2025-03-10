@@ -32,3 +32,7 @@ pub fn get_token_from_user(query_user: Option<Single<(Entity, &LoggedUser)>>) ->
     };
     return token;
 }
+
+pub fn convert_color_to_egui(color: f32) -> u8 {
+    (color * 255.0) as u8
+}
