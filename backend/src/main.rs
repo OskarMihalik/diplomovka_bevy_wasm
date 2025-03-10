@@ -9,7 +9,7 @@ mod services;
 use axum::{
     extract::DefaultBodyLimit,
     http::{self, HeaderValue, Method},
-    routing::{get, post},
+    routing::{delete, get, post, put},
     Router,
 };
 use bb8::Pool;
@@ -17,6 +17,9 @@ use bb8_postgres::PostgresConnectionManager;
 use services::{
     model::{get_model_service, get_models_service, upload_new_model_service},
     project::{get_project_service, get_projects_service, insert_project_service},
+    status::{
+        create_status_service, delete_status_service, get_statuses_service, update_status_service,
+    },
     tag_message::{create_tag_message_service, get_tag_messages_service},
     tags::{get_tag_service, insert_tag_service, update_tag_service},
     users::{add_user_to_project_service, get_users_in_project_service, get_users_service},
@@ -56,6 +59,10 @@ async fn main() {
             .route("/users", post(get_users_service))
             .route("/project_user", post(add_user_to_project_service))
             .route("/users/{project_id}", get(get_users_in_project_service))
+            .route("/status/{project_id}", get(get_statuses_service))
+            .route("/status", put(create_status_service))
+            .route("/status", post(update_status_service))
+            .route("/status", delete(delete_status_service))
             .route(
                 "/model/{project_id}/{model_name}",
                 post(upload_new_model_service).layer(DefaultBodyLimit::max(1024 * 1024 * 1024)),

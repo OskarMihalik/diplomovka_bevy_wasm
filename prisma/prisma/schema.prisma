@@ -78,7 +78,7 @@ model Tag {
   created_by    User         @relation(fields: [created_by_id], references: [id])
   created_by_id Int
   status_id     Int?
-  status        Status?      @relation(fields: [status_id], references: [id])
+  status        Status?      @relation(fields: [status_id], references: [id], onDelete: SetNull)
 }
 
 model TagMessage {

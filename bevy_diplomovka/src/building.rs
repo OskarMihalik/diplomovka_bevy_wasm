@@ -41,6 +41,12 @@ pub struct ProjectData {
 
 pub struct ThisProjectIsSelected {}
 
+#[derive(Component)]
+
+pub struct ProjectStatusesData {
+    pub dtos: Vec<StatusDto>,
+}
+
 pub struct BuildingPlugin;
 
 /// This plugin is responsible for the game menu (containing only one button...)

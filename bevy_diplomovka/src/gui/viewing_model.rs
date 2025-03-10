@@ -113,7 +113,7 @@ pub fn ui_tag_windows(
                         });
                     }
                 }
-
+                if ui.button("Set status").clicked() {}
                 ui.horizontal(|ui| {
                     ui.label("XYZ:");
                     ui.add(
