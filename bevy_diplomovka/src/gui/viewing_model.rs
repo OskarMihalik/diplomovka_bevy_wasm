@@ -7,8 +7,11 @@ use bevy_file_dialog::prelude::*;
 use dto::default::{NewTagMessageDto, StatusDto};
 
 use crate::{
-    api::{CreateTagMessageEvent, GetTagMessagesEvent, UpdateTagEvent},
-    building::{ModelData, SelectedTag, TagData, TagMessagesData},
+    api::{CreateTagMessageEvent, GetStatusesEvent, GetTagMessagesEvent, UpdateTagEvent},
+    building::{
+        ModelData, ProjectData, SelectedTag, TagData, TagHasOpenStatusModal, TagMessagesData,
+        ThisProjectIsSelected,
+    },
     utils::{compare_by_created_at, convert_color_to_egui},
     GameState,
 };
@@ -81,9 +84,16 @@ pub fn ui_tag_windows(
         With<SelectedTag>,
     >,
     query_models: Query<(Entity, &ModelData)>,
+    query_projects: Query<(Entity, &ProjectData, Option<&ThisProjectIsSelected>)>,
     mut new_message_text: Local<String>,
 ) {
     let ctx = contexts.ctx_mut();
+
+    let current_selected_project = query_projects
+        .iter()
+        .find(|(_, _, selected)| selected.is_some())
+        .map(|(entity, project_data, _)| (entity, project_data));
+
     for (entity, mut tag_data, mut transform, g_transform, _selected_tag, tag_messages) in
         &mut query_tags
     {
@@ -113,7 +123,17 @@ pub fn ui_tag_windows(
                         });
                     }
                 }
-                if ui.button("Set status").clicked() {}
+                if ui.button("Set status").clicked() {
+                    match current_selected_project {
+                        Some(some) => {
+                            commands.trigger(GetStatusesEvent {
+                                project_id: some.1.dto.id,
+                            });
+                            commands.entity(entity).insert(TagHasOpenStatusModal {});
+                        }
+                        None => (),
+                    };
+                }
                 ui.horizontal(|ui| {
                     ui.label("XYZ:");
                     ui.add(
@@ -188,7 +208,7 @@ pub fn ui_tag_windows(
     }
 }
 
-fn status_widget(ui: &mut egui::Ui, status_dto: &StatusDto) {
+pub fn status_widget(ui: &mut egui::Ui, status_dto: &StatusDto) {
     let color = (
         convert_color_to_egui(status_dto.color_r),
         convert_color_to_egui(status_dto.color_g),

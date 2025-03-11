@@ -836,7 +836,7 @@ fn get_statuses(
         .on_response(
             move |trigger: Trigger<ReqwestResponseEvent>,
                   mut commands: Commands,
-                  query_status: Query<(Entity, Option<&ProjectStatusesData>)>| {
+                  query_status: Query<(Entity, &ProjectStatusesData)>| {
                 let parsed = match parse_response::<StatusesResponse>(trigger) {
                     Ok(ok) => ok,
                     Err(error_dto) => {

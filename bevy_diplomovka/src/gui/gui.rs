@@ -27,6 +27,7 @@ use egui_extras::{Column, TableBuilder};
 
 use super::{
     auth_screen::login_screen,
+    status_modal::ui_status_modal,
     theme::theme_picker,
     viewing_model::{ui_tag_windows, ui_viewing_model},
 };
@@ -72,7 +73,8 @@ impl Plugin for GuiPlugin {
         )
         .add_systems(
             Update,
-            (ui_viewing_model, ui_tag_windows).run_if(in_state(GameState::ViewingModel)),
+            (ui_viewing_model, ui_tag_windows, ui_status_modal)
+                .run_if(in_state(GameState::ViewingModel)),
         )
         .add_systems(
             Update,

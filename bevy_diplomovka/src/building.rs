@@ -26,6 +26,9 @@ pub struct TagMessagesData {
 pub struct SelectedTag {}
 
 #[derive(Component)]
+pub struct TagHasOpenStatusModal {}
+
+#[derive(Component)]
 pub struct ModelData {
     pub dto: ModelDto,
 }
