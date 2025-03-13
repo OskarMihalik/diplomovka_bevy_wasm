@@ -220,12 +220,8 @@ GenericClient
 }pub fn select_statuses() -> SelectStatusesStmt
 { SelectStatusesStmt(cornucopia_async::private::Stmt::new("select distinct  status.id, status.title, status.created_at, status.updated_at, status.color_r, status.color_g, status.color_b, status.project_id
 FROM public.\"Status\" status
-join public.\"Tag\" tag on tag.status_id = status.id
-join public.\"Model\" model on model.id = tag.model_id 
-join public.\"Project\" project on project.id = model.project_id 
-join public.\"ProjectUser\" projectUser on projectuser.user_id = $1
-WHERE project.id = $2
-ORDER BY status.created_at DESC
+join public.\"ProjectUser\" projectUser on projectUser.project_id = status.project_id 
+where projectUser.user_id  = $1 and projectuser.project_id = $2
 LIMIT $3
 OFFSET $4")) } pub struct
 SelectStatusesStmt(cornucopia_async::private::Stmt); impl SelectStatusesStmt
