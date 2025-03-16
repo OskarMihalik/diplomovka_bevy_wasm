@@ -194,29 +194,21 @@ fn react_to_model_change(
 fn add_tag(
     pick_hit: Trigger<Pointer<Click>>,
     mut commands: Commands,
-    query: Query<(&SceneRoot, &Transform, &Children)>,
+    query: Query<(&SceneRoot, &Transform, &GlobalTransform, &Children)>,
     query_model: Query<&ModelData>,
     query_tags: Query<(Entity, &TagData, Option<&SelectedTag>)>,
+    query_selected_model: Query<(Entity, &ModelData, &ThisModelIsSelected)>,
 ) {
     let target_entity = pick_hit.entity();
     if pick_hit.duration.as_millis() >= 100 {
         return;
     }
 
-    let model_data = match query_model.get(target_entity) {
-        Ok(model_data) => model_data,
-        Err(_) => return,
+    let Some((_, model_data, _)) = query_selected_model.iter().next() else {
+        return;
     };
 
     commands.entity(target_entity).log_components();
-
-    if let Ok(all) = query.get(target_entity) {
-        // do something with the components
-        bevy::log::info!("{:?}", all);
-        bevy::log::info!("intity: {:?}", target_entity.index());
-    } else {
-        // the entity does not have the components from the query
-    }
 
     bevy::log::info!("hit: {:?}", pick_hit.hit.position);
 
@@ -276,8 +268,26 @@ fn rebuild_tags(
     }
     bevy::log::info!("tags: {:#?}", tags);
     for tag_dto in tags.iter() {
+        let mesh_handle =
+            tag_dto
+                .status_dto
+                .clone()
+                .map_or(meshes.add(Cuboid::default()), |status| {
+                    return match status.shape {
+                        dto::default::Shape::Cuboid => meshes.add(Cuboid::default()),
+                        dto::default::Shape::Tetrahedron => meshes.add(Tetrahedron::default()),
+                        dto::default::Shape::Capsule3d => meshes.add(Capsule3d::default()),
+                        dto::default::Shape::Torus => meshes.add(Torus::default()),
+                        dto::default::Shape::Cylinder => meshes.add(Cylinder::default()),
+                        dto::default::Shape::Cone => meshes.add(Cone::default()),
+                        dto::default::Shape::ConicalFrustum => {
+                            meshes.add(ConicalFrustum::default())
+                        }
+                        dto::default::Shape::Sphere => meshes.add(Sphere::default()),
+                    };
+                });
         let mut builder = commands.spawn((
-            Mesh3d(meshes.add(Cuboid::new(0.3, 0.3, 0.3))),
+            Mesh3d(mesh_handle),
             MeshMaterial3d(
                 materials.add(StandardMaterial {
                     base_color: Color::srgb(
@@ -297,28 +307,20 @@ fn rebuild_tags(
                     ..Default::default()
                 }),
             ),
-            GlobalTransform::from_xyz(tag_dto.position_x, tag_dto.position_y, tag_dto.position_z),
+            // GlobalTransform::from_xyz(tag_dto.position_x, tag_dto.position_y, tag_dto.position_z),
+            // GlobalTransform::from_xyz(tag_dto.position_x, tag_dto.position_y, tag_dto.position_z),
+            Transform::from_xyz(tag_dto.position_x, tag_dto.position_y, tag_dto.position_z)
+                .with_scale([tag_dto.scale_x, tag_dto.scale_y, tag_dto.scale_z].into()),
             TagData {
-                dto: TagDto {
-                    id: tag_dto.id,
-                    title: tag_dto.title.clone(),
-                    model_id: tag_dto.model_id,
-                    created_at: tag_dto.created_at.clone(),
-                    position_x: tag_dto.position_x,
-                    position_y: tag_dto.position_y,
-                    position_z: tag_dto.position_z,
-                    created_by_id: tag_dto.created_by_id,
-                    email: tag_dto.email.clone(),
-                    username: tag_dto.username.clone(),
-                    status_dto: tag_dto.status_dto.clone(),
-                },
+                dto: tag_dto.clone(),
             },
         ));
+        builder.observe(add_tag);
+        // builder.set_parent(parent_entity.clone());
 
-        builder.set_parent_in_place(parent_entity.clone());
         if selected_tags_id.contains(&tag_dto.id) {
             builder.insert(SelectedTag {});
-            commands.trigger(GetTagMessagesEvent { tag_id: tag_dto.id });
+            builder.trigger(GetTagMessagesEvent { tag_id: tag_dto.id });
         }
     }
 }

@@ -13,7 +13,9 @@ use tokio_postgres::GenericClient;
 
 use crate::{auth::claim::Claims, ConnectionPool};
 
-use super::utils::{map_err_pool_con, map_generic_error, map_sql_error};
+use super::utils::{
+    from_dto_to_shape, from_shape_to_dto, map_err_pool_con, map_generic_error, map_sql_error,
+};
 
 #[debug_handler]
 pub async fn get_statuses_service(
@@ -54,6 +56,7 @@ pub async fn get_statuses_service(
                 color_g: entity.color_g,
                 color_b: entity.color_b,
                 project_id: entity.project_id,
+                shape: from_shape_to_dto(entity.shape),
             })
             .collect(),
     ))
@@ -80,6 +83,7 @@ pub async fn update_status_service(
                 color_b: dto.color_b,
                 project_id: dto.project_id,
                 id: dto.id,
+                shape: from_dto_to_shape(dto.shape),
             },
         )
         .await;
@@ -116,6 +120,7 @@ pub async fn create_status_service(
                 color_g: dto.color_g,
                 color_b: dto.color_b,
                 project_id: dto.project_id,
+                shape: from_dto_to_shape(dto.shape),
             },
         )
         .one()

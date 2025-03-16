@@ -43,6 +43,12 @@ pub struct TagDto {
     pub email: String,
     pub username: String,
     pub status_dto: Option<StatusDto>,
+    pub scale_x: f32,
+    pub scale_y: f32,
+    pub scale_z: f32,
+    pub rotation_x: f32,
+    pub rotation_y: f32,
+    pub rotation_z: f32,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -53,6 +59,7 @@ pub struct StatusDto {
     pub color_g: f32,
     pub color_b: f32,
     pub project_id: i32,
+    pub shape: Shape,
 }
 
 pub type TagDtoResponse = Result<Vec<TagDto>, ErrorDto>;
@@ -65,6 +72,20 @@ pub struct NewStatusDto {
     pub color_g: f32,
     pub color_b: f32,
     pub project_id: i32,
+    pub shape: Shape,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq)]
+pub enum Shape {
+    #[default]
+    Cuboid,
+    Tetrahedron,
+    Capsule3d,
+    Torus,
+    Cylinder,
+    Cone,
+    ConicalFrustum,
+    Sphere,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

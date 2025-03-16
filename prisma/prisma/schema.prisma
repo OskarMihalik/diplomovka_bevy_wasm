@@ -72,6 +72,12 @@ model Tag {
   position_x    Float        @db.Real
   position_y    Float        @db.Real
   position_z    Float        @db.Real
+  rotation_x    Float        @default(0) @db.Real
+  rotation_y    Float        @default(0) @db.Real
+  rotation_z    Float        @default(0) @db.Real
+  scale_x       Float        @default(0.3) @db.Real
+  scale_y       Float        @default(0.3) @db.Real
+  scale_z       Float        @default(0.3) @db.Real
   TagMessage    TagMessage[]
   model         Model        @relation(fields: [model_id], references: [id])
   model_id      Int
@@ -101,8 +107,20 @@ model Status {
   color_g    Float    @db.Real
   color_b    Float    @db.Real
   project_id Int
+  shape      Shape    @default(Cuboid)
   project    Project  @relation(fields: [project_id], references: [id])
   Tag        Tag[]
 
   @@unique([title, project_id], name: "unique_title_per_project")
+}
+
+enum Shape {
+  Cuboid
+  Tetrahedron
+  Capsule3d
+  Torus
+  Cylinder
+  Cone
+  ConicalFrustum
+  Sphere
 }

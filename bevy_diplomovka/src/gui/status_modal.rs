@@ -10,7 +10,7 @@ use bevy_egui::{
     egui::{self, Id},
     EguiContexts,
 };
-use dto::default::{NewStatusDto, StatusDto};
+use dto::default::{NewStatusDto, Shape, StatusDto};
 use egui_extras::{Column, TableBuilder};
 
 use super::viewing_model::status_widget;
@@ -49,8 +49,36 @@ pub fn ui_status_modal(
                             color_g: new_status.color_g,
                             color_b: new_status.color_b,
                             project_id: 0,
+                            shape: new_status.shape.clone(),
                         },
                     );
+                });
+                ui.vertical(|ui| {
+                    ui.label("Shape");
+                    egui::ComboBox::from_label("Select one!")
+                        .selected_text(format!("{:?}", new_status.shape))
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(&mut new_status.shape, Shape::Cuboid, "Cuboid");
+                            ui.selectable_value(
+                                &mut new_status.shape,
+                                Shape::Tetrahedron,
+                                "Tetrahedron",
+                            );
+                            ui.selectable_value(
+                                &mut new_status.shape,
+                                Shape::Capsule3d,
+                                "Capsule3d",
+                            );
+                            ui.selectable_value(&mut new_status.shape, Shape::Torus, "Torus");
+                            ui.selectable_value(&mut new_status.shape, Shape::Cylinder, "Cylinder");
+                            ui.selectable_value(&mut new_status.shape, Shape::Cone, "Cone");
+                            ui.selectable_value(
+                                &mut new_status.shape,
+                                Shape::ConicalFrustum,
+                                "ConicalFrustum",
+                            );
+                            ui.selectable_value(&mut new_status.shape, Shape::Sphere, "Sphere");
+                        });
                 });
                 ui.vertical(|ui| {
                     ui.label("Title");

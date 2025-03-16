@@ -14,6 +14,8 @@ use dto::default::{ErrorDto, NewTagDto, StatusDto, TagDto, TagDtoResponse};
 use model::cornucopia::queries::tags::{insert_tag, select_tags, update_tag, UpdateTagParams};
 use tokio_postgres::{Client, Error, GenericClient};
 
+use super::utils::from_shape_to_dto;
+
 pub fn map_err(error: RunError<Error>) -> Json<TagDtoResponse> {
     Json(TagDtoResponse::Err(ErrorDto::new(format!("{:?}", error))))
 }
@@ -76,6 +78,7 @@ async fn get_tags(client: &Client, model_id: &i32) -> Json<TagDtoResponse> {
                         tag.status_color_g,
                         tag.status_color_b,
                         tag.status_project_id,
+                        tag.shape,
                     ) {
                         (
                             Some(title),
@@ -84,6 +87,7 @@ async fn get_tags(client: &Client, model_id: &i32) -> Json<TagDtoResponse> {
                             Some(color_g),
                             Some(color_b),
                             Some(project_id),
+                            Some(shape),
                         ) => Some(StatusDto {
                             title,
                             id,
@@ -91,6 +95,7 @@ async fn get_tags(client: &Client, model_id: &i32) -> Json<TagDtoResponse> {
                             color_g,
                             color_b,
                             project_id,
+                            shape: from_shape_to_dto(shape),
                         }),
                         _ => None,
                     };
@@ -107,6 +112,12 @@ async fn get_tags(client: &Client, model_id: &i32) -> Json<TagDtoResponse> {
                         email: tag.email,
                         username: tag.username,
                         status_dto,
+                        scale_x: tag.scale_x,
+                        scale_y: tag.scale_y,
+                        scale_z: tag.scale_z,
+                        rotation_x: tag.rotation_x,
+                        rotation_y: tag.rotation_y,
+                        rotation_z: tag.rotation_z,
                     }
                 })
                 .collect();
@@ -135,6 +146,12 @@ pub async fn update_tag_service(
                 position_z: dto.position_z,
                 id: dto.id,
                 status_id: dto.status_dto.map_or(None, |status| Some(status.id)),
+                scale_x: dto.scale_x,
+                scale_y: dto.scale_y,
+                scale_z: dto.scale_z,
+                rotation_x: dto.rotation_x,
+                rotation_y: dto.rotation_y,
+                rotation_z: dto.rotation_z,
             },
         )
         .await;
