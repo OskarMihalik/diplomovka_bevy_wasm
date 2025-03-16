@@ -258,7 +258,6 @@ fn rebuild_tags(
     query_tags: Query<(Entity, &TagData, Option<&SelectedTag>)>,
 ) {
     let tags = &trigger.new_tag_dtos;
-    let parent_entity = &trigger.parent_entity;
     let mut selected_tags_id: Vec<i32> = vec![];
     for old_tag in query_tags.iter() {
         commands.entity(old_tag.0).despawn_recursive();
@@ -307,8 +306,6 @@ fn rebuild_tags(
                     ..Default::default()
                 }),
             ),
-            // GlobalTransform::from_xyz(tag_dto.position_x, tag_dto.position_y, tag_dto.position_z),
-            // GlobalTransform::from_xyz(tag_dto.position_x, tag_dto.position_y, tag_dto.position_z),
             Transform::from_xyz(tag_dto.position_x, tag_dto.position_y, tag_dto.position_z)
                 .with_scale([tag_dto.scale_x, tag_dto.scale_y, tag_dto.scale_z].into()),
             TagData {
@@ -316,7 +313,6 @@ fn rebuild_tags(
             },
         ));
         builder.observe(add_tag);
-        // builder.set_parent(parent_entity.clone());
 
         if selected_tags_id.contains(&tag_dto.id) {
             builder.insert(SelectedTag {});

@@ -100,90 +100,102 @@ pub fn ui_tag_windows(
         egui::Window::new(tag_data.dto.title.clone())
             .id(Id::new(tag_data.dto.id))
             .show(ctx, |ui| {
-                ui.horizontal(|ui| {
-                    ui.label(format!("Title: "));
-                    ui.text_edit_singleline(&mut tag_data.dto.title);
-                });
+                egui::Grid::new(Id::new("Tag grid 1"))
+                    .num_columns(2)
+                    .spacing([40.0, 8.0])
+                    .show(ui, |ui| {
+                        ui.label(format!("Title: "));
+                        ui.text_edit_singleline(&mut tag_data.dto.title);
+                        ui.end_row();
 
-                ui.horizontal(|ui| {
-                    ui.label("Created by: ");
-                    ui.label(&tag_data.dto.email);
-                });
-                match &tag_data.dto.status_dto {
-                    Some(status_dto) => {
-                        ui.horizontal(|ui| {
-                            ui.label("Status: ");
-                            status_widget(ui, status_dto);
-                        });
-                    }
-                    None => {
-                        ui.horizontal(|ui| {
-                            ui.label("Status: ");
-                            ui.label("No status");
-                        });
-                    }
-                }
-                if ui.button("Set status").clicked() {
-                    match current_selected_project {
-                        Some(some) => {
-                            commands.trigger(GetStatusesEvent {
-                                project_id: some.1.dto.id,
-                            });
-                            commands.entity(entity).insert(TagHasOpenStatusModal {});
-                        }
-                        None => (),
-                    };
-                }
-                ui.horizontal(|ui| {
-                    ui.label("XYZ:");
-                    ui.add(
-                        egui::DragValue::new(&mut transform.translation.x)
-                            .speed(0.01)
-                            .range(f32::MIN..=f32::MAX),
-                    );
-                    ui.add(
-                        egui::DragValue::new(&mut transform.translation.y)
-                            .speed(0.01)
-                            .range(f32::MIN..=f32::MAX),
-                    );
-                    ui.add(
-                        egui::DragValue::new(&mut transform.translation.z)
-                            .speed(0.01)
-                            .range(f32::MIN..=f32::MAX),
-                    );
-                });
-                ui.label("New comment:");
-                ui.text_edit_multiline(&mut *new_message_text);
+                        ui.label("Created by: ");
+                        ui.label(&tag_data.dto.email);
+                        ui.end_row();
 
-                if ui.button("Submit").clicked() {
-                    let parent_entity = query_models
-                        .iter()
-                        .find(|model| model.1.dto.id == tag_data.dto.model_id);
-                    if let Some((target_entity, _model_data)) = parent_entity {
-                        let mut tag_dto = tag_data.dto.clone();
-                        tag_dto.position_x = g_transform.translation().x;
-                        tag_dto.position_y = g_transform.translation().y;
-                        tag_dto.position_z = g_transform.translation().z;
-                        commands.trigger(UpdateTagEvent {
-                            tag_dto,
-                            parent_entity: target_entity,
-                        });
-                        if !new_message_text.is_empty() {
-                            commands.trigger(CreateTagMessageEvent {
-                                dto: NewTagMessageDto {
-                                    text: new_message_text.clone(),
-                                    tag_id: tag_data.dto.id,
-                                },
-                            });
+                        match &tag_data.dto.status_dto {
+                            Some(status_dto) => {
+                                ui.label("Status: ");
+                                status_widget(ui, status_dto);
+                            }
+                            None => {
+                                ui.label("Status: ");
+                                ui.label("No status");
+                            }
                         }
-                    }
-                }
-                if ui.button("Close").clicked() {
-                    commands.entity(entity).remove::<SelectedTag>();
-                }
+                        ui.end_row();
+
+                        ui.label("");
+                        if ui.button("Set status").clicked() {
+                            match current_selected_project {
+                                Some(some) => {
+                                    commands.trigger(GetStatusesEvent {
+                                        project_id: some.1.dto.id,
+                                    });
+                                    commands.entity(entity).insert(TagHasOpenStatusModal {});
+                                }
+                                None => (),
+                            };
+                        }
+                        ui.end_row();
+
+                        ui.label("XYZ:");
+                        ui.horizontal(|ui| {
+                            ui.add(
+                                egui::DragValue::new(&mut transform.translation.x)
+                                    .speed(0.01)
+                                    .range(f32::MIN..=f32::MAX),
+                            );
+                            ui.add(
+                                egui::DragValue::new(&mut transform.translation.y)
+                                    .speed(0.01)
+                                    .range(f32::MIN..=f32::MAX),
+                            );
+                            ui.add(
+                                egui::DragValue::new(&mut transform.translation.z)
+                                    .speed(0.01)
+                                    .range(f32::MIN..=f32::MAX),
+                            );
+                        });
+
+                        ui.end_row();
+
+                        ui.label("New comment:");
+                        ui.text_edit_multiline(&mut *new_message_text);
+                        ui.end_row();
+
+                        if ui.button("Submit").clicked() {
+                            let parent_entity = query_models
+                                .iter()
+                                .find(|model| model.1.dto.id == tag_data.dto.model_id);
+                            if let Some((target_entity, _model_data)) = parent_entity {
+                                let mut tag_dto = tag_data.dto.clone();
+                                tag_dto.position_x = g_transform.translation().x;
+                                tag_dto.position_y = g_transform.translation().y;
+                                tag_dto.position_z = g_transform.translation().z;
+                                commands.trigger(UpdateTagEvent {
+                                    tag_dto,
+                                    parent_entity: target_entity,
+                                });
+                                if !new_message_text.is_empty() {
+                                    commands.trigger(CreateTagMessageEvent {
+                                        dto: NewTagMessageDto {
+                                            text: new_message_text.clone(),
+                                            tag_id: tag_data.dto.id,
+                                        },
+                                    });
+                                }
+                            }
+                        }
+                        ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
+                            if ui.button("Close").clicked() {
+                                commands.entity(entity).remove::<SelectedTag>();
+                            }
+                        });
+                    });
+                ui.separator();
                 ui.horizontal(|ui| {
                     ui.heading("Comments:");
-                    if ui.button("Refresh").clicked() {
+                    if ui.button("⟲").clicked() {
                         commands.trigger(GetTagMessagesEvent {
                             tag_id: tag_data.dto.id,
                         });
