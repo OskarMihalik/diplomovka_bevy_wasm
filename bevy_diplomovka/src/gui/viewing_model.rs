@@ -215,7 +215,7 @@ pub fn status_widget(ui: &mut egui::Ui, status_dto: &StatusDto) {
         convert_color_to_egui(status_dto.color_b),
     );
 
-    let egui_color_bg = egui::Color32::from_rgba_unmultiplied(color.0, color.1, color.2, 50);
+    let egui_color_bg = egui::Color32::from_rgba_unmultiplied(color.0, color.1, color.2, 30);
     let egui_color = egui::Color32::from_rgba_unmultiplied(color.0, color.1, color.2, 255);
     // Put the buttons and label on the same row:
     egui::Frame::default()

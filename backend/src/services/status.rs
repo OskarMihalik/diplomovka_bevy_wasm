@@ -130,7 +130,7 @@ pub async fn create_status_service(
         return map_generic_error(error);
     }
 
-    return Json(EmptyResponse::Ok(()));
+    return Json(Ok(()));
 }
 
 #[debug_handler]

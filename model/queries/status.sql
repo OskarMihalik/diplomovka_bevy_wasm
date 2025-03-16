@@ -19,7 +19,6 @@ SET title=:title, color_r=:color_r, color_g=:color_g, color_b=:color_b, project_
 WHERE id=:id;
 
 --! delete_status
-UPDATE public."Tag"
-SET status_id = NULL
-WHERE status_id = :id;
+DELETE FROM public."Status"
+WHERE id = :id;
 

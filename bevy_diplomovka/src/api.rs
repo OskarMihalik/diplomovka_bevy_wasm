@@ -820,7 +820,7 @@ fn get_statuses(
     mut client: BevyReqwest,
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
-    let url = format!("{BACKEND_URL}/status/{:?}", trigger.project_id);
+    let url = format!("{BACKEND_URL}/statuses/{:?}", trigger.project_id);
     let reqwest_request = client
         .get(url)
         .header("authorization", get_token_from_user(query_user))
@@ -918,6 +918,7 @@ fn create_status(
     let body = trigger.dto.clone();
     let reqwest_request = client
         .put(url)
+        .json(&body)
         .header("authorization", get_token_from_user(query_user))
         .build()
         .unwrap();
@@ -975,10 +976,20 @@ fn delete_status(
         // where the only requirement is that the first parameter in the system is the specific Trigger type
         // the rest is the same as a regular system
         .on_response(
-            move |trigger: Trigger<ReqwestResponseEvent>, mut commands: Commands| {
+            move |trigger: Trigger<ReqwestResponseEvent>,
+                  mut commands: Commands,
+                  selected_model_query: Option<
+                Single<(Entity, &ModelData, &ThisModelIsSelected)>,
+            >| {
+                let Some(selected_model) = selected_model_query else {
+                    return;
+                };
                 let _ = match parse_response::<EmptyResponse>(trigger) {
                     Ok(_) => {
                         commands.trigger(GetStatusesEvent { project_id });
+                        commands.trigger(GetTagsEvent {
+                            model_id: selected_model.1.dto.id,
+                        });
                     }
                     Err(error_dto) => {
                         commands.trigger(ShowErrorEvent {

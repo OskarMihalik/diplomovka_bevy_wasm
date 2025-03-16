@@ -292,9 +292,8 @@ tokio_postgres::Error>> + Send + 'a>>, C> for UpdateStatusStmt
     tokio_postgres::Error>> + Send + 'a>>
     { Box::pin(self.bind(client, &params.title,&params.color_r,&params.color_g,&params.color_b,&params.project_id,&params.id,)) }
 }pub fn delete_status() -> DeleteStatusStmt
-{ DeleteStatusStmt(cornucopia_async::private::Stmt::new("UPDATE public.\"Tag\"
-SET status_id = NULL
-WHERE status_id = $1")) } pub struct
+{ DeleteStatusStmt(cornucopia_async::private::Stmt::new("DELETE FROM public.\"Status\"
+WHERE id = $1")) } pub struct
 DeleteStatusStmt(cornucopia_async::private::Stmt); impl DeleteStatusStmt
 { pub async fn bind<'a, C:
 GenericClient,>(&'a mut self, client: &'a  C,

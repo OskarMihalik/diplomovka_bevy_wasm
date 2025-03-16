@@ -58,7 +58,7 @@ pub struct StatusDto {
 pub type TagDtoResponse = Result<Vec<TagDto>, ErrorDto>;
 pub type StatusesResponse = Result<Vec<StatusDto>, ErrorDto>;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct NewStatusDto {
     pub title: String,
     pub color_r: f32,
