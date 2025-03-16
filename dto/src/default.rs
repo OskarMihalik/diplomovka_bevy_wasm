@@ -39,9 +39,33 @@ pub struct TagDto {
     pub position_x: f32,
     pub position_y: f32,
     pub position_z: f32,
+    pub created_by_id: i32,
+    pub email: String,
+    pub username: String,
+    pub status_dto: Option<StatusDto>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct StatusDto {
+    pub title: String,
+    pub id: i32,
+    pub color_r: f32,
+    pub color_g: f32,
+    pub color_b: f32,
+    pub project_id: i32,
 }
 
 pub type TagDtoResponse = Result<Vec<TagDto>, ErrorDto>;
+pub type StatusesResponse = Result<Vec<StatusDto>, ErrorDto>;
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct NewStatusDto {
+    pub title: String,
+    pub color_r: f32,
+    pub color_g: f32,
+    pub color_b: f32,
+    pub project_id: i32,
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct NewTagDto {
@@ -74,3 +98,5 @@ pub struct NewTagMessageDto {
     pub text: String,
     pub tag_id: i32,
 }
+
+pub type EmptyResponse = Result<(), ErrorDto>;

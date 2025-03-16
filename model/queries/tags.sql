@@ -1,5 +1,13 @@
---! select_tags (model_id, limit, offset)
-SELECT * FROM public."Tag" where model_id = :model_id order by created_at DESC 
+--: Tag(id, email, username, title, model_id, position_x, position_y, position_z, created_by_id, created_at, status_title?, status_id?, status_color_r?, status_color_g?, status_color_b?, status_project_id?)
+
+--! select_tags (model_id, limit, offset) : Tag
+SELECT DISTINCT tag.id, "user"."email", "user".username, tag.title, tag.model_id, tag.position_x, tag.position_y, tag.position_z, tag.created_by_id, tag.created_at, 
+"status".title as status_title, "status".id as status_id, "status".color_r as status_color_r, "status".color_g as status_color_g, "status".color_b as status_color_b, "status".project_id as status_project_id
+FROM public."Tag" tag
+JOIN public."User" "user" ON tag.created_by_id = "user".id
+LEFT JOIN public."Status" "status" on tag.status_id = "status".id
+where tag.model_id = :model_id
+order by tag.created_at DESC 
 LIMIT :limit
 OFFSET :offset;
 
@@ -8,9 +16,9 @@ INSERT INTO public."Tag"
 (title, model_id, position_x, position_y, position_z, created_by_id)
 VALUES(:title, :model_id, :position_x, :position_y, :position_z, :created_by_id);
 
---! update_tag (id, title, position_x, position_y, position_z)
+--! update_tag (id, title, position_x, position_y, position_z, status_id?)
 UPDATE public."Tag"
-SET title=:title, position_x=:position_x, position_y=:position_y, position_z=:position_z
+SET title=:title, position_x=:position_x, position_y=:position_y, position_z=:position_z, status_id=:status_id
 WHERE id=:id;
 
 --! select_model (id, limit, offset)

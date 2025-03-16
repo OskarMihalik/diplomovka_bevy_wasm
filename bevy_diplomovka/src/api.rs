@@ -6,8 +6,8 @@ use bevy_mod_reqwest::*;
 use dto::{
     auth::{AuthDtoResponse, LoginDto, RegisterDto},
     default::{
-        CreatedTagMessageDtoResponse, NewTagDto, NewTagMessageDto, TagDto, TagDtoResponse,
-        TagMessageDto, TagMessagesDtoResponse,
+        CreatedTagMessageDtoResponse, EmptyResponse, NewStatusDto, NewTagDto, NewTagMessageDto,
+        StatusDto, StatusesResponse, TagDto, TagDtoResponse, TagMessageDto, TagMessagesDtoResponse,
     },
     model::{ModelDto, ModelDtoResponse, ModelsDtoResponse},
     project::{NewProjectDto, ProjectDtoResponse, ProjectsDtoResponse},
@@ -19,8 +19,8 @@ use dto::{
 
 use crate::{
     building::{
-        ModelData, ProjectData, RebuildTagsEvent, TagData, TagMessagesData, ThisModelIsSelected,
-        ThisProjectIsSelected,
+        ModelData, ProjectData, ProjectStatusesData, RebuildTagsEvent, TagData, TagMessagesData,
+        ThisModelIsSelected, ThisProjectIsSelected,
     },
     gui::gui::ShowErrorEvent,
     models::UpdateModelsEvent,
@@ -53,6 +53,10 @@ impl Plugin for ApiPlugin {
             .add_observer(add_user_to_project)
             .add_observer(get_tag_messages)
             .add_observer(create_tag_message)
+            .add_observer(get_statuses)
+            .add_observer(update_status)
+            .add_observer(create_status)
+            .add_observer(delete_status)
             .add_observer(get_projects);
     }
 }
@@ -800,6 +804,200 @@ fn get_tag_messages(
                         }
                     }
                 }
+            },
+        )
+        // In case of request error, it can be reached using an observersystem as well
+        .on_error(on_reqwest_error);
+}
+
+#[derive(Event)]
+pub struct GetStatusesEvent {
+    pub project_id: i32,
+}
+
+fn get_statuses(
+    trigger: Trigger<GetStatusesEvent>,
+    mut client: BevyReqwest,
+    query_user: Option<Single<(Entity, &LoggedUser)>>,
+) {
+    let url = format!("{BACKEND_URL}/statuses/{:?}", trigger.project_id);
+    let reqwest_request = client
+        .get(url)
+        .header("authorization", get_token_from_user(query_user))
+        .build()
+        .unwrap();
+
+    client
+        // Sends the created http request
+        .send(reqwest_request)
+        // The response from the http request can be reached using an observersystem,
+        // where the only requirement is that the first parameter in the system is the specific Trigger type
+        // the rest is the same as a regular system
+        .on_response(
+            move |trigger: Trigger<ReqwestResponseEvent>,
+                  mut commands: Commands,
+                  query_status: Query<(Entity, &ProjectStatusesData)>| {
+                let parsed = match parse_response::<StatusesResponse>(trigger) {
+                    Ok(ok) => ok,
+                    Err(error_dto) => {
+                        commands.trigger(ShowErrorEvent {
+                            message: error_dto.message,
+                        });
+                        return;
+                    }
+                };
+
+                query_status.iter().for_each(|(entity, _status)| {
+                    commands.entity(entity).despawn_recursive();
+                });
+
+                commands.spawn(ProjectStatusesData { dtos: parsed });
+            },
+        )
+        // In case of request error, it can be reached using an observersystem as well
+        .on_error(on_reqwest_error);
+}
+
+#[derive(Event)]
+pub struct UpdateStatusEvent {
+    pub dto: StatusDto,
+}
+
+fn update_status(
+    trigger: Trigger<UpdateStatusEvent>,
+    mut client: BevyReqwest,
+    query_user: Option<Single<(Entity, &LoggedUser)>>,
+) {
+    let url = format!("{BACKEND_URL}/status");
+    let body = trigger.dto.clone();
+    let reqwest_request = client
+        .post(url)
+        .json(&body)
+        .header("authorization", get_token_from_user(query_user))
+        .build()
+        .unwrap();
+
+    client
+        // Sends the created http request
+        .send(reqwest_request)
+        // The response from the http request can be reached using an observersystem,
+        // where the only requirement is that the first parameter in the system is the specific Trigger type
+        // the rest is the same as a regular system
+        .on_response(
+            move |trigger: Trigger<ReqwestResponseEvent>, mut commands: Commands| {
+                let parsed = match parse_response::<EmptyResponse>(trigger) {
+                    Ok(ok) => {
+                        commands.trigger(GetStatusesEvent {
+                            project_id: body.project_id,
+                        });
+                    }
+                    Err(error_dto) => {
+                        commands.trigger(ShowErrorEvent {
+                            message: error_dto.message,
+                        });
+                        return;
+                    }
+                };
+            },
+        )
+        // In case of request error, it can be reached using an observersystem as well
+        .on_error(on_reqwest_error);
+}
+
+#[derive(Event)]
+pub struct CreateStatusEvent {
+    pub dto: NewStatusDto,
+}
+
+fn create_status(
+    trigger: Trigger<CreateStatusEvent>,
+    mut client: BevyReqwest,
+    query_user: Option<Single<(Entity, &LoggedUser)>>,
+) {
+    let url = format!("{BACKEND_URL}/status");
+    let body = trigger.dto.clone();
+    let reqwest_request = client
+        .put(url)
+        .json(&body)
+        .header("authorization", get_token_from_user(query_user))
+        .build()
+        .unwrap();
+
+    client
+        // Sends the created http request
+        .send(reqwest_request)
+        // The response from the http request can be reached using an observersystem,
+        // where the only requirement is that the first parameter in the system is the specific Trigger type
+        // the rest is the same as a regular system
+        .on_response(
+            move |trigger: Trigger<ReqwestResponseEvent>, mut commands: Commands| {
+                let parsed = match parse_response::<EmptyResponse>(trigger) {
+                    Ok(ok) => {
+                        commands.trigger(GetStatusesEvent {
+                            project_id: body.project_id,
+                        });
+                    }
+                    Err(error_dto) => {
+                        commands.trigger(ShowErrorEvent {
+                            message: error_dto.message,
+                        });
+                        return;
+                    }
+                };
+            },
+        )
+        // In case of request error, it can be reached using an observersystem as well
+        .on_error(on_reqwest_error);
+}
+
+#[derive(Event)]
+pub struct DeleteStatusEvent {
+    pub status_id: i32,
+    pub project_id: i32,
+}
+
+fn delete_status(
+    trigger: Trigger<DeleteStatusEvent>,
+    mut client: BevyReqwest,
+    query_user: Option<Single<(Entity, &LoggedUser)>>,
+) {
+    let url = format!("{BACKEND_URL}/status/{:?}", trigger.status_id);
+    let project_id = trigger.project_id.clone();
+    let reqwest_request = client
+        .delete(url)
+        .header("authorization", get_token_from_user(query_user))
+        .build()
+        .unwrap();
+
+    client
+        // Sends the created http request
+        .send(reqwest_request)
+        // The response from the http request can be reached using an observersystem,
+        // where the only requirement is that the first parameter in the system is the specific Trigger type
+        // the rest is the same as a regular system
+        .on_response(
+            move |trigger: Trigger<ReqwestResponseEvent>,
+                  mut commands: Commands,
+                  selected_model_query: Option<
+                Single<(Entity, &ModelData, &ThisModelIsSelected)>,
+            >| {
+                let Some(selected_model) = selected_model_query else {
+                    return;
+                };
+                let _ = match parse_response::<EmptyResponse>(trigger) {
+                    Ok(_) => {
+                        commands.trigger(GetStatusesEvent { project_id });
+                        commands.trigger(GetTagsEvent {
+                            model_id: selected_model.1.dto.id,
+                        });
+                    }
+                    Err(error_dto) => {
+                        commands.trigger(ShowErrorEvent {
+                            message: error_dto.message,
+                        });
+                        return;
+                    }
+                };
             },
         )
         // In case of request error, it can be reached using an observersystem as well

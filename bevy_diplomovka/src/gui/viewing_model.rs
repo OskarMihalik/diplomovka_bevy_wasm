@@ -1,15 +1,18 @@
 use bevy::prelude::*;
 use bevy_egui::{
-    egui::{self, Id, ScrollArea},
+    egui::{self, Id, Rounding, ScrollArea, Ui},
     EguiContexts,
 };
 use bevy_file_dialog::prelude::*;
-use dto::default::NewTagMessageDto;
+use dto::default::{NewTagMessageDto, StatusDto};
 
 use crate::{
-    api::{CreateTagMessageEvent, GetTagMessagesEvent, UpdateTagEvent},
-    building::{ModelData, SelectedTag, TagData, TagMessagesData},
-    utils::compare_by_created_at,
+    api::{CreateTagMessageEvent, GetStatusesEvent, GetTagMessagesEvent, UpdateTagEvent},
+    building::{
+        ModelData, ProjectData, SelectedTag, TagData, TagHasOpenStatusModal, TagMessagesData,
+        ThisProjectIsSelected,
+    },
+    utils::{compare_by_created_at, convert_color_to_egui},
     GameState,
 };
 
@@ -81,9 +84,16 @@ pub fn ui_tag_windows(
         With<SelectedTag>,
     >,
     query_models: Query<(Entity, &ModelData)>,
+    query_projects: Query<(Entity, &ProjectData, Option<&ThisProjectIsSelected>)>,
     mut new_message_text: Local<String>,
 ) {
     let ctx = contexts.ctx_mut();
+
+    let current_selected_project = query_projects
+        .iter()
+        .find(|(_, _, selected)| selected.is_some())
+        .map(|(entity, project_data, _)| (entity, project_data));
+
     for (entity, mut tag_data, mut transform, g_transform, _selected_tag, tag_messages) in
         &mut query_tags
     {
@@ -94,6 +104,36 @@ pub fn ui_tag_windows(
                     ui.label(format!("Title: "));
                     ui.text_edit_singleline(&mut tag_data.dto.title);
                 });
+
+                ui.horizontal(|ui| {
+                    ui.label("Created by: ");
+                    ui.label(&tag_data.dto.email);
+                });
+                match &tag_data.dto.status_dto {
+                    Some(status_dto) => {
+                        ui.horizontal(|ui| {
+                            ui.label("Status: ");
+                            status_widget(ui, status_dto);
+                        });
+                    }
+                    None => {
+                        ui.horizontal(|ui| {
+                            ui.label("Status: ");
+                            ui.label("No status");
+                        });
+                    }
+                }
+                if ui.button("Set status").clicked() {
+                    match current_selected_project {
+                        Some(some) => {
+                            commands.trigger(GetStatusesEvent {
+                                project_id: some.1.dto.id,
+                            });
+                            commands.entity(entity).insert(TagHasOpenStatusModal {});
+                        }
+                        None => (),
+                    };
+                }
                 ui.horizontal(|ui| {
                     ui.label("XYZ:");
                     ui.add(
@@ -128,12 +168,14 @@ pub fn ui_tag_windows(
                             tag_dto,
                             parent_entity: target_entity,
                         });
-                        commands.trigger(CreateTagMessageEvent {
-                            dto: NewTagMessageDto {
-                                text: new_message_text.clone(),
-                                tag_id: tag_data.dto.id,
-                            },
-                        });
+                        if !new_message_text.is_empty() {
+                            commands.trigger(CreateTagMessageEvent {
+                                dto: NewTagMessageDto {
+                                    text: new_message_text.clone(),
+                                    tag_id: tag_data.dto.id,
+                                },
+                            });
+                        }
                     }
                 }
                 if ui.button("Close").clicked() {
@@ -164,4 +206,30 @@ pub fn ui_tag_windows(
                 })
             });
     }
+}
+
+pub fn status_widget(ui: &mut egui::Ui, status_dto: &StatusDto) {
+    let color = (
+        convert_color_to_egui(status_dto.color_r),
+        convert_color_to_egui(status_dto.color_g),
+        convert_color_to_egui(status_dto.color_b),
+    );
+
+    let egui_color_bg = egui::Color32::from_rgba_unmultiplied(color.0, color.1, color.2, 30);
+    let egui_color = egui::Color32::from_rgba_unmultiplied(color.0, color.1, color.2, 255);
+    // Put the buttons and label on the same row:
+    egui::Frame::default()
+        .inner_margin(5.)
+        .outer_margin(0.)
+        .fill(egui_color_bg.clone())
+        .stroke(egui::Stroke::new(1.0, egui_color.clone()))
+        .rounding(Rounding {
+            nw: 14.,
+            ne: 14.,
+            sw: 14.,
+            se: 14.,
+        })
+        .show(ui, |ui| {
+            ui.label(egui::RichText::new(&status_dto.title).color(egui_color.clone()));
+        });
 }

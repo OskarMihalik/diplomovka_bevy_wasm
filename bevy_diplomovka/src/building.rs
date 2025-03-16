@@ -2,7 +2,7 @@ use crate::api::{GetModelsEvent, GetTagMessagesEvent, GetUsersInProjectEvent, BA
 use bevy::prelude::*;
 use bevy_panorbit_camera::PanOrbitCamera;
 use dto::{
-    default::{NewTagDto, TagDto, TagMessageDto},
+    default::{NewTagDto, StatusDto, TagDto, TagMessageDto},
     model::ModelDto,
     project::ProjectDto,
 };
@@ -26,6 +26,9 @@ pub struct TagMessagesData {
 pub struct SelectedTag {}
 
 #[derive(Component)]
+pub struct TagHasOpenStatusModal {}
+
+#[derive(Component)]
 pub struct ModelData {
     pub dto: ModelDto,
 }
@@ -40,6 +43,12 @@ pub struct ProjectData {
 #[derive(Component)]
 
 pub struct ThisProjectIsSelected {}
+
+#[derive(Component)]
+
+pub struct ProjectStatusesData {
+    pub dtos: Vec<StatusDto>,
+}
 
 pub struct BuildingPlugin;
 
@@ -73,7 +82,7 @@ fn on_exit_viewing_model(
     query: Query<Entity, (With<ModelData>, With<Transform>, With<SceneRoot>)>,
 ) {
     for entity in query.iter() {
-        commands.entity(entity).remove::<(Transform, SceneRoot)>();
+        commands.entity(entity).despawn_recursive();
     }
 }
 
@@ -269,10 +278,25 @@ fn rebuild_tags(
     for tag_dto in tags.iter() {
         let mut builder = commands.spawn((
             Mesh3d(meshes.add(Cuboid::new(0.3, 0.3, 0.3))),
-            MeshMaterial3d(materials.add(StandardMaterial {
-                base_color: Color::srgb(1.0, 0.0, 0.0),
-                ..Default::default()
-            })),
+            MeshMaterial3d(
+                materials.add(StandardMaterial {
+                    base_color: Color::srgb(
+                        tag_dto
+                            .status_dto
+                            .clone()
+                            .map_or(1.0, |status| status.color_r),
+                        tag_dto
+                            .status_dto
+                            .clone()
+                            .map_or(0.0, |status| status.color_g),
+                        tag_dto
+                            .status_dto
+                            .clone()
+                            .map_or(0.0, |status| status.color_b),
+                    ),
+                    ..Default::default()
+                }),
+            ),
             GlobalTransform::from_xyz(tag_dto.position_x, tag_dto.position_y, tag_dto.position_z),
             TagData {
                 dto: TagDto {
@@ -283,6 +307,10 @@ fn rebuild_tags(
                     position_x: tag_dto.position_x,
                     position_y: tag_dto.position_y,
                     position_z: tag_dto.position_z,
+                    created_by_id: tag_dto.created_by_id,
+                    email: tag_dto.email.clone(),
+                    username: tag_dto.username.clone(),
+                    status_dto: tag_dto.status_dto.clone(),
                 },
             },
         ));
@@ -290,6 +318,7 @@ fn rebuild_tags(
         builder.set_parent_in_place(parent_entity.clone());
         if selected_tags_id.contains(&tag_dto.id) {
             builder.insert(SelectedTag {});
+            commands.trigger(GetTagMessagesEvent { tag_id: tag_dto.id });
         }
     }
 }
