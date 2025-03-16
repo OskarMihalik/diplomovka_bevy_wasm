@@ -1,6 +1,10 @@
 use bevy::prelude::*;
 use bevy_egui::{
-    egui::{self, Id, Rounding, ScrollArea, Ui},
+    egui::{
+        self,
+        text::{LayoutJob, TextWrapping},
+        Id, Rounding, ScrollArea, TextFormat, TextStyle, Ui, Widget,
+    },
     EguiContexts,
 };
 use bevy_file_dialog::prelude::*;
@@ -9,63 +13,90 @@ use dto::default::{NewTagMessageDto, StatusDto};
 use crate::{
     api::{CreateTagMessageEvent, GetStatusesEvent, GetTagMessagesEvent, UpdateTagEvent},
     building::{
-        ModelData, ProjectData, SelectedTag, TagData, TagHasOpenStatusModal, TagMessagesData,
-        ThisProjectIsSelected,
+        ModelData, ProjectData, SelectedTag, TagData, TagFilter, TagHasOpenStatusModal,
+        TagMessagesData, ThisProjectIsSelected,
     },
     utils::{compare_by_created_at, convert_color_to_egui},
     GameState,
 };
 
-use super::gui::GlbFileContents;
-
-pub fn ui_viewing_model(
+pub fn ui_left_panel(
     mut commands: Commands,
     mut contexts: EguiContexts,
     query_tags: Query<(Entity, &TagData, Option<&SelectedTag>)>,
+    mut tag_filter: Single<&mut TagFilter>,
 ) {
     let ctx = contexts.ctx_mut();
 
     egui::SidePanel::left("left_panel")
         .resizable(true)
         .show(ctx, |ui| {
-            ui.label("Some things");
-            if ui.button("Select model").clicked() {
+            if ui.button("⬅").clicked() {
                 commands.set_state(GameState::SelectingProjectAndModel);
             }
-            if ui.add(egui::widgets::Button::new("Load model")).clicked() {
-                commands
-                    .dialog()
-                    .add_filter("Glb", &["glb"])
-                    .load_file::<GlbFileContents>();
-            }
-
-            ui.heading("Tags");
+            let inner_tag_filter = tag_filter.bypass_change_detection();
+            egui::Grid::new(Id::new("Tags filter"))
+                .num_columns(2)
+                .spacing([40.0, 8.0])
+                .show(ui, |ui| {
+                    ui.heading("Tags");
+                    ui.text_edit_singleline(&mut inner_tag_filter.title)
+                });
             ui.separator();
 
             ui.vertical(|ui| {
                 let scroll_area = ScrollArea::vertical();
                 scroll_area.show(ui, |ui| {
-                    ui.set_width(ui.available_width());
-                    for (tag_entity, tag, selected_tag) in
-                        query_tags.iter().sort_by::<&TagData>(|value_1, value_2| {
-                            compare_by_created_at(&value_1.dto.created_at, &value_2.dto.created_at)
-                        })
-                    {
-                        let checked = selected_tag.is_some();
-                        if ui
-                            .selectable_label(checked, format!("{}: {}", tag.dto.id, tag.dto.title))
-                            .clicked()
-                        {
-                            if checked {
-                                commands.entity(tag_entity).remove::<SelectedTag>();
-                            } else {
-                                commands.entity(tag_entity).insert(SelectedTag {});
+                    egui::Grid::new(Id::new("Tags filter"))
+                        .num_columns(2)
+                        .spacing([40.0, 4.0])
+                        .max_col_width(100.0)
+                        .show(ui, |ui| {
+                            for (tag_entity, tag, selected_tag) in query_tags
+                                .iter()
+                                .sort_by::<&TagData>(|value_1, value_2| {
+                                    compare_by_created_at(
+                                        &value_1.dto.created_at,
+                                        &value_2.dto.created_at,
+                                    )
+                                })
+                                .filter(|(_, tag, _)| tag.dto.title.contains(&*tag_filter.title))
+                            {
+                                let checked = selected_tag.is_some();
+                                let text = format!("{}: {}", tag.dto.id, tag.dto.title);
+                                let mut job = LayoutJob::default();
+                                let format = TextFormat {
+                                    font_id: TextStyle::Button.resolve(ui.style()),
+                                    ..Default::default()
+                                };
+                                job.append(text.as_str(), 0.0, format);
+                                job.wrap = TextWrapping {
+                                    max_rows: 1,
+                                    break_anywhere: true,
+                                    ..Default::default()
+                                };
+
+                                if ui.selectable_label(checked, job).clicked() {
+                                    if checked {
+                                        commands.entity(tag_entity).remove::<SelectedTag>();
+                                    } else {
+                                        commands.entity(tag_entity).insert(SelectedTag {});
+                                    }
+                                }
+                                match &tag.dto.status_dto {
+                                    Some(status_dto) => {
+                                        status_widget(ui, status_dto);
+                                    }
+                                    None => {
+                                        ui.label("No status");
+                                    }
+                                }
+                                ui.end_row();
                             }
-                        }
-                    }
+                        });
                 });
             });
-            ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
+            // ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
         });
 }
 

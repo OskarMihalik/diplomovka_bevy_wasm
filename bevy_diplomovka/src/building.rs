@@ -1,5 +1,5 @@
 use crate::api::{GetModelsEvent, GetTagMessagesEvent, GetUsersInProjectEvent, BACKEND_URL};
-use bevy::prelude::*;
+use bevy::{prelude::*, render::view::visibility};
 use bevy_panorbit_camera::PanOrbitCamera;
 use dto::{
     default::{NewTagDto, StatusDto, TagDto, TagMessageDto},
@@ -49,6 +49,11 @@ pub struct ThisProjectIsSelected {}
 pub struct ProjectStatusesData {
     pub dtos: Vec<StatusDto>,
 }
+#[derive(Component)]
+
+pub struct TagFilter {
+    pub title: String,
+}
 
 pub struct BuildingPlugin;
 
@@ -67,14 +72,31 @@ impl Plugin for BuildingPlugin {
                 Update,
                 react_to_model_change.run_if(in_state(GameState::SelectingProjectAndModel)),
             )
+            .add_systems(
+                Update,
+                on_tag_filter_change.run_if(in_state(GameState::ViewingModel)),
+            )
             .add_observer(rebuild_tags)
             .add_observer(spawn_building);
     }
 }
 
-#[derive(Event)]
-pub struct SpawnModelEvent {
-    pub model_dto: ModelDto,
+fn on_tag_filter_change(
+    query_tag_filter: Query<&TagFilter, Changed<TagFilter>>,
+    mut query_tags: Query<(&TagData, &mut Visibility)>,
+) {
+    let filter = match query_tag_filter.iter().next() {
+        Some(filter) => filter,
+        None => return,
+    };
+
+    for (tag_data, mut visibility) in query_tags.iter_mut() {
+        if tag_data.dto.title.contains(&filter.title) {
+            *visibility = Visibility::Visible;
+        } else {
+            *visibility = Visibility::Hidden;
+        }
+    }
 }
 
 fn on_exit_viewing_model(
@@ -95,6 +117,10 @@ fn on_viewing_model(
             model_id: model_data.dto.id,
         });
     }
+}
+#[derive(Event)]
+pub struct SpawnModelEvent {
+    pub model_dto: ModelDto,
 }
 
 fn spawn_building(
@@ -135,6 +161,10 @@ fn setup_scene(mut commands: Commands) {
         Transform::from_translation(Vec3::new(0.0, 1.5, 5.0)),
         PanOrbitCamera::default(),
     ));
+
+    commands.spawn(TagFilter {
+        title: "".to_string(),
+    });
 }
 
 fn react_to_project_change(
