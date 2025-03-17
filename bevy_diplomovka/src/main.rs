@@ -49,8 +49,8 @@ fn main() {
 }
 
 fn init_refresh_rate(mut winit: ResMut<WinitSettings>) {
-    winit.focused_mode = UpdateMode::reactive_low_power(Duration::from_secs_f32(1.0 / 30.0));
-    winit.unfocused_mode = UpdateMode::reactive_low_power(Duration::from_secs_f32(1.0 / 30.0));
+    winit.focused_mode = UpdateMode::reactive(Duration::from_secs_f32(1.0 / 30.0));
+    winit.unfocused_mode = UpdateMode::reactive_low_power(Duration::from_secs(1));
 }
 
 // Sets the icon on windows and X11
