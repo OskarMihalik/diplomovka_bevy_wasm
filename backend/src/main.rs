@@ -21,7 +21,7 @@ use services::{
         create_status_service, delete_status_service, get_statuses_service, update_status_service,
     },
     tag_message::{create_tag_message_service, get_tag_messages_service},
-    tags::{get_tag_service, insert_tag_service, update_tag_service},
+    tags::{delete_tag_service, get_tag_service, insert_tag_service, update_tag_service},
     users::{add_user_to_project_service, get_users_in_project_service, get_users_service},
 };
 use std::net::SocketAddr;
@@ -52,6 +52,7 @@ async fn main() {
             .route("/tag_message/{tag_id}", get(get_tag_messages_service))
             .route("/tag_message", post(create_tag_message_service))
             .route("/tags/{model_id}", get(get_tag_service))
+            .route("/tag/{tag_id}", delete(delete_tag_service))
             .route("/model/{model_id}", get(get_model_service))
             .route("/models/{project_id}", get(get_models_service))
             .route("/project/{project_id}", get(get_project_service))

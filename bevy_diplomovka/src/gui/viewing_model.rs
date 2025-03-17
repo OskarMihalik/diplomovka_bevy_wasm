@@ -11,7 +11,10 @@ use bevy_file_dialog::prelude::*;
 use dto::default::{NewTagMessageDto, StatusDto};
 
 use crate::{
-    api::{CreateTagMessageEvent, GetStatusesEvent, GetTagMessagesEvent, UpdateTagEvent},
+    api::{
+        CreateTagMessageEvent, DeleteTagEvent, GetStatusesEvent, GetTagMessagesEvent,
+        UpdateTagEvent,
+    },
     building::{
         ModelData, ProjectData, SelectedTag, TagData, TagFilter, TagHasOpenStatusModal,
         TagMessagesData, ThisProjectIsSelected,
@@ -19,6 +22,8 @@ use crate::{
     utils::{compare_by_created_at, convert_color_to_egui},
     GameState,
 };
+
+use super::confirm_modal::{confirm_modal, ConfirmModalResult};
 
 pub fn ui_left_panel(
     mut commands: Commands,
@@ -117,6 +122,7 @@ pub fn ui_tag_windows(
     query_models: Query<(Entity, &ModelData)>,
     query_projects: Query<(Entity, &ProjectData, Option<&ThisProjectIsSelected>)>,
     mut new_message_text: Local<String>,
+    mut confirm_delete_tag_modal_open: Local<bool>,
 ) {
     let ctx = contexts.ctx_mut();
 
@@ -221,6 +227,9 @@ pub fn ui_tag_windows(
                             if ui.button("Close").clicked() {
                                 commands.entity(entity).remove::<SelectedTag>();
                             }
+                            if ui.button("Delete").clicked() {
+                                *confirm_delete_tag_modal_open = true;
+                            }
                         });
                     });
                 ui.separator();
@@ -248,6 +257,20 @@ pub fn ui_tag_windows(
                     });
                 })
             });
+
+        if *confirm_delete_tag_modal_open {
+            match confirm_modal(ctx, "Delete?", &confirm_delete_tag_modal_open) {
+                ConfirmModalResult::Confirm => {
+                    commands.trigger(DeleteTagEvent {
+                        tag_id: tag_data.dto.id,
+                    });
+                }
+                ConfirmModalResult::Cancel => {
+                    *confirm_delete_tag_modal_open = false;
+                }
+                ConfirmModalResult::Nothing => (),
+            }
+        }
     }
 }
 

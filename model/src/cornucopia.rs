@@ -734,7 +734,17 @@ tokio_postgres::Error>> + Send + 'a>>, C> for UpdateTagStmt
     UpdateTagParams<T1,>) -> std::pin::Pin<Box<dyn futures::Future<Output = Result<u64,
     tokio_postgres::Error>> + Send + 'a>>
     { Box::pin(self.bind(client, &params.title,&params.position_x,&params.position_y,&params.position_z,&params.status_id,&params.scale_x,&params.scale_y,&params.scale_z,&params.rotation_x,&params.rotation_y,&params.rotation_z,&params.id,)) }
-}pub fn select_model() -> SelectModelStmt
+}pub fn delete_tag() -> DeleteTagStmt
+{ DeleteTagStmt(cornucopia_async::private::Stmt::new("DELETE FROM public.\"Tag\"
+WHERE id = $1")) } pub struct
+DeleteTagStmt(cornucopia_async::private::Stmt); impl DeleteTagStmt
+{ pub async fn bind<'a, C:
+GenericClient,>(&'a mut self, client: &'a  C,
+id: &'a i32,) -> Result<u64, tokio_postgres::Error>
+{
+    let stmt = self.0.prepare(client).await?;
+    client.execute(stmt, &[id,]).await
+} }pub fn select_model() -> SelectModelStmt
 { SelectModelStmt(cornucopia_async::private::Stmt::new("SELECT id, \"version\", model_link, \"name\", created_at, updated_at, project_id
 FROM public.\"Model\" WHERE id=($1) order by created_at DESC 
 LIMIT $2

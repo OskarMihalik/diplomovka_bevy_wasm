@@ -23,6 +23,10 @@ SET title=:title, position_x=:position_x, position_y=:position_y, position_z=:po
 scale_x=:scale_x, scale_y=:scale_y, scale_z=:scale_z, rotation_x=:rotation_x, rotation_y=:rotation_y, rotation_z=:rotation_z
 WHERE id=:id;
 
+--! delete_tag
+DELETE FROM public."Tag"
+WHERE id = :id;
+
 --! select_model (id, limit, offset)
 SELECT id, "version", model_link, "name", created_at, updated_at, project_id
 FROM public."Model" WHERE id=(:id) order by created_at DESC 

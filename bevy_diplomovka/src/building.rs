@@ -277,7 +277,6 @@ fn add_tag(
 #[derive(Event)]
 pub struct RebuildTagsEvent {
     pub new_tag_dtos: Vec<TagDto>,
-    pub parent_entity: Entity,
 }
 
 fn rebuild_tags(

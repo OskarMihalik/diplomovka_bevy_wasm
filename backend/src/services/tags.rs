@@ -10,11 +10,13 @@ use cornucopia_async::Params;
 
 use crate::{auth::claim::Claims, ConnectionPool};
 use bb8::RunError;
-use dto::default::{ErrorDto, NewTagDto, StatusDto, TagDto, TagDtoResponse};
-use model::cornucopia::queries::tags::{insert_tag, select_tags, update_tag, UpdateTagParams};
+use dto::default::{EmptyResponse, ErrorDto, NewTagDto, StatusDto, TagDto, TagDtoResponse};
+use model::cornucopia::queries::tags::{
+    delete_tag, insert_tag, select_tags, update_tag, DeleteTagStmt, UpdateTagParams,
+};
 use tokio_postgres::{Client, Error, GenericClient};
 
-use super::utils::from_shape_to_dto;
+use super::utils::{from_shape_to_dto, map_err_pool_con};
 
 pub fn map_err(error: RunError<Error>) -> Json<TagDtoResponse> {
     Json(TagDtoResponse::Err(ErrorDto::new(format!("{:?}", error))))
@@ -27,7 +29,7 @@ pub async fn get_tag_service(
 ) -> Json<TagDtoResponse> {
     let connection = match pool.get().await {
         Ok(connection) => connection,
-        Err(error) => return map_err(error),
+        Err(error) => return map_err_pool_con(error),
     };
 
     get_tags(connection.client(), &model_id).await
@@ -41,7 +43,7 @@ pub async fn insert_tag_service(
 ) -> Json<TagDtoResponse> {
     let connection = match pool.get().await {
         Ok(connection) => connection,
-        Err(error) => return map_err(error),
+        Err(error) => return map_err_pool_con(error),
     };
 
     let result = insert_tag()
@@ -134,7 +136,7 @@ pub async fn update_tag_service(
 ) -> Json<TagDtoResponse> {
     let connection = match pool.get().await {
         Ok(connection) => connection,
-        Err(error) => return map_err(error),
+        Err(error) => return map_err_pool_con(error),
     };
     let result = update_tag()
         .params(
@@ -161,4 +163,21 @@ pub async fn update_tag_service(
     }
 
     get_tags(connection.client(), &dto.model_id).await
+}
+
+#[debug_handler]
+pub async fn delete_tag_service(
+    State(pool): State<ConnectionPool>,
+    Path(tag_id): Path<i32>,
+) -> Json<EmptyResponse> {
+    let connection = match pool.get().await {
+        Ok(connection) => connection,
+        Err(error) => return map_err_pool_con(error),
+    };
+    let result = delete_tag().bind(connection.client(), &tag_id).await;
+
+    if let Err(error) = result {
+        return Json(Err(ErrorDto::new(format!("{:?}", error))));
+    }
+    return Json(Ok(()));
 }

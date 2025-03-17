@@ -57,6 +57,7 @@ impl Plugin for ApiPlugin {
             .add_observer(update_status)
             .add_observer(create_status)
             .add_observer(delete_status)
+            .add_observer(delete_tag)
             .add_observer(get_projects);
     }
 }
@@ -113,10 +114,52 @@ fn get_tags(
                 let parsed = parse_response::<TagDtoResponse>(trigger);
                 match parsed {
                     Ok(tags) => {
-                        commands.trigger(RebuildTagsEvent {
-                            new_tag_dtos: tags,
-                            parent_entity,
-                        });
+                        commands.trigger(RebuildTagsEvent { new_tag_dtos: tags });
+                    }
+                    Err(error_dto) => commands.trigger(ShowErrorEvent {
+                        message: error_dto.message,
+                    }),
+                };
+            },
+        )
+        // In case of request error, it can be reached using an observersystem as well
+        .on_error(on_reqwest_error);
+}
+
+#[derive(Event)]
+pub struct DeleteTagEvent {
+    pub tag_id: i32,
+}
+
+fn delete_tag(
+    trigger: Trigger<DeleteTagEvent>,
+    mut client: BevyReqwest,
+    query_user: Option<Single<(Entity, &LoggedUser)>>,
+) {
+    let url = format!("{BACKEND_URL}/tag/{:?}", trigger.tag_id);
+
+    // use regular reqwest http calls, then poll them to completion.
+    let reqwest_request = client
+        .delete(url)
+        .header("authorization", get_token_from_user(query_user))
+        .build()
+        .unwrap();
+
+    client
+        // Sends the created http request
+        .send(reqwest_request)
+        // The response from the http request can be reached using an observersystem,
+        // where the only requirement is that the first parameter in the system is the specific Trigger type
+        // the rest is the same as a regular system
+        .on_response(
+            |trigger: Trigger<ReqwestResponseEvent>,
+             mut commands: Commands,
+             query_model: Single<(Entity, &ModelData, &ThisModelIsSelected)>| {
+                let model_id = query_model.1.dto.id;
+                let parsed = parse_response::<EmptyResponse>(trigger);
+                match parsed {
+                    Ok(_) => {
+                        commands.trigger(GetTagsEvent { model_id });
                     }
                     Err(error_dto) => commands.trigger(ShowErrorEvent {
                         message: error_dto.message,
@@ -161,10 +204,7 @@ fn create_new_tag(
                 let parsed: TagDtoResponse = parse_response(trigger);
                 match parsed {
                     Ok(tags) => {
-                        commands.trigger(RebuildTagsEvent {
-                            new_tag_dtos: tags,
-                            parent_entity,
-                        });
+                        commands.trigger(RebuildTagsEvent { new_tag_dtos: tags });
                     }
                     Err(error_dto) => commands.trigger(ShowErrorEvent {
                         message: error_dto.message,
@@ -316,7 +356,6 @@ fn update_tag(
 ) {
     let url = format!("{BACKEND_URL}/tags");
     let body = trigger.tag_dto.clone();
-    let parent_entity = trigger.parent_entity.clone();
     let reqwest_request = client
         .patch(url)
         .json(&body)
@@ -335,10 +374,7 @@ fn update_tag(
                 let parsed: TagDtoResponse = parse_response(trigger);
                 match parsed {
                     Ok(tags) => {
-                        commands.trigger(RebuildTagsEvent {
-                            new_tag_dtos: tags,
-                            parent_entity,
-                        });
+                        commands.trigger(RebuildTagsEvent { new_tag_dtos: tags });
                     }
                     Err(error_dto) => commands.trigger(ShowErrorEvent {
                         message: error_dto.message,
