@@ -36,3 +36,16 @@ pub fn get_token_from_user(query_user: Option<Single<(Entity, &LoggedUser)>>) ->
 pub fn convert_color_to_egui(color: f32) -> u8 {
     (color * 255.0) as u8
 }
+
+pub fn filter_tags(title: &str, status: &str, filter_title: &str, filter_status: &str) -> bool {
+    if filter_title.is_empty() && filter_status.is_empty() {
+        return true;
+    }
+    if filter_title.is_empty() {
+        return status == filter_status;
+    }
+    if filter_status.is_empty() {
+        return title.contains(filter_title);
+    }
+    return title.contains(filter_title) && status == filter_status;
+}

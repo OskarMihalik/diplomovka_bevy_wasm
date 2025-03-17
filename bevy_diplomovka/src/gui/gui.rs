@@ -29,7 +29,7 @@ use super::{
     auth_screen::login_screen,
     status_modal::ui_status_modal,
     theme::theme_picker,
-    viewing_model::{ui_left_panel, ui_tag_windows},
+    viewing_model::{ui_left_panel, ui_tag_windows, update_filter_change},
 };
 pub struct GuiPlugin;
 pub struct GlbFileContents;
@@ -87,6 +87,7 @@ impl Plugin for GuiPlugin {
                 show_toasts,
             ),
         )
+        .add_observer(update_filter_change)
         .add_observer(show_error);
     }
 }

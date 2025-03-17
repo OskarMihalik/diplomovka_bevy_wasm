@@ -1,4 +1,7 @@
-use crate::api::{GetModelsEvent, GetTagMessagesEvent, GetUsersInProjectEvent, BACKEND_URL};
+use crate::{
+    api::{GetModelsEvent, GetTagMessagesEvent, GetUsersInProjectEvent, BACKEND_URL},
+    utils::filter_tags,
+};
 use bevy::{prelude::*, render::view::visibility};
 use bevy_panorbit_camera::PanOrbitCamera;
 use dto::{
@@ -49,10 +52,11 @@ pub struct ThisProjectIsSelected {}
 pub struct ProjectStatusesData {
     pub dtos: Vec<StatusDto>,
 }
-#[derive(Component)]
+#[derive(Component, Clone)]
 
 pub struct TagFilter {
     pub title: String,
+    pub status_title: String,
 }
 
 pub struct BuildingPlugin;
@@ -91,7 +95,16 @@ fn on_tag_filter_change(
     };
 
     for (tag_data, mut visibility) in query_tags.iter_mut() {
-        if tag_data.dto.title.contains(&filter.title) {
+        if filter_tags(
+            &tag_data.dto.title,
+            &tag_data
+                .dto
+                .status_dto
+                .as_ref()
+                .map_or("".to_string(), |s| s.title.clone()),
+            &filter.title,
+            &filter.status_title,
+        ) {
             *visibility = Visibility::Visible;
         } else {
             *visibility = Visibility::Hidden;
@@ -164,6 +177,7 @@ fn setup_scene(mut commands: Commands) {
 
     commands.spawn(TagFilter {
         title: "".to_string(),
+        status_title: "".to_string(),
     });
 }
 

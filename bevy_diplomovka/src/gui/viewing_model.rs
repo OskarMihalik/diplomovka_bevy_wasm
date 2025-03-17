@@ -19,11 +19,29 @@ use crate::{
         ModelData, ProjectData, SelectedTag, TagData, TagFilter, TagHasOpenStatusModal,
         TagMessagesData, ThisProjectIsSelected,
     },
-    utils::{compare_by_created_at, convert_color_to_egui},
+    utils::{compare_by_created_at, convert_color_to_egui, filter_tags},
     GameState,
 };
 
 use super::confirm_modal::{confirm_modal, ConfirmModalResult};
+#[derive(Event)]
+pub struct FilterChangeEvent {
+    pub new_filter: TagFilter,
+}
+pub fn update_filter_change(
+    trigger: Trigger<FilterChangeEvent>,
+    mut tag_filter: Single<&mut TagFilter>,
+) {
+    **tag_filter = trigger.new_filter.clone();
+}
+
+fn filter_combobox_text(title: &str) -> String {
+    if title.is_empty() {
+        "All".to_string()
+    } else {
+        title.to_string()
+    }
+}
 
 pub fn ui_left_panel(
     mut commands: Commands,
@@ -45,7 +63,48 @@ pub fn ui_left_panel(
                 .spacing([40.0, 8.0])
                 .show(ui, |ui| {
                     ui.heading("Tags");
-                    ui.text_edit_singleline(&mut inner_tag_filter.title)
+                    ui.text_edit_singleline(&mut inner_tag_filter.title);
+                    ui.end_row();
+
+                    ui.heading("Status:");
+                    egui::ComboBox::new(Id::new("Select status"), "")
+                        .selected_text(filter_combobox_text(&inner_tag_filter.status_title))
+                        .show_ui(ui, |ui| {
+                            let mut unique_statuses = query_tags
+                                .iter()
+                                .filter_map(|(_, tag, _)| tag.dto.status_dto.clone())
+                                .collect::<Vec<StatusDto>>();
+
+                            unique_statuses.sort_by(|a, b| a.title.cmp(&b.title));
+                            unique_statuses.dedup_by(|a, b| a.title == b.title);
+
+                            for status in unique_statuses {
+                                ui.selectable_value(
+                                    &mut inner_tag_filter.status_title,
+                                    status.title.clone(),
+                                    status.title.clone(),
+                                );
+                            }
+                            ui.selectable_value(
+                                &mut inner_tag_filter.status_title,
+                                "".to_string(),
+                                "All",
+                            );
+                        });
+
+                    ui.end_row();
+                    if ui.button("Apply").clicked() {
+                        commands.trigger(FilterChangeEvent {
+                            new_filter: inner_tag_filter.clone(),
+                        });
+                    }
+                    if ui.button("Reset").clicked() {
+                        inner_tag_filter.title.clear();
+                        inner_tag_filter.status_title.clear();
+                        commands.trigger(FilterChangeEvent {
+                            new_filter: inner_tag_filter.clone(),
+                        });
+                    }
                 });
             ui.separator();
 
@@ -65,7 +124,17 @@ pub fn ui_left_panel(
                                         &value_2.dto.created_at,
                                     )
                                 })
-                                .filter(|(_, tag, _)| tag.dto.title.contains(&*tag_filter.title))
+                                .filter(|(_, tag, _)| {
+                                    filter_tags(
+                                        &tag.dto.title,
+                                        &tag.dto
+                                            .status_dto
+                                            .as_ref()
+                                            .map_or("".to_string(), |s| s.title.clone()),
+                                        &inner_tag_filter.title,
+                                        &inner_tag_filter.status_title,
+                                    )
+                                })
                             {
                                 let checked = selected_tag.is_some();
                                 let text = format!("{}: {}", tag.dto.id, tag.dto.title);
@@ -261,6 +330,7 @@ pub fn ui_tag_windows(
         if *confirm_delete_tag_modal_open {
             match confirm_modal(ctx, "Delete?", &confirm_delete_tag_modal_open) {
                 ConfirmModalResult::Confirm => {
+                    *confirm_delete_tag_modal_open = false;
                     commands.trigger(DeleteTagEvent {
                         tag_id: tag_data.dto.id,
                     });
