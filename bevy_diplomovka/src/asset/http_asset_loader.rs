@@ -2,7 +2,7 @@
 // use crate::io::{AssetSource, PathStream};
 use crate::AssetApp;
 use bevy::{
-    asset::io::{AssetReader, AssetReaderError, AssetSource, PathStream, Reader, VecReader},
+    asset::io::{AssetReader, AssetReaderError, AssetSource, PathStream, Reader},
     prelude::*,
     utils::ConditionalSendFuture,
 };

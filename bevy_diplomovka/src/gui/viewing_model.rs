@@ -3,11 +3,10 @@ use bevy_egui::{
     egui::{
         self,
         text::{LayoutJob, TextWrapping},
-        Id, Rounding, ScrollArea, TextFormat, TextStyle, Ui, Widget,
+        Id, Rounding, ScrollArea, TextFormat, TextStyle,
     },
     EguiContexts,
 };
-use bevy_file_dialog::prelude::*;
 use dto::default::{NewTagMessageDto, StatusDto};
 
 use crate::{

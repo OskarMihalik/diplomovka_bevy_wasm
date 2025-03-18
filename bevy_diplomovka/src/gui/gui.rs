@@ -1,29 +1,25 @@
 use bevy::prelude::*;
 use bevy_egui::{
-    egui::{self, Align2, Id, ScrollArea},
+    egui::{self, Align2, Id},
     EguiContexts,
 };
 use bevy_file_dialog::prelude::*;
 use dto::{
     model::NewModelDto,
-    project::{self, NewProjectDto},
+    project::NewProjectDto,
     users::{GetUsersDto, OtherUserDto, ProjectUserDto, UserToProjectDto},
 };
 use egui_toast::{Toast, ToastKind, ToastOptions, Toasts};
 
 use crate::{
     api::{
-        AddUserToProjectEvent, CreateModelEvent, GetProjectsEvent, GetUsersEvent,
-        GetUsersInProjectEvent, NewProjectEvent, UpdateTagEvent,
+        AddUserToProjectEvent, CreateModelEvent, GetProjectsEvent, GetUsersEvent, NewProjectEvent,
     },
-    building::{
-        ModelData, ProjectData, SelectedTag, TagData, ThisModelIsSelected, ThisProjectIsSelected,
-    },
+    building::{ModelData, ProjectData, ThisModelIsSelected, ThisProjectIsSelected},
     users::{LoggedUser, OtherUsers, UsersInProject},
     utils::compare_by_created_at,
     GameState,
 };
-use egui_extras::{Column, TableBuilder};
 
 use super::{
     auth_screen::login_screen,

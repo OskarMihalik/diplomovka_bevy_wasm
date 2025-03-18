@@ -2,7 +2,7 @@ use crate::{
     api::{GetModelsEvent, GetTagMessagesEvent, GetUsersInProjectEvent, BACKEND_URL},
     utils::filter_tags,
 };
-use bevy::{prelude::*, render::view::visibility};
+use bevy::prelude::*;
 use bevy_panorbit_camera::PanOrbitCamera;
 use dto::{
     default::{NewTagDto, StatusDto, TagDto, TagMessageDto},
@@ -65,7 +65,7 @@ pub struct BuildingPlugin;
 /// The menu is only drawn during the State `GameState::Menu` and is removed when that state is exited
 impl Plugin for BuildingPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, (setup_scene))
+        app.add_systems(Startup, setup_scene)
             .add_systems(OnEnter(GameState::ViewingModel), on_viewing_model)
             .add_systems(OnExit(GameState::ViewingModel), on_exit_viewing_model)
             .add_systems(
