@@ -127,7 +127,7 @@ fn on_viewing_model(
 ) {
     for project_data in query.iter() {
         commands.trigger(GetTagsEvent {
-            model_id: project_data.dto.id,
+            project_id: project_data.dto.id,
         });
     }
 }

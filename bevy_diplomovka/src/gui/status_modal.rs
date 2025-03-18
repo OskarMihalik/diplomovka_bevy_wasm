@@ -125,7 +125,7 @@ pub fn ui_status_modal(
                 .column(Column::auto())
                 .column(Column::auto())
                 .column(Column::auto())
-                .column(Column::auto())
+                .column(Column::remainder())
                 .min_scrolled_height(0.0)
                 .max_scroll_height(available_height);
 
@@ -221,7 +221,6 @@ pub fn ui_status_modal(
                         });
                     }
                 });
-            ui.add_space(100.);
         });
         if modal.should_close() {
             commands.entity(tag.0).remove::<TagHasOpenStatusModal>();

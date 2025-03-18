@@ -6,12 +6,12 @@ pub enum ConfirmModalResult {
     Nothing,
 }
 
-pub fn confirm_modal(ctx: &Context, title: &str, is_open: &bool) -> ConfirmModalResult {
+pub fn confirm_modal(ctx: &Context, title: &str, is_open: &bool, id: i32) -> ConfirmModalResult {
     if !*is_open {
         return ConfirmModalResult::Nothing;
     }
     let mut result = ConfirmModalResult::Nothing;
-    let modal = egui::Modal::new(Id::new(format!("Confirm modal {title}"))).show(ctx, |ui| {
+    let modal = egui::Modal::new(Id::new(id.to_string())).show(ctx, |ui| {
         ui.label(title);
         ui.horizontal(|ui| {
             if ui.button("Confirm").clicked() {

@@ -321,7 +321,12 @@ pub fn ui_tag_windows(
             });
 
         if *confirm_delete_tag_modal_open {
-            match confirm_modal(ctx, "Delete?", &confirm_delete_tag_modal_open) {
+            match confirm_modal(
+                ctx,
+                "Delete?",
+                &confirm_delete_tag_modal_open,
+                tag_data.dto.id,
+            ) {
                 ConfirmModalResult::Confirm => {
                     *confirm_delete_tag_modal_open = false;
                     commands.trigger(DeleteTagEvent {

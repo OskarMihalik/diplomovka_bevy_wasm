@@ -92,7 +92,7 @@ model TagMessage {
   text          String
   created_at    DateTime @default(now())
   updated_at    DateTime @default(now()) @updatedAt
-  tag           Tag      @relation(fields: [tag_id], references: [id])
+  tag           Tag      @relation(fields: [tag_id], references: [id], onDelete: Cascade)
   tag_id        Int
   created_by    User     @relation(fields: [created_by_id], references: [id])
   created_by_id Int

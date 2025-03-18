@@ -1,4 +1,3 @@
-
 use ::serde::de;
 use bevy::prelude::*;
 use bevy_mod_reqwest::*;
@@ -82,7 +81,7 @@ pub fn on_reqwest_error(trigger: Trigger<ReqwestErrorEvent>, mut commands: Comma
 
 #[derive(Event)]
 pub struct GetTagsEvent {
-    pub model_id: i32,
+    pub project_id: i32,
 }
 
 fn get_tags(
@@ -90,7 +89,7 @@ fn get_tags(
     mut client: BevyReqwest,
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
-    let url = format!("{BACKEND_URL}/tags/{:?}", trigger.model_id);
+    let url = format!("{BACKEND_URL}/tags/{:?}", trigger.project_id);
 
     // use regular reqwest http calls, then poll them to completion.
     let reqwest_request = client
@@ -106,10 +105,7 @@ fn get_tags(
         // where the only requirement is that the first parameter in the system is the specific Trigger type
         // the rest is the same as a regular system
         .on_response(
-            |trigger: Trigger<ReqwestResponseEvent>,
-             mut commands: Commands,
-             query_model: Single<(Entity, &ModelData, &ThisModelIsSelected)>| {
-                let parent_entity = query_model.0;
+            |trigger: Trigger<ReqwestResponseEvent>, mut commands: Commands| {
                 let parsed = parse_response::<TagDtoResponse>(trigger);
                 match parsed {
                     Ok(tags) => {
@@ -153,12 +149,13 @@ fn delete_tag(
         .on_response(
             |trigger: Trigger<ReqwestResponseEvent>,
              mut commands: Commands,
-             query_model: Single<(Entity, &ModelData, &ThisModelIsSelected)>| {
-                let model_id = query_model.1.dto.id;
+             query_project: Single<(&ProjectData, &ThisProjectIsSelected)>| {
                 let parsed = parse_response::<EmptyResponse>(trigger);
                 match parsed {
                     Ok(_) => {
-                        commands.trigger(GetTagsEvent { model_id });
+                        commands.trigger(GetTagsEvent {
+                            project_id: query_project.0.dto.id,
+                        });
                     }
                     Err(error_dto) => commands.trigger(ShowErrorEvent {
                         message: error_dto.message,
@@ -1010,20 +1007,11 @@ fn delete_status(
         // where the only requirement is that the first parameter in the system is the specific Trigger type
         // the rest is the same as a regular system
         .on_response(
-            move |trigger: Trigger<ReqwestResponseEvent>,
-                  mut commands: Commands,
-                  selected_model_query: Option<
-                Single<(Entity, &ModelData, &ThisModelIsSelected)>,
-            >| {
-                let Some(selected_model) = selected_model_query else {
-                    return;
-                };
+            move |trigger: Trigger<ReqwestResponseEvent>, mut commands: Commands| {
                 let _ = match parse_response::<EmptyResponse>(trigger) {
                     Ok(_) => {
                         commands.trigger(GetStatusesEvent { project_id });
-                        commands.trigger(GetTagsEvent {
-                            model_id: selected_model.1.dto.id,
-                        });
+                        commands.trigger(GetTagsEvent { project_id });
                     }
                     Err(error_dto) => {
                         commands.trigger(ShowErrorEvent {
