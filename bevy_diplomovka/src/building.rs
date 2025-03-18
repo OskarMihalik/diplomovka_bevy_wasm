@@ -123,11 +123,11 @@ fn on_exit_viewing_model(
 
 fn on_viewing_model(
     mut commands: Commands,
-    query: Query<&ModelData, (Changed<ModelData>, With<ThisModelIsSelected>)>,
+    query: Query<&ProjectData, (Changed<ProjectData>, With<ThisProjectIsSelected>)>,
 ) {
-    for model_data in query.iter() {
+    for project_data in query.iter() {
         commands.trigger(GetTagsEvent {
-            model_id: model_data.dto.id,
+            model_id: project_data.dto.id,
         });
     }
 }
@@ -238,17 +238,15 @@ fn react_to_model_change(
 fn add_tag(
     pick_hit: Trigger<Pointer<Click>>,
     mut commands: Commands,
-    query: Query<(&SceneRoot, &Transform, &GlobalTransform, &Children)>,
-    query_model: Query<&ModelData>,
     query_tags: Query<(Entity, &TagData, Option<&SelectedTag>)>,
-    query_selected_model: Query<(Entity, &ModelData, &ThisModelIsSelected)>,
+    query_selected_project: Query<(Entity, &ProjectData, &ThisProjectIsSelected)>,
 ) {
     let target_entity = pick_hit.entity();
     if pick_hit.duration.as_millis() >= 100 {
         return;
     }
 
-    let Some((_, model_data, _)) = query_selected_model.iter().next() else {
+    let Some((_, project_data, _)) = query_selected_project.iter().next() else {
         return;
     };
 
@@ -277,7 +275,7 @@ fn add_tag(
             commands.trigger(CreateNewTagEvent {
                 new_tag_dto: NewTagDto {
                     title: "new taaag".to_string(),
-                    model_id: model_data.dto.id,
+                    project_id: project_data.dto.id,
                     position_x: position.x,
                     position_y: position.y,
                     position_z: position.z,

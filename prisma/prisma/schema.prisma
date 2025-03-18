@@ -44,6 +44,7 @@ model Project {
   created_at    DateTime      @default(now())
   updated_at    DateTime      @default(now()) @updatedAt
   Model         Model[]
+  Tag           Tag[]
   ProjectUser   ProjectUser[]
   created_by    User          @relation(fields: [created_by_id], references: [id])
   created_by_id Int
@@ -59,7 +60,6 @@ model Model {
   updated_at    DateTime @default(now()) @updatedAt
   project       Project  @relation(fields: [project_id], references: [id])
   project_id    Int
-  Tag           Tag[]
   created_by    User     @relation(fields: [created_by_id], references: [id])
   created_by_id Int
 }
@@ -79,8 +79,8 @@ model Tag {
   scale_y       Float        @default(0.3) @db.Real
   scale_z       Float        @default(0.3) @db.Real
   TagMessage    TagMessage[]
-  model         Model        @relation(fields: [model_id], references: [id])
-  model_id      Int
+  model         Project      @relation(fields: [project_id], references: [id])
+  project_id    Int
   created_by    User         @relation(fields: [created_by_id], references: [id])
   created_by_id Int
   status_id     Int?

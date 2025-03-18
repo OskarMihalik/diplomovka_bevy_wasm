@@ -50,7 +50,7 @@ pub async fn insert_tag_service(
         .bind(
             connection.client(),
             &dto.title,
-            &dto.model_id,
+            &dto.project_id,
             &dto.position_x,
             &dto.position_y,
             &dto.position_z,
@@ -62,7 +62,7 @@ pub async fn insert_tag_service(
         return Json(TagDtoResponse::Err(ErrorDto::new(format!("{:?}", error))));
     }
 
-    get_tags(connection.client(), &dto.model_id).await
+    get_tags(connection.client(), &dto.project_id).await
 }
 
 async fn get_tags(client: &Client, model_id: &i32) -> Json<TagDtoResponse> {
@@ -105,7 +105,7 @@ async fn get_tags(client: &Client, model_id: &i32) -> Json<TagDtoResponse> {
                     TagDto {
                         id: tag.id,
                         title: tag.title,
-                        model_id: tag.model_id,
+                        project_id: tag.project_id,
                         created_at: tag.created_at,
                         position_x: tag.position_x,
                         position_y: tag.position_y,
@@ -162,7 +162,7 @@ pub async fn update_tag_service(
         return Json(TagDtoResponse::Err(ErrorDto::new(format!("{:?}", error))));
     }
 
-    get_tags(connection.client(), &dto.model_id).await
+    get_tags(connection.client(), &dto.project_id).await
 }
 
 #[debug_handler]

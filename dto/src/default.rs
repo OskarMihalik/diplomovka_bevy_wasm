@@ -34,7 +34,7 @@ impl ErrorDto {
 pub struct TagDto {
     pub id: i32,
     pub title: String,
-    pub model_id: i32,
+    pub project_id: i32,
     pub created_at: time::PrimitiveDateTime,
     pub position_x: f32,
     pub position_y: f32,
@@ -91,7 +91,7 @@ pub enum Shape {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct NewTagDto {
     pub title: String,
-    pub model_id: i32,
+    pub project_id: i32,
     pub position_x: f32,
     pub position_y: f32,
     pub position_z: f32,

@@ -270,18 +270,12 @@ pub fn ui_tag_windows(
                         ui.end_row();
 
                         if ui.button("Submit").clicked() {
-                            let parent_entity = query_models
-                                .iter()
-                                .find(|model| model.1.dto.id == tag_data.dto.model_id);
-                            if let Some((target_entity, _model_data)) = parent_entity {
+                            if let Some((_, _model_data)) = current_selected_project {
                                 let mut tag_dto = tag_data.dto.clone();
                                 tag_dto.position_x = g_transform.translation().x;
                                 tag_dto.position_y = g_transform.translation().y;
                                 tag_dto.position_z = g_transform.translation().z;
-                                commands.trigger(UpdateTagEvent {
-                                    tag_dto,
-                                    parent_entity: target_entity,
-                                });
+                                commands.trigger(UpdateTagEvent { tag_dto });
                                 if !new_message_text.is_empty() {
                                     commands.trigger(CreateTagMessageEvent {
                                         dto: NewTagMessageDto {

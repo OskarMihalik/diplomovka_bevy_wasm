@@ -31,10 +31,6 @@ pub fn ui_status_modal(
         None => return,
     };
 
-    let Some(selected_model) = selected_model_query else {
-        return;
-    };
-
     for mut statuses in query_statuses.iter_mut() {
         let modal = egui::Modal::new(Id::new("Status")).show(ctx, |ui| {
             ui.horizontal(|ui| {
@@ -211,10 +207,7 @@ pub fn ui_status_modal(
                                     new_tag.status_dto = Some(status.clone());
 
                                     // select this status
-                                    commands.trigger(UpdateTagEvent {
-                                        tag_dto: new_tag,
-                                        parent_entity: selected_model.0,
-                                    });
+                                    commands.trigger(UpdateTagEvent { tag_dto: new_tag });
                                 }
                             });
                             row.col(|ui| {

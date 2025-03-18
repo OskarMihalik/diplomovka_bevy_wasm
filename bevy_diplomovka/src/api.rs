@@ -346,7 +346,6 @@ fn get_models(
 #[derive(Event)]
 pub struct UpdateTagEvent {
     pub tag_dto: TagDto,
-    pub parent_entity: Entity,
 }
 
 fn update_tag(
