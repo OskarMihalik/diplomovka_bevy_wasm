@@ -15,7 +15,7 @@ use crate::{
         UpdateTagEvent,
     },
     building::{
-        ModelData, ProjectData, SelectedTag, TagData, TagFilter, TagHasOpenStatusModal,
+        KanbanOpen, ModelData, ProjectData, SelectedTag, TagData, TagFilter, TagHasOpenStatusModal,
         TagMessagesData, ThisProjectIsSelected,
     },
     utils::{compare_by_created_at, convert_color_to_egui, filter_tags},
@@ -47,9 +47,10 @@ pub fn ui_left_panel(
     mut contexts: EguiContexts,
     query_tags: Query<(Entity, &TagData, Option<&SelectedTag>)>,
     mut tag_filter: Single<&mut TagFilter>,
+    q_kanban_open: Query<(Entity, &KanbanOpen)>,
 ) {
     let ctx = contexts.ctx_mut();
-
+    let kanban = q_kanban_open.iter().next();
     egui::SidePanel::left("left_panel")
         .resizable(true)
         .show(ctx, |ui| {
@@ -61,6 +62,18 @@ pub fn ui_left_panel(
                 .num_columns(2)
                 .spacing([40.0, 8.0])
                 .show(ui, |ui| {
+                    if ui.selectable_label(kanban.is_some(), "Kanban").clicked() {
+                        match kanban {
+                            Some((entity, _)) => {
+                                commands.entity(entity).despawn_recursive();
+                            }
+                            None => {
+                                commands.spawn(KanbanOpen {});
+                            }
+                        }
+                    }
+                    ui.end_row();
+
                     ui.heading("Tags");
                     ui.text_edit_singleline(&mut inner_tag_filter.title);
                     ui.end_row();

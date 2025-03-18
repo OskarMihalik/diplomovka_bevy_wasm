@@ -59,6 +59,10 @@ pub struct TagFilter {
     pub status_title: String,
 }
 
+#[derive(Component)]
+
+pub struct KanbanOpen {}
+
 pub struct BuildingPlugin;
 
 /// This plugin is responsible for the game menu (containing only one button...)

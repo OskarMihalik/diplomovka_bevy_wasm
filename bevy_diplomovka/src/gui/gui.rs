@@ -23,6 +23,7 @@ use crate::{
 
 use super::{
     auth_screen::login_screen,
+    kanban::kanban_window,
     status_modal::ui_status_modal,
     theme::theme_picker,
     viewing_model::{ui_left_panel, ui_tag_windows, update_filter_change},
@@ -69,7 +70,12 @@ impl Plugin for GuiPlugin {
         )
         .add_systems(
             Update,
-            (ui_left_panel, ui_tag_windows, ui_status_modal)
+            (
+                ui_left_panel,
+                ui_tag_windows,
+                ui_status_modal,
+                kanban_window,
+            )
                 .run_if(in_state(GameState::ViewingModel)),
         )
         .add_systems(
