@@ -48,6 +48,7 @@ pub fn ui_left_panel(
     query_tags: Query<(Entity, &TagData, Option<&SelectedTag>)>,
     mut tag_filter: Single<&mut TagFilter>,
     q_kanban_open: Query<(Entity, &KanbanOpen)>,
+    q_project: Single<(&ProjectData, &ThisProjectIsSelected)>,
 ) {
     let ctx = contexts.ctx_mut();
     let kanban = q_kanban_open.iter().next();
@@ -69,6 +70,9 @@ pub fn ui_left_panel(
                             }
                             None => {
                                 commands.spawn(KanbanOpen {});
+                                commands.trigger(GetStatusesEvent {
+                                    project_id: q_project.0.dto.id,
+                                });
                             }
                         }
                     }
@@ -377,6 +381,9 @@ pub fn status_widget(ui: &mut egui::Ui, status_dto: &StatusDto) {
             se: 14.,
         })
         .show(ui, |ui| {
-            ui.label(egui::RichText::new(&status_dto.title).color(egui_color.clone()));
+            ui.add(
+                egui::Label::new(egui::RichText::new(&status_dto.title).color(egui_color.clone()))
+                    .truncate(),
+            );
         });
 }
