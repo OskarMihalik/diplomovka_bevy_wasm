@@ -15,8 +15,8 @@ use crate::{
         UpdateTagEvent,
     },
     building::{
-        KanbanOpen, ModelData, ProjectData, SelectedTag, TagData, TagFilter, TagHasOpenStatusModal,
-        TagMessagesData, ThisProjectIsSelected,
+        KanbanOpen, LightControlsOpen, ModelData, ProjectData, SelectedTag, TagData, TagFilter,
+        TagHasOpenStatusModal, TagMessagesData, ThisProjectIsSelected,
     },
     utils::{compare_by_created_at, convert_color_to_egui, filter_tags},
     GameState,
@@ -49,9 +49,11 @@ pub fn ui_left_panel(
     mut tag_filter: Single<&mut TagFilter>,
     q_kanban_open: Query<(Entity, &KanbanOpen)>,
     q_project: Single<(&ProjectData, &ThisProjectIsSelected)>,
+    q_light_controls: Query<(Entity, &LightControlsOpen)>,
 ) {
     let ctx = contexts.ctx_mut();
     let kanban = q_kanban_open.iter().next();
+    let light_controls = q_light_controls.iter().next();
     egui::SidePanel::left("left_panel")
         .resizable(true)
         .show(ctx, |ui| {
@@ -73,6 +75,20 @@ pub fn ui_left_panel(
                                 commands.trigger(GetStatusesEvent {
                                     project_id: q_project.0.dto.id,
                                 });
+                            }
+                        }
+                    }
+
+                    if ui
+                        .selectable_label(light_controls.is_some(), "Lights")
+                        .clicked()
+                    {
+                        match light_controls {
+                            Some((entity, _)) => {
+                                commands.entity(entity).despawn_recursive();
+                            }
+                            None => {
+                                commands.spawn(LightControlsOpen {});
                             }
                         }
                     }

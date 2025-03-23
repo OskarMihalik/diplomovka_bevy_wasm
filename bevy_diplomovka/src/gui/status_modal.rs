@@ -51,7 +51,7 @@ pub fn ui_status_modal(
                 });
                 ui.vertical(|ui| {
                     ui.label("Shape");
-                    egui::ComboBox::from_label("Select one!")
+                    egui::ComboBox::from_label("")
                         .selected_text(format!("{:?}", new_status.shape))
                         .show_ui(ui, |ui| {
                             ui.selectable_value(&mut new_status.shape, Shape::Cuboid, "Cuboid");

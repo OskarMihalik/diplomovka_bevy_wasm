@@ -60,8 +60,10 @@ pub struct TagFilter {
 }
 
 #[derive(Component)]
-
 pub struct KanbanOpen {}
+
+#[derive(Component)]
+pub struct LightControlsOpen {}
 
 pub struct BuildingPlugin;
 
