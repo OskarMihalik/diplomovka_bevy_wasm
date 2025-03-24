@@ -109,8 +109,19 @@ pub async fn register(
     State(pool): State<ConnectionPool>,
     Json(payload): Json<RegisterDto>,
 ) -> Json<AuthDtoResponse> {
-    // Check if the user sent the credentials
-    // Here, basic verification is used but normally you would use a database
+    if payload.password.len() < 8 {
+        return Json(Err(ErrorDto {
+            reason: ErrorReason::BadRequest.into(),
+            message: "Password must be at least 8 characters long".to_string(),
+        }));
+    }
+
+    if payload.username.len() < 3 {
+        return Json(Err(ErrorDto {
+            reason: ErrorReason::BadRequest.into(),
+            message: "Username must be at least 3 characters long".to_string(),
+        }));
+    }
 
     // This is the b64 hash of "bad salt!" for demo only: don't do this! Instead use:
     let salt = SaltString::generate(&mut OsRng);

@@ -79,6 +79,7 @@ fn js_value_to_err(context: &str) -> impl FnOnce(JsValue) -> std::io::Error + '_
 #[cfg(target_arch = "wasm32")]
 async fn get<'a>(path: PathBuf) -> Result<Box<dyn Reader>, AssetReaderError> {
     // use super::wasm::HttpWasmAssetReader;
+    use bevy::asset::io::VecReader;
     use js_sys::{Uint8Array, JSON};
     use std::sync::Arc;
     use wasm_bindgen::{JsCast, JsValue};

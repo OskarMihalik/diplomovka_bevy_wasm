@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_egui::{
     egui::{self, Align2, Id},
-    EguiContexts,
+    EguiContexts, EguiPlugin,
 };
 use bevy_file_dialog::prelude::*;
 use dto::{
@@ -48,53 +48,54 @@ pub struct UiContexts {
 
 impl Plugin for GuiPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(
-            FileDialogPlugin::new()
-                // allow saving of files marked with TextFileContents
-                .with_save_file::<GlbFileContents>()
-                // allow loading of files marked with TextFileContents
-                .with_load_file::<GlbFileContents>(),
-        )
-        .init_resource::<UiState>()
-        .init_resource::<UiContexts>()
-        .add_systems(Startup, setup_toasts)
-        .add_systems(
-            OnEnter(GameState::SelectingProjectAndModel),
-            setup_selecting_project_and_model,
-        )
-        .add_systems(Update, (login_screen).run_if(in_state(GameState::Auth)))
-        .add_systems(
-            Update,
-            (ui_project_screen, ui_model_screen)
-                .chain()
-                .run_if(in_state(GameState::SelectingProjectAndModel)),
-        )
-        .add_systems(
-            Update,
-            (
-                ui_left_panel,
-                ui_tag_windows,
-                ui_status_modal,
-                kanban_window,
-                light_controls_window,
-                on_light_gizmos_added,
-                on_light_gizmos_removed,
+        app.add_plugins(EguiPlugin)
+            .add_plugins(
+                FileDialogPlugin::new()
+                    // allow saving of files marked with TextFileContents
+                    .with_save_file::<GlbFileContents>()
+                    // allow loading of files marked with TextFileContents
+                    .with_load_file::<GlbFileContents>(),
             )
-                .run_if(in_state(GameState::ViewingModel)),
-        )
-        .add_systems(
-            Update,
-            (
-                theme_picker,
-                file_loaded,
-                file_saved,
-                file_load_canceled,
-                file_save_canceled,
-                show_toasts,
-            ),
-        )
-        .add_observer(update_filter_change)
-        .add_observer(show_error);
+            .init_resource::<UiState>()
+            .init_resource::<UiContexts>()
+            .add_systems(Startup, setup_toasts)
+            .add_systems(
+                OnEnter(GameState::SelectingProjectAndModel),
+                setup_selecting_project_and_model,
+            )
+            .add_systems(Update, (login_screen).run_if(in_state(GameState::Auth)))
+            .add_systems(
+                Update,
+                (ui_project_screen, ui_model_screen)
+                    .chain()
+                    .run_if(in_state(GameState::SelectingProjectAndModel)),
+            )
+            .add_systems(
+                Update,
+                (
+                    ui_left_panel,
+                    ui_tag_windows,
+                    ui_status_modal,
+                    kanban_window,
+                    light_controls_window,
+                    on_light_gizmos_added,
+                    on_light_gizmos_removed,
+                )
+                    .run_if(in_state(GameState::ViewingModel)),
+            )
+            .add_systems(
+                Update,
+                (
+                    theme_picker,
+                    file_loaded,
+                    file_saved,
+                    file_load_canceled,
+                    file_save_canceled,
+                    show_toasts,
+                ),
+            )
+            .add_observer(update_filter_change)
+            .add_observer(show_error);
     }
 }
 
@@ -328,6 +329,9 @@ fn ui_project_screen(
             ui.vertical_centered(|ui| {
                 ui.heading("Projects");
             });
+            if ui.button("Log out").clicked() {
+                commands.set_state(GameState::Auth);
+            }
             if ui.button("Add new project").clicked() {
                 *modal_open = true;
             }

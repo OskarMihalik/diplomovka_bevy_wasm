@@ -42,15 +42,15 @@ impl Plugin for GamePlugin {
         app.add_plugins(ApiPlugin)
             .init_state::<GameState>()
             .register_type::<GameState>()
-            .add_plugins(WorldInspectorPlugin::new())
-            .add_plugins(StateInspectorPlugin::<GameState>::default())
+            // .add_plugins(WorldInspectorPlugin::new())
+            // .add_plugins(StateInspectorPlugin::<GameState>::default())
             .add_plugins((
                 PanOrbitCameraPlugin,
                 LoadingPlugin,
                 BuildingPlugin,
                 MeshPickingPlugin,
                 GuiPlugin,
-                PerfUI,
+                // PerfUI,
                 ModelManagmentPlugin,
             ))
             .add_observer(log_entity_components);

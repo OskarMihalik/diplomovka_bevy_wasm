@@ -61,12 +61,12 @@ pub fn login_screen(
         AuthType::Register => egui::CentralPanel::default().show(ctx, |ui| {
             ui.vertical_centered(|ui| {
                 ui.heading("Register");
-                ui.add_space(20.0);
+                ui.add_space(10.0);
 
                 ui.label("Username:");
                 ui.text_edit_singleline(&mut register_dto.username);
 
-                ui.add_space(20.0);
+                ui.add_space(10.0);
 
                 ui.label("Email:");
                 ui.text_edit_singleline(&mut register_dto.email);
@@ -79,7 +79,7 @@ pub fn login_screen(
                 ui.label("Repeat password:");
                 ui.add(egui::TextEdit::singleline(&mut register_dto.password).password(true));
 
-                ui.add_space(20.0);
+                ui.add_space(10.0);
 
                 if ui.button("Submit").clicked() {
                     // Handle login logic here
@@ -89,8 +89,8 @@ pub fn login_screen(
                     register_dto.reset();
                 }
                 ui.add_space(30.0);
-                if ui.button("Register").clicked() {
-                    auth_type.auth_type = AuthType::Register
+                if ui.button("Go to login").clicked() {
+                    auth_type.auth_type = AuthType::Login
                 }
             });
         }),
