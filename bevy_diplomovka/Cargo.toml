@@ -108,6 +108,6 @@ log = { version = "0.4", features = [
     "release_max_level_warn",
 ] }
 egui_extras = { version = "0.30.0", default-features = false }
-
+egui_commonmark = "0.19"
 [build-dependencies]
 embed-resource = "1"

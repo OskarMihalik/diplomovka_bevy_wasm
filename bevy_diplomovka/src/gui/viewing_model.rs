@@ -21,6 +21,7 @@ use crate::{
     utils::{compare_by_created_at, convert_color_to_egui, filter_tags},
     GameState,
 };
+use egui_commonmark::*;
 
 use super::confirm_modal::{confirm_modal, ConfirmModalResult};
 #[derive(Event)]
@@ -341,8 +342,14 @@ pub fn ui_tag_windows(
                     egui::ScrollArea::vertical().show(ui, |ui| {
                         if let Some(tag_messages) = tag_messages {
                             for tag_message in &tag_messages.dtos {
+                                let mut cache = CommonMarkCache::default();
                                 ui.vertical(|ui| {
-                                    ui.text_edit_multiline(&mut tag_message.text.as_ref());
+                                    // ui.text_edit_multiline(&mut tag_message.text.as_ref());
+                                    CommonMarkViewer::new().show(
+                                        ui,
+                                        &mut cache,
+                                        tag_message.text.as_ref(),
+                                    );
                                     ui.label(tag_message.email.clone());
                                     ui.separator();
                                     ui.separator();
