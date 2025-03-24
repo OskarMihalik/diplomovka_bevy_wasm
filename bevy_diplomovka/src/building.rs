@@ -178,7 +178,11 @@ fn setup_scene(mut commands: Commands) {
 
     commands.spawn((
         Transform::from_translation(Vec3::new(0.0, 1.5, 5.0)),
-        PanOrbitCamera::default(),
+        PanOrbitCamera {
+            button_orbit: MouseButton::Left,
+            button_pan: MouseButton::Middle,
+            ..Default::default()
+        },
     ));
 
     commands.spawn(TagFilter {
