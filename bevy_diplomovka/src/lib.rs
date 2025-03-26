@@ -50,7 +50,7 @@ impl Plugin for GamePlugin {
                 BuildingPlugin,
                 MeshPickingPlugin,
                 GuiPlugin,
-                // PerfUI,
+                PerfUI,
                 ModelManagmentPlugin,
             ))
             .add_observer(log_entity_components);
