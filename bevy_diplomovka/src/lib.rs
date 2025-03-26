@@ -15,6 +15,7 @@ use api::ApiPlugin;
 use bevy::app::App;
 use bevy::prelude::*;
 use bevy_inspector_egui::quick::{StateInspectorPlugin, WorldInspectorPlugin};
+use bevy_mod_outline::OutlinePlugin;
 use bevy_panorbit_camera::PanOrbitCameraPlugin;
 use building::BuildingPlugin;
 use gui::{gui::GuiPlugin, perf_ui::PerfUI};
@@ -52,6 +53,7 @@ impl Plugin for GamePlugin {
                 GuiPlugin,
                 PerfUI,
                 ModelManagmentPlugin,
+                OutlinePlugin,
             ))
             .add_observer(log_entity_components);
 

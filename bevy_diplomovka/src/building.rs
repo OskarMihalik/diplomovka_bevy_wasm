@@ -3,6 +3,7 @@ use crate::{
     utils::filter_tags,
 };
 use bevy::prelude::*;
+use bevy_mod_outline::*;
 use bevy_panorbit_camera::PanOrbitCamera;
 use dto::{
     default::{NewTagDto, StatusDto, TagDto, TagMessageDto},
@@ -84,10 +85,23 @@ impl Plugin for BuildingPlugin {
             )
             .add_systems(
                 Update,
-                on_tag_filter_change.run_if(in_state(GameState::ViewingModel)),
+                (
+                    on_tag_filter_change,
+                    fade_transparency,
+                    set_outline_on_selected,
+                )
+                    .run_if(in_state(GameState::ViewingModel)),
             )
             .add_observer(rebuild_tags)
-            .add_observer(spawn_building);
+            .add_observer(spawn_building)
+            .add_observer(set_outline_on_deselected);
+    }
+}
+
+pub fn fade_transparency(time: Res<Time>, mut materials: ResMut<Assets<StandardMaterial>>) {
+    let alpha = (ops::sin(time.elapsed_secs()) / 2.0) + 0.5;
+    for (_, material) in materials.iter_mut() {
+        material.base_color.set_alpha(alpha);
     }
 }
 
@@ -137,6 +151,23 @@ fn on_viewing_model(
         });
     }
 }
+
+fn set_outline_on_selected(mut q_tags: Query<(Entity, &mut OutlineVolume), Added<SelectedTag>>) {
+    for (_, mut outline) in q_tags.iter_mut() {
+        outline.visible = true;
+    }
+}
+
+fn set_outline_on_deselected(
+    trigger: Trigger<OnRemove, SelectedTag>,
+    mut q_tags: Query<(Entity, &mut OutlineVolume)>,
+) {
+    let entity = trigger.entity();
+    if let Ok(mut tag) = q_tags.get_mut(entity) {
+        tag.1.visible = false;
+    }
+}
+
 #[derive(Event)]
 pub struct SpawnModelEvent {
     pub model_dto: ModelDto,
@@ -357,6 +388,12 @@ fn rebuild_tags(
                     ..Default::default()
                 }),
             ),
+            OutlineVolume {
+                visible: false,
+                colour: Color::linear_rgba(1., 1., 0., 1.),
+                width: 5.0,
+            },
+            OutlineMode::FloodFlat,
             Transform::from_xyz(tag_dto.position_x, tag_dto.position_y, tag_dto.position_z)
                 .with_scale([tag_dto.scale_x, tag_dto.scale_y, tag_dto.scale_z].into()),
             TagData {
