@@ -155,6 +155,7 @@ fn ui_model_screen(
                 if ui.button("Add new model").clicked() {
                     *new_model_modal_open = true;
                 }
+                let mut v = 0;
                 for (entity, mut model_data, selected_model) in query_models
                     .iter_mut()
                     .sort_by::<&ModelData>(|value_1, value_2| {
@@ -171,8 +172,9 @@ fn ui_model_screen(
                             ui.end_row();
 
                             ui.label(format!("Version: "));
-                            ui.label(&model_data.dto.version.to_string());
+                            ui.label(&v.to_string());
                             ui.end_row();
+                            v += 1;
 
                             ui.label(format!("Id: "));
                             ui.label(model_data.dto.id.to_string());
