@@ -9,6 +9,7 @@ pub struct ProjectDto {
     pub description: String,
     pub created_at: time::PrimitiveDateTime,
     pub updated_at: time::PrimitiveDateTime,
+    pub created_by_id: i32,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]

@@ -5,9 +5,16 @@ use axum::{
 };
 use axum_macros::debug_handler;
 use cornucopia_async::Params;
-use dto::project::{NewProjectDto, ProjectDto, ProjectDtoResponse, ProjectsDtoResponse};
+use dto::{
+    default::EmptyResponse,
+    project::{NewProjectDto, ProjectDto, ProjectDtoResponse, ProjectsDtoResponse},
+};
+use futures::io::Empty;
 use model::cornucopia::queries::{
-    tags::{insert_project, select_project, select_projects},
+    tags::{
+        delete_project, insert_project, is_project_admin, select_project, select_projects,
+        update_project, UpdateProjectParams,
+    },
     users::{insert_project_user, InsertProjectUserParams},
 };
 use tokio_postgres::{Client, GenericClient};
@@ -40,6 +47,7 @@ pub async fn get_project_service(
         description: result.description.clone(),
         created_at: result.created_at,
         updated_at: result.updated_at,
+        created_by_id: result.created_by_id,
     };
 
     return Json(ProjectDtoResponse::Ok(dto));
@@ -76,6 +84,7 @@ pub async fn get_projects(client: &Client, user_id: &i32) -> Json<ProjectsDtoRes
             description: project.description.clone(),
             created_at: project.created_at,
             updated_at: project.updated_at,
+            created_by_id: project.created_by_id,
         })
         .collect();
     return Json(ProjectsDtoResponse::Ok(dto));
@@ -118,4 +127,86 @@ pub async fn insert_project_service(
     }
 
     return get_projects(connection.client(), &claims.id).await;
+}
+
+#[debug_handler]
+pub async fn update_project_service(
+    claims: Claims,
+    State(pool): State<ConnectionPool>,
+    Json(dto): Json<ProjectDto>,
+) -> Json<EmptyResponse> {
+    let connection = match pool.get().await {
+        Ok(connection) => connection,
+        Err(error) => return map_err_pool_con(error),
+    };
+
+    let is_project_admin = is_project_admin()
+        .bind(connection.client(), &claims.id, &dto.id)
+        .one()
+        .await;
+    match is_project_admin {
+        Ok(is_admin) => {
+            if !is_admin {
+                return map_error_reason(
+                    "You are not an admin of this project",
+                    dto::default::ErrorReason::Unauthorized,
+                );
+            }
+        }
+        Err(error) => return map_sql_error(error),
+    };
+
+    let result = update_project()
+        .params(
+            connection.client(),
+            &UpdateProjectParams {
+                name: dto.name.clone(),
+                description: dto.description.clone(),
+                id: dto.id,
+            },
+        )
+        .await;
+
+    if let Err(error) = result {
+        return map_sql_error(error);
+    }
+
+    return Json(Ok(()));
+}
+
+#[debug_handler]
+pub async fn delete_project_service(
+    claims: Claims,
+    State(pool): State<ConnectionPool>,
+    Path(project_id): Path<i32>,
+) -> Json<EmptyResponse> {
+    let connection = match pool.get().await {
+        Ok(connection) => connection,
+        Err(error) => return map_err_pool_con(error),
+    };
+
+    let is_project_admin = is_project_admin()
+        .bind(connection.client(), &claims.id, &project_id)
+        .one()
+        .await;
+    match is_project_admin {
+        Ok(is_admin) => {
+            if !is_admin {
+                return map_error_reason(
+                    "You are not an admin of this project",
+                    dto::default::ErrorReason::Unauthorized,
+                );
+            }
+        }
+        Err(error) => return map_sql_error(error),
+    };
+
+    if let Err(error) = delete_project()
+        .bind(connection.client(), &project_id)
+        .await
+    {
+        return map_sql_error(error);
+    }
+
+    return Json(Ok(()));
 }

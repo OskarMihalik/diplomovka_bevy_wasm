@@ -16,7 +16,10 @@ use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 use services::{
     model::{get_model_service, get_models_service, upload_new_model_service},
-    project::{get_project_service, get_projects_service, insert_project_service},
+    project::{
+        delete_project_service, get_project_service, get_projects_service, insert_project_service,
+        update_project_service,
+    },
     status::{
         create_status_service, delete_status_service, get_statuses_service, update_status_service,
     },
@@ -55,8 +58,14 @@ async fn main() {
             .route("/tag/{tag_id}", delete(delete_tag_service))
             .route("/model/{model_id}", get(get_model_service))
             .route("/models/{project_id}", get(get_models_service))
-            .route("/project/{project_id}", get(get_project_service))
-            .route("/project", get(get_projects_service))
+            .route(
+                "/project/{project_id}",
+                get(get_project_service).delete(delete_project_service),
+            )
+            .route(
+                "/project",
+                get(get_projects_service).patch(update_project_service),
+            )
             .route("/project", post(insert_project_service))
             .route("/login", post(services::auth::login))
             .route("/register", post(services::auth::register))

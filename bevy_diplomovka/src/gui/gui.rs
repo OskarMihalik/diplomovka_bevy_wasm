@@ -13,7 +13,8 @@ use egui_toast::{Toast, ToastKind, ToastOptions, Toasts};
 
 use crate::{
     api::{
-        AddUserToProjectEvent, CreateModelEvent, GetProjectsEvent, GetUsersEvent, NewProjectEvent,
+        AddUserToProjectEvent, CreateModelEvent, DeleteProjectEvent, GetProjectsEvent,
+        GetUsersEvent, NewProjectEvent, UpdateProjectEvent,
     },
     building::{ModelData, ProjectData, ThisModelIsSelected, ThisProjectIsSelected},
     users::{LoggedUser, OtherUsers, UsersInProject},
@@ -23,6 +24,7 @@ use crate::{
 
 use super::{
     auth_screen::login_screen,
+    confirm_modal::{confirm_modal, ConfirmModalResult},
     kanban::kanban_window,
     light_controls::{light_controls_window, on_light_gizmos_added, on_light_gizmos_removed},
     status_modal::ui_status_modal,
@@ -260,6 +262,8 @@ fn ui_project_screen(
     mut new_project_dto: Local<NewProjectDto>,
     query_project_users: Option<Single<(Entity, &UsersInProject)>>,
     mut user_email: Local<String>,
+    mut open_delete_dialog: Local<bool>,
+    mut project_to_delete: Local<i32>,
     other_users: Option<Single<(Entity, &OtherUsers)>>,
     query_logged_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
@@ -376,6 +380,15 @@ fn ui_project_screen(
                             }
                             if ui.button("Submit").clicked() {
                                 // trigger update project
+                                commands.trigger(UpdateProjectEvent {
+                                    dto: project_data.dto.clone(),
+                                });
+                            }
+                            if logged_user.dto.id == project_data.dto.created_by_id
+                                && ui.button("Delete").clicked()
+                            {
+                                *open_delete_dialog = true;
+                                *project_to_delete = project_data.dto.id;
                             }
                         });
 
@@ -403,6 +416,19 @@ fn ui_project_screen(
                 });
             }
         });
+
+    match confirm_modal(ctx, "Delete project?", &open_delete_dialog, 123) {
+        ConfirmModalResult::Confirm => {
+            *open_delete_dialog = false;
+            commands.trigger(DeleteProjectEvent {
+                project_id: *project_to_delete,
+            });
+        }
+        ConfirmModalResult::Cancel => {
+            *open_delete_dialog = false;
+        }
+        ConfirmModalResult::Nothing => (),
+    }
 
     if *modal_add_user_open {
         let modal = egui::Modal::new(Id::new("Add user to project modal")).show(ctx, |ui| {

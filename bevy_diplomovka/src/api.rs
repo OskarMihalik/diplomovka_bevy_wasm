@@ -1,5 +1,5 @@
 use ::serde::de;
-use bevy::prelude::*;
+use bevy::{ecs::system::IntoObserverSystem, prelude::*};
 use bevy_mod_reqwest::*;
 use dto::{
     auth::{AuthDtoResponse, LoginDto, RegisterDto},
@@ -8,7 +8,7 @@ use dto::{
         StatusDto, StatusesResponse, TagDto, TagDtoResponse, TagMessagesDtoResponse,
     },
     model::{ModelDtoResponse, ModelsDtoResponse},
-    project::{NewProjectDto, ProjectDtoResponse, ProjectsDtoResponse},
+    project::{NewProjectDto, ProjectDto, ProjectDtoResponse, ProjectsDtoResponse},
     users::{
         GetUsersDto, OtherUserDtoResponse, OtherUsersDtoResponse, ProjectUsersDtoResponse,
         UserToProjectDto,
@@ -46,6 +46,8 @@ impl Plugin for ApiPlugin {
             .add_observer(login_user)
             .add_observer(register_user)
             .add_observer(insert_project)
+            .add_observer(delete_project)
+            .add_observer(update_project)
             .add_observer(get_users)
             .add_observer(get_users_in_project)
             .add_observer(add_user_to_project)
@@ -422,6 +424,79 @@ fn get_project(
             },
         )
         // In case of request error, it can be reached using an observersystem as well
+        .on_error(on_reqwest_error);
+}
+
+#[derive(Event)]
+pub struct UpdateProjectEvent {
+    pub dto: ProjectDto,
+}
+
+fn update_project(
+    trigger: Trigger<UpdateProjectEvent>,
+    mut client: BevyReqwest,
+    query_user: Option<Single<(Entity, &LoggedUser)>>,
+) {
+    let url = format!("{BACKEND_URL}/project");
+
+    // use regular reqwest http calls, then poll them to completion.
+    let reqwest_request = client
+        .patch(url)
+        .json(&trigger.dto)
+        .header("authorization", get_token_from_user(query_user))
+        .build()
+        .unwrap();
+
+    client
+        .send(reqwest_request)
+        .on_json_response(
+            |trigger: Trigger<JsonResponse<EmptyResponse>>, mut commands: Commands| {
+                match &trigger.0 {
+                    Ok(()) => {
+                        commands.trigger(GetProjectsEvent {});
+                    }
+                    Err(error_dto) => commands.trigger(ShowErrorEvent {
+                        message: error_dto.message.clone(),
+                    }),
+                };
+            },
+        )
+        .on_error(on_reqwest_error);
+}
+
+#[derive(Event)]
+pub struct DeleteProjectEvent {
+    pub project_id: i32,
+}
+
+fn delete_project(
+    trigger: Trigger<DeleteProjectEvent>,
+    mut client: BevyReqwest,
+    query_user: Option<Single<(Entity, &LoggedUser)>>,
+) {
+    let url = format!("{BACKEND_URL}/project/{}", trigger.project_id);
+
+    // use regular reqwest http calls, then poll them to completion.
+    let reqwest_request = client
+        .delete(url)
+        .header("authorization", get_token_from_user(query_user))
+        .build()
+        .unwrap();
+
+    client
+        .send(reqwest_request)
+        .on_json_response(
+            |trigger: Trigger<JsonResponse<EmptyResponse>>, mut commands: Commands| {
+                match &trigger.0 {
+                    Ok(()) => {
+                        commands.trigger(GetProjectsEvent {});
+                    }
+                    Err(error_dto) => commands.trigger(ShowErrorEvent {
+                        message: error_dto.message.clone(),
+                    }),
+                };
+            },
+        )
         .on_error(on_reqwest_error);
 }
 

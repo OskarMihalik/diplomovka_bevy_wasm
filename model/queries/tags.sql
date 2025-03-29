@@ -48,12 +48,21 @@ LIMIT :limit
 OFFSET :offset;
 
 --! select_project (id)
-SELECT id, "name", description, created_at, updated_at
+SELECT id, "name", description, created_at, updated_at, created_by_id
 FROM public."Project"
 WHERE id=(:id);
 
+--! is_project_admin (user_id, project_id)
+SELECT projectUser.is_admin
+FROM public."ProjectUser" projectUser
+WHERE projectUser.user_id = (:user_id) AND projectUser.project_id = (:project_id);
+
+--! delete_project
+DELETE FROM public."Project"
+WHERE id = :id;
+
 --! select_projects (user_id, limit, offset)
-SELECT DISTINCT project.id, project."name", project.description, project.created_at, project.updated_at
+SELECT DISTINCT project.id, project."name", project.description, project.created_at, project.updated_at, project.created_by_id
 FROM public."Project" project
 JOIN public."ProjectUser" projectUser ON project.id = projectUser.project_id
 WHERE projectUser.user_id = (:user_id)
@@ -66,6 +75,11 @@ INSERT INTO public."Project"
 (name, description, created_by_id)
 VALUES (:name, :description, :created_by_id)
 RETURNING id;
+
+--! update_project
+UPDATE public."Project" 
+SET name=:name, description=:description
+WHERE id=:id;
 
 
 --! insert_tag_message (text, tag_id, created_by_id)
