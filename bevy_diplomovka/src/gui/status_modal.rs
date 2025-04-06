@@ -31,8 +31,15 @@ pub fn ui_status_modal(
         None => return,
     };
 
-    for mut statuses in query_statuses.iter_mut() {
-        let modal = egui::Modal::new(Id::new("Status")).show(ctx, |ui| {
+    // for mut statuses in query_statuses.iter_mut() {
+    let Some(mut statuses) = query_statuses.iter_mut().next() else {
+        return;
+    };
+
+    let modal = egui::Modal::new(Id::new("Status")).show(ctx, |ui| {
+        ui.vertical(|ui| {
+            ui.set_height(400.);
+            ui.set_width(400.);
             ui.horizontal(|ui| {
                 ui.vertical(|ui| {
                     ui.label("Preview");
@@ -112,8 +119,6 @@ pub fn ui_status_modal(
                 }
             });
 
-            let available_height = ui.available_height();
-
             let table = TableBuilder::new(ui)
                 .striped(true)
                 .resizable(true)
@@ -127,7 +132,7 @@ pub fn ui_status_modal(
                 .column(Column::auto())
                 .column(Column::remainder())
                 .min_scrolled_height(0.0)
-                .max_scroll_height(available_height);
+                .max_scroll_height(300.);
 
             table
                 .header(20.0, |mut header| {
@@ -222,8 +227,9 @@ pub fn ui_status_modal(
                     }
                 });
         });
-        if modal.should_close() {
-            commands.entity(tag.0).remove::<TagHasOpenStatusModal>();
-        }
+    });
+    if modal.should_close() {
+        commands.entity(tag.0).remove::<TagHasOpenStatusModal>();
     }
+    // }
 }

@@ -316,6 +316,7 @@ pub fn ui_tag_windows(
                                             tag_id: tag_data.dto.id,
                                         },
                                     });
+                                    *new_message_text = String::new();
                                 }
                             }
                         }

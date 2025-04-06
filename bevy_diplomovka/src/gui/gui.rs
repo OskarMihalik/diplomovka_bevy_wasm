@@ -97,6 +97,7 @@ impl Plugin for GuiPlugin {
                 ),
             )
             .add_observer(update_filter_change)
+            .add_observer(show_success)
             .add_observer(show_error);
     }
 }
@@ -338,9 +339,14 @@ fn ui_project_screen(
             if ui.button("Log out").clicked() {
                 commands.set_state(GameState::Auth);
             }
-            if ui.button("Add new project").clicked() {
-                *modal_open = true;
-            }
+            ui.horizontal(|ui| {
+                if ui.button("Add new project").clicked() {
+                    *modal_open = true;
+                }
+                if ui.button("⟲").clicked() {
+                    commands.trigger(GetProjectsEvent {});
+                };
+            });
             ui.separator();
 
             egui::ScrollArea::vertical().show(ui, |ui| {
@@ -494,6 +500,23 @@ fn show_error(trigger: Trigger<ShowErrorEvent>, mut ui_contexts: ResMut<UiContex
     ui_contexts.toasts.add(Toast {
         text: message.into(),
         kind: ToastKind::Error,
+        options: ToastOptions::default()
+            .duration_in_seconds(5.0)
+            .show_progress(true),
+        ..Default::default()
+    });
+}
+
+#[derive(Event)]
+pub struct ShowSuccessEvent {
+    pub message: String,
+}
+
+fn show_success(trigger: Trigger<ShowSuccessEvent>, mut ui_contexts: ResMut<UiContexts>) {
+    let message = &trigger.event().message;
+    ui_contexts.toasts.add(Toast {
+        text: message.into(),
+        kind: ToastKind::Success,
         options: ToastOptions::default()
             .duration_in_seconds(5.0)
             .show_progress(true),

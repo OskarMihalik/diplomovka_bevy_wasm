@@ -315,7 +315,7 @@ fn add_tag(
         Err(_) => {
             commands.trigger(CreateNewTagEvent {
                 new_tag_dto: NewTagDto {
-                    title: "new taaag".to_string(),
+                    title: "new tag".to_string(),
                     project_id: project_data.dto.id,
                     position_x: position.x,
                     position_y: position.y,

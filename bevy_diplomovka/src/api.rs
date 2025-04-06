@@ -20,7 +20,7 @@ use crate::{
         ModelData, ProjectData, ProjectStatusesData, RebuildTagsEvent, TagData, TagMessagesData,
         ThisModelIsSelected, ThisProjectIsSelected,
     },
-    gui::gui::ShowErrorEvent,
+    gui::gui::{ShowErrorEvent, ShowSuccessEvent},
     models::UpdateModelsEvent,
     users::{LoggedUser, OtherUsers, UsersInProject},
     utils::get_token_from_user,
@@ -372,6 +372,9 @@ fn update_tag(
                 match parsed {
                     Ok(tags) => {
                         commands.trigger(RebuildTagsEvent { new_tag_dtos: tags });
+                        commands.trigger(ShowSuccessEvent {
+                            message: "Tag updated".to_string(),
+                        });
                     }
                     Err(error_dto) => commands.trigger(ShowErrorEvent {
                         message: error_dto.message,

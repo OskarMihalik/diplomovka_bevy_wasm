@@ -51,7 +51,7 @@ impl Plugin for GamePlugin {
                 BuildingPlugin,
                 MeshPickingPlugin,
                 GuiPlugin,
-                PerfUI,
+                // PerfUI,
                 ModelManagmentPlugin,
                 OutlinePlugin,
             ))
