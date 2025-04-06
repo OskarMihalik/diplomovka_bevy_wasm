@@ -7,7 +7,7 @@ use bevy_egui::{
 use crate::{
     api::UpdateTagEvent,
     building::{KanbanOpen, ProjectStatusesData, TagData},
-    utils::convert_color_to_egui,
+    utils::{compare_by_created_at, convert_color_to_egui},
 };
 
 use super::viewing_model::status_widget;
@@ -32,6 +32,7 @@ pub fn kanban_window(
     let Some(statuses) = q_status.iter().next() else {
         return;
     };
+
     let statuses = &statuses.dtos;
 
     let ctx = contexts.ctx_mut();
@@ -108,6 +109,11 @@ pub fn kanban_window(
                                             col: col_idx,
                                             row: insert_row_idx,
                                         });
+                                        bevy::log::info!(
+                                            "Dropped 1 {:#?} on {:#?}",
+                                            from.clone(),
+                                            to
+                                        );
                                     }
                                 }
                             }
@@ -120,6 +126,7 @@ pub fn kanban_window(
                                 col: col_idx,
                                 row: usize::MAX, // Inset last
                             });
+                            bevy::log::info!("Dropped 2 {:#?} on {:#?}", from.clone(), to);
                         }
                     },
                 );
@@ -132,12 +139,16 @@ pub fn kanban_window(
                 // Adjust row index if we are re-ordering:
                 to.row -= (from.row < to.row) as usize;
             }
-
+            bevy::log::info!("Dropped 3 {:#?} on {:#?}", from.clone(), to);
             let status = statuses[to.col].clone();
             let old_status_id = statuses[from.col].id;
             let mut new_tag = match q_tags
                 .iter()
-                .find(|tag| tag.dto.status_dto.as_ref().map_or(-1, |sta| sta.id) == old_status_id)
+                // .find(|tag| tag.dto.status_dto.as_ref().map_or(-1, |sta| sta.id) == old_status_id)
+                .filter(|tag| {
+                    tag.dto.status_dto.as_ref().map_or(-1, |status| status.id) == old_status_id
+                })
+                .nth(from.row)
             {
                 Some(data) => data.dto.clone(),
                 None => return,
