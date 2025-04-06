@@ -11,7 +11,7 @@ use dto::default::{NewTagMessageDto, StatusDto};
 
 use crate::{
     api::{
-        CreateTagMessageEvent, DeleteTagEvent, GetStatusesEvent, GetTagMessagesEvent,
+        CreateTagMessageEvent, DeleteTagEvent, GetStatusesEvent, GetTagMessagesEvent, GetTagsEvent,
         UpdateTagEvent,
     },
     building::{
@@ -51,10 +51,14 @@ pub fn ui_left_panel(
     q_kanban_open: Query<(Entity, &KanbanOpen)>,
     q_project: Single<(&ProjectData, &ThisProjectIsSelected)>,
     q_light_controls: Query<(Entity, &LightControlsOpen)>,
+    q_projects: Query<&ProjectData, With<ThisProjectIsSelected>>,
 ) {
     let ctx = contexts.ctx_mut();
     let kanban = q_kanban_open.iter().next();
     let light_controls = q_light_controls.iter().next();
+    let Some(project_data) = q_projects.iter().next() else {
+        return;
+    };
     egui::SidePanel::left("left_panel")
         .resizable(true)
         .show(ctx, |ui| {
@@ -142,6 +146,11 @@ pub fn ui_left_panel(
             ui.separator();
 
             ui.vertical(|ui| {
+                if ui.button("⟲").clicked() {
+                    commands.trigger(GetTagsEvent {
+                        project_id: project_data.dto.id,
+                    });
+                };
                 let scroll_area = ScrollArea::vertical();
                 scroll_area.show(ui, |ui| {
                     egui::Grid::new(Id::new("Tags filter"))
