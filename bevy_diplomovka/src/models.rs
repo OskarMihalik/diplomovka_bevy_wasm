@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use bevy::prelude::*;
+use bevy::{prelude::*, time::Stopwatch};
 use dto::model::ModelDto;
 
 use crate::building::ModelData;
@@ -22,6 +22,7 @@ fn update_models(
     trigger: Trigger<UpdateModelsEvent>,
     mut commands: Commands,
     query_models: Query<(Entity, &ModelData)>,
+    time: Res<Time>,
 ) {
     let mut dto_map: HashMap<i32, ModelDto> = HashMap::new();
     for dto in trigger.dtos.iter() {
@@ -37,14 +38,21 @@ fn update_models(
                 continue;
             }
         };
+        let mut stopwatch = Stopwatch::new();
+        stopwatch.tick(time.delta());
         dto_map.remove(&new_data.id);
         commands
             .entity(entity)
             .remove::<ModelData>()
-            .insert(ModelData { dto: new_data });
+            .insert(ModelData {
+                dto: new_data,
+                open_time: time.elapsed().as_millis(),
+            });
     }
     for (_key, dto) in dto_map {
-        bevy::log::info!("spawning model: {:?}", dto);
-        commands.spawn(ModelData { dto });
+        commands.spawn(ModelData {
+            dto,
+            open_time: time.elapsed().as_millis(),
+        });
     }
 }

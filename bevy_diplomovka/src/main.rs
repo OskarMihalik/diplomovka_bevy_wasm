@@ -3,7 +3,7 @@
 mod asset;
 use asset::http_asset_loader::http_source_plugin;
 use bevy::asset::AssetMetaCheck;
-use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
+use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 use bevy::winit::{UpdateMode, WinitSettings, WinitWindows};
@@ -41,6 +41,7 @@ fn main() {
         ))
         .add_systems(Startup, init_refresh_rate)
         .add_plugins(FrameTimeDiagnosticsPlugin::default())
+        // .add_plugins(LogDiagnosticsPlugin::default())
         .add_plugins(ReqwestPlugin::default())
         .add_plugins(GamePlugin)
         .add_systems(Startup, set_window_icon)

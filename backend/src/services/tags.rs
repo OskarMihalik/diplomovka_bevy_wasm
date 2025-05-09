@@ -24,6 +24,7 @@ pub fn map_err(error: RunError<Error>) -> Json<TagDtoResponse> {
 
 #[debug_handler]
 pub async fn get_tag_service(
+    _claims: Claims,
     Path(model_id): Path<i32>,
     State(pool): State<ConnectionPool>,
 ) -> Json<TagDtoResponse> {
@@ -131,6 +132,7 @@ async fn get_tags(client: &Client, model_id: &i32) -> Json<TagDtoResponse> {
 
 #[debug_handler]
 pub async fn update_tag_service(
+    _claims: Claims,
     State(pool): State<ConnectionPool>,
     Json(dto): Json<TagDto>,
 ) -> Json<TagDtoResponse> {
@@ -167,6 +169,7 @@ pub async fn update_tag_service(
 
 #[debug_handler]
 pub async fn delete_tag_service(
+    _claims: Claims,
     State(pool): State<ConnectionPool>,
     Path(tag_id): Path<i32>,
 ) -> Json<EmptyResponse> {

@@ -1,8 +1,9 @@
 use crate::{
     api::{GetModelsEvent, GetTagMessagesEvent, GetUsersInProjectEvent, BACKEND_URL},
+    gui::gui::ShowSuccessEvent,
     utils::filter_tags,
 };
-use bevy::prelude::*;
+use bevy::{prelude::*, scene::SceneInstanceReady, time::Stopwatch};
 use bevy_mod_outline::*;
 use bevy_panorbit_camera::PanOrbitCamera;
 use dto::{
@@ -35,6 +36,7 @@ pub struct TagHasOpenStatusModal {}
 #[derive(Component)]
 pub struct ModelData {
     pub dto: ModelDto,
+    pub open_time: u128,
 }
 #[derive(Component)]
 pub struct ThisModelIsSelected {}
@@ -93,7 +95,6 @@ impl Plugin for BuildingPlugin {
                     .run_if(in_state(GameState::ViewingModel)),
             )
             .add_observer(rebuild_tags)
-            .add_observer(spawn_building)
             .add_observer(set_outline_on_deselected);
     }
 }
@@ -168,36 +169,6 @@ fn set_outline_on_deselected(
     }
 }
 
-#[derive(Event)]
-pub struct SpawnModelEvent {
-    pub model_dto: ModelDto,
-}
-
-fn spawn_building(
-    trigger: Trigger<SpawnModelEvent>,
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-) {
-    let model_dto = &trigger.model_dto;
-    let gltf = asset_server.load(format!(
-        "{BACKEND_URL}/assets/model/{:?}.glb#Scene0",
-        model_dto.id
-    ));
-    commands
-        .spawn((
-            SceneRoot(gltf),
-            Transform::from_translation(Vec3::ZERO).with_scale(Vec3::splat(0.25)),
-            // ColliderConstructorHierarchy::new(ColliderConstructor::ConvexHullFromMesh),
-            // PickableBundle::default(),
-            // AvianPickable,
-            // RigidBody::Static,
-            ModelData {
-                dto: model_dto.clone(),
-            },
-        ))
-        .observe(add_tag);
-}
-
 fn setup_scene(mut commands: Commands) {
     commands.spawn((
         PointLight {
@@ -265,15 +236,26 @@ fn react_to_model_change(
         .insert((
             SceneRoot(gltf),
             Transform::from_translation(Vec3::ZERO).with_scale(Vec3::splat(0.25)),
-            // ColliderConstructorHierarchy::new(ColliderConstructor::ConvexHullFromMesh),
-            // PickableBundle::default(),
-            // AvianPickable,
-            // RigidBody::Static,
-            // ModelData {
-            //     dto: model_dto.clone(),
-            // },
         ))
-        .observe(add_tag);
+        .observe(add_tag)
+        .observe(
+            |trigger: Trigger<SceneInstanceReady>,
+             mut commands: Commands,
+             q_model: Query<(Entity, &ModelData, &ThisModelIsSelected)>,
+             time: Res<Time>| {
+                bevy::log::info!("scene instance ready, {:?}", trigger.entity());
+                let Ok(model) = q_model.get(trigger.entity()) else {
+                    return;
+                };
+                bevy::log::info!(
+                    "scene rendered in, {:?}",
+                    time.elapsed().as_millis() - model.1.open_time,
+                );
+                commands.trigger(ShowSuccessEvent {
+                    message: "Model loaded".to_string(),
+                });
+            },
+        );
 }
 
 fn add_tag(

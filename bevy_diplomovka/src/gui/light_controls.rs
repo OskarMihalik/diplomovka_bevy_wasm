@@ -222,7 +222,7 @@ pub fn light_controls_window(
                             ui.label("Intensity: ");
                             ui.add(
                                 egui::DragValue::new(&mut spot_light.intensity)
-                                    .speed(100)
+                                    .speed(10000)
                                     .range(f32::MIN..=f32::MAX),
                             );
                             ui.label("Radius: ");
