@@ -1,0 +1,29 @@
+FROM rust:latest as builder
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y pkg-config libssl-dev
+
+# Copy the workspace
+COPY . .
+
+ENV SKIP_DB_BUILD=1
+
+# Build the backend
+RUN cargo build -p backend --release
+
+# Serve stage
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y ca-certificates libssl3 && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+
+# Copy the compiled binary
+COPY --from=builder /app/target/release/backend /usr/local/bin/backend
+
+# Copy backend assets if needed (e.g., templates, static files)
+COPY --from=builder /app/backend/assets /app/backend/assets
+
+EXPOSE 3000
+
+ENV RUST_LOG=info
+
+CMD ["backend"]

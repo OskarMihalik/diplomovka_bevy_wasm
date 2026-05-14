@@ -1,0 +1,26 @@
+FROM rust:latest as builder
+WORKDIR /app
+
+# Install dependencies if necessary (often needed for rust/bevy builds on linux, even if compiling to wasm, sometimes macro dependencies require them)
+RUN apt-get update && apt-get install -y pkg-config libudev-dev
+
+# Install wasm32-unknown-unknown target
+RUN rustup target add wasm32-unknown-unknown
+
+# Install trunk
+RUN cargo install trunk
+
+# Copy the whole workspace
+COPY . .
+
+ENV SKIP_DB_BUILD=1
+
+# Build the bevy app
+WORKDIR /app/bevy_diplomovka
+RUN trunk build --release
+
+# Serve stage
+FROM nginx:alpine
+COPY --from=builder /app/bevy_diplomovka/dist /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

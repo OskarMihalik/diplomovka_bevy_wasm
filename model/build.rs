@@ -6,8 +6,12 @@ use postgres::{Client, NoTls};
 // we could also generate it elsewhere and embed the generated
 // file with a `include_str` statement in your project.
 fn main() -> Result<(), Error> {
+    if std::env::var("SKIP_DB_BUILD").is_ok() {
+        println!("cargo:warning=Skipping cornucopia DB generation");
+        return Ok(());
+    }
     let mut client = Client::connect(
-        "host=localhost user=postgres password=postgres port=5438 dbname=bevy",
+        "host=localhost user=postgres password=postgres port=5432 dbname=bevy",
         NoTls,
     )
     .unwrap();

@@ -38,11 +38,10 @@ type ConnectionPool = Pool<PostgresConnectionManager<NoTls>>;
 
 #[tokio::main]
 async fn main() {
-    let manager = PostgresConnectionManager::new_from_stringlike(
-        "host=localhost user=postgres password=postgres dbname=bevy port=5438",
-        NoTls,
-    )
-    .unwrap();
+    let db_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
+        "host=localhost user=postgres password=postgres dbname=bevy port=5438".to_string()
+    });
+    let manager = PostgresConnectionManager::new_from_stringlike(db_url, NoTls).unwrap();
     let pool = Pool::builder().build(manager).await.unwrap();
     let backend = async {
         let app = Router::new()
@@ -94,7 +93,7 @@ async fn main() {
 }
 
 async fn serve(app: Router, port: u16) {
-    let addr = SocketAddr::from(([127, 0, 0, 1], port));
+    let addr = SocketAddr::from(([0, 0, 0, 0], port));
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }

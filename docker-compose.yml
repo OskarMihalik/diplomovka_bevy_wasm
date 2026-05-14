@@ -11,3 +11,28 @@ services:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_USER=postgres
       - POSTGRES_DB=bevy
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "4000:4000"
+    depends_on:
+      - postgres
+    environment:
+      - DATABASE_URL=host=postgres user=postgres password=postgres dbname=bevy port=5432
+      # Additional backend env variables
+
+  bevy_diplomovka:
+    build:
+      context: .
+      dockerfile: Dockerfile.bevy
+    ports:
+      - "8081:80"
+    depends_on:
+      - backend
+
+
+
+      
