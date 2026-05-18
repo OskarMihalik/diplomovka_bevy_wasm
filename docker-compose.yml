@@ -12,26 +12,26 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_DB=bevy
 
-  backend:
-    build:
-      context: .
-      dockerfile: Dockerfile.backend
-    ports:
-      - "4000:4000"
-    depends_on:
-      - postgres
-    environment:
-      - DB_PORT=5438
-      - BACKEND_PORT=4000
-      - SKIP_DB_BUILD
-      # Additional backend env variables
+  # backend:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.backend
+  #   ports:
+  #     - "4000:4000"
+  #   depends_on:
+  #     - postgres
+  #   environment:
+  #     - DB_PORT=5438
+  #     - BACKEND_PORT=4000
+  #     - SKIP_DB_BUILD
+  #     # Additional backend env variables
 
-  bevy_diplomovka:
-    build:
-      context: .
-      dockerfile: Dockerfile.bevy
-    ports:
-      - "8081:80"
-    depends_on:
-      - backend
+  # bevy_diplomovka:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.bevy
+  #   ports:
+  #     - "8081:80"
+  #   depends_on:
+  #     - backend
 

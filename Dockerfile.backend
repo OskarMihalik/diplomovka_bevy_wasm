@@ -22,7 +22,7 @@ COPY --from=builder /app/target/release/backend /usr/local/bin/backend
 # Copy backend assets if needed (e.g., templates, static files)
 COPY --from=builder /app/backend/assets /app/backend/assets
 
-EXPOSE 3000
+EXPOSE 4000
 
 ENV RUST_LOG=info
 
