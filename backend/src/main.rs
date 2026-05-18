@@ -41,9 +41,13 @@ type ConnectionPool = Pool<PostgresConnectionManager<NoTls>>;
 async fn main() {
     dotenv().ok(); // Reads the .env file
     let db_port = env::var("DB_PORT").unwrap();
+    let db_postgres_password = env::var("DB_POSTGRES_PASSWORD").unwrap();
+    let db_postgres_user = env::var("DB_POSTGRES_USER").unwrap();
+    let db_postgres_db = env::var("DB_POSTGRES_DB").unwrap();
+    let db_host = env::var("DB_HOST").unwrap();
     let backend_port: u16 = env::var("BACKEND_PORT").unwrap().parse::<u16>().unwrap();
     let db_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
-        format!("host=localhost user=postgres password=postgres dbname=bevy port={db_port}")
+        format!("host={db_host} user={db_postgres_user} password={db_postgres_password} dbname={db_postgres_db} port={db_port}")
             .to_string()
     });
 
