@@ -110,6 +110,8 @@ log = { version = "0.4", features = [
 egui_extras = { version = "0.30.0", default-features = false }
 egui_commonmark = "0.19"
 bevy_mod_outline = "0.9"
+dotenv = "0.15.0"
+dotenv_codegen = "0.15.0"
 
 [build-dependencies]
 wasm-bindgen-cli = "0.2.121"

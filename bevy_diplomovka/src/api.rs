@@ -26,8 +26,11 @@ use crate::{
     utils::get_token_from_user,
     GameState,
 };
+use dotenv::dotenv;
+use dotenv_codegen::dotenv;
+use std::env;
 
-pub const BACKEND_URL: &str = "http://localhost:4000";
+pub const BACKEND_URL: &str = dotenv!("FRONTEND_BACKEND_URL");
 
 pub struct ApiPlugin;
 
