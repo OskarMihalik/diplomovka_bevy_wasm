@@ -14,6 +14,7 @@ use axum::{
 };
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
+use dotenv::dotenv;
 use services::{
     model::{get_model_service, get_models_service, upload_new_model_service},
     project::{
@@ -27,20 +28,24 @@ use services::{
     tags::{delete_tag_service, get_tag_service, insert_tag_service, update_tag_service},
     users::{add_user_to_project_service, get_users_in_project_service, get_users_service},
 };
+use std::env;
 use std::net::SocketAddr;
 use tokio_postgres::NoTls;
 use tower_http::{
     cors::{Any, CorsLayer},
     services::ServeDir,
 };
-
 type ConnectionPool = Pool<PostgresConnectionManager<NoTls>>;
 
 #[tokio::main]
 async fn main() {
+    dotenv().ok(); // Reads the .env file
+    let db_port = env::var("DB_PORT").unwrap();
     let db_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
-        "host=localhost user=postgres password=postgres dbname=bevy port=5438".to_string()
+        format!("host=localhost user=postgres password=postgres dbname=bevy port={db_port}")
+            .to_string()
     });
+
     let manager = PostgresConnectionManager::new_from_stringlike(db_url, NoTls).unwrap();
     let pool = Pool::builder().build(manager).await.unwrap();
     let backend = async {

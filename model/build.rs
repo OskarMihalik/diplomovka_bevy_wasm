@@ -1,17 +1,23 @@
 use cornucopia::{CodegenSettings, Error};
+use dotenv::dotenv;
 use postgres::{Client, NoTls};
+use std::env;
 
 // This script will generate a new cornucopia file every time your schema or queries change.
 // In this example, we generate the module in our project, but
 // we could also generate it elsewhere and embed the generated
 // file with a `include_str` statement in your project.
 fn main() -> Result<(), Error> {
-    if std::env::var("SKIP_DB_BUILD").is_ok() {
+    dotenv().ok(); // Reads the .env file
+    let db_port = env::var("DB_PORT").unwrap();
+
+    if env::var("SKIP_DB_BUILD").is_ok() {
         println!("cargo:warning=Skipping cornucopia DB generation");
         return Ok(());
     }
     let mut client = Client::connect(
-        "host=localhost user=postgres password=postgres port=5432 dbname=bevy",
+        &format!("host=localhost user=postgres password=postgres port={db_port} dbname=bevy")
+            .to_string(),
         NoTls,
     )
     .unwrap();

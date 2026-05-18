@@ -21,7 +21,9 @@ services:
     depends_on:
       - postgres
     environment:
-      - DATABASE_URL=host=postgres user=postgres password=postgres dbname=bevy port=5432
+      - DB_PORT=5438
+      - BACKEND_PORT=4000
+      - SKIP_DB_BUILD
       # Additional backend env variables
 
   bevy_diplomovka:
@@ -33,6 +35,3 @@ services:
     depends_on:
       - backend
 
-
-
-      
