@@ -18,7 +18,7 @@ const getTagsForProject = async (projectId: number) => {
         .offset(0)
         .execute();
 
-    return records.map(tag => {
+    return records.map((tag: any) => {
         let status_dto = null;
         if (tag.status_id !== null) {
             status_dto = {

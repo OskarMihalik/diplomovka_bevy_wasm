@@ -1,0 +1,27 @@
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+COPY backend-express ./backend-express
+
+WORKDIR /app/backend-express
+RUN npm install
+RUN npm run build
+
+# Stage 2: Production environment
+FROM node:20-alpine
+
+WORKDIR /app/backend-express
+
+COPY backend-express/package*.json ./
+RUN npm install --omit=dev
+
+COPY --from=builder /app/backend-express/dist ./dist
+
+# Directory /app/backend/assets mapped so ../../backend/assets works
+COPY backend/assets /app/backend/assets
+
+EXPOSE 4000
+ENV BACKEND_PORT=4000
+
+CMD ["node", "dist/index.js"]
