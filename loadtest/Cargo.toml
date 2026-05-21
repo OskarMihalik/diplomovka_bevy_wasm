@@ -7,4 +7,6 @@ edition = "2024"
 dto = { path = "../dto" }
 goose = "0.18.1"
 goose-eggs = "0.6.0"
-tokio = "1.52.3"
+plotters = "0.3.7"
+time = "0.3.47"
+tokio = { version = "1.52.3", features = ["process", "macros", "rt-multi-thread", "sync", "time"] }

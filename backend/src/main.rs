@@ -3,6 +3,8 @@
 //! ```not_rust
 //! cargo run -p example-cors
 //! ```
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 mod auth;
 mod services;

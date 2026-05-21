@@ -70,17 +70,25 @@ pub async fn login(
         Err(error) => return map_generic_error(error),
     };
 
-    let argon2 = match create_argon() {
-        Ok(ok) => ok,
-        Err(err) => {
-            return Json(Err(err));
-        }
-    };
-    let password_hash = PasswordHash::new(&user.password).unwrap();
-    match argon2.verify_password(payload.password.as_bytes(), &password_hash) {
-        Ok(_) => (),
-        Err(err) => return map_error_reason(&err.to_string(), ErrorReason::BadCredentials.into()),
-    };
+    let payload_password = payload.password.clone();
+    let user_password = user.password.clone();
+
+    let is_valid = tokio::task::spawn_blocking(move || {
+        let password_hash = PasswordHash::new(&user_password).unwrap();
+        let argon2 = match create_argon() {
+            Ok(a) => a,
+            Err(_) => return false, // Or map to error properly
+        };
+        argon2
+            .verify_password(payload_password.as_bytes(), &password_hash)
+            .is_ok()
+    })
+    .await
+    .unwrap(); // tokio::task::JoinError
+
+    if !is_valid {
+        return map_error_reason("Bad credentials", ErrorReason::BadCredentials.into());
+    }
 
     // // create the timestamp for the expiry time - here the expiry time is 1 day
     // // in production you may not want to have such a long JWT life
