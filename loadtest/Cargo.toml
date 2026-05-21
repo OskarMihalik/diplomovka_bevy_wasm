@@ -1,0 +1,10 @@
+[package]
+name = "loadtest"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+dto = { path = "../dto" }
+goose = "0.18.1"
+goose-eggs = "0.6.0"
+tokio = "1.52.3"

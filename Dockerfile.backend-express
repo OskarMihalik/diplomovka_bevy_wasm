@@ -21,7 +21,7 @@ COPY --from=builder /app/backend-express/dist ./dist
 # Directory /app/backend/assets mapped so ../../backend/assets works
 COPY backend/assets /app/backend/assets
 
-EXPOSE 4000
-ENV BACKEND_PORT=4000
+# EXPOSE 4000
+# ENV BACKEND_PORT=4000
 
 CMD ["node", "dist/index.js"]

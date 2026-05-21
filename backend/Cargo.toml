@@ -24,6 +24,7 @@ bb8-postgres = "0.8.1"
 ## Connection pooling
 deadpool-postgres = "0.12.1"
 
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 axum-macros = "0.4.1"
 jsonwebtoken = "9.2.0"
 rand_distr = "0.4.3"
@@ -35,6 +36,7 @@ time = "0.3.18"
 chrono = "0.4.39"
 argon2 = "0.5.3"
 dotenv = "0.15.0"
+tracing = "0.1.44"
 
 [build-dependencies]
 cornucopia = "0.9.0"

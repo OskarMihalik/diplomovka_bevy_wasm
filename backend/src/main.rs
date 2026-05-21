@@ -31,15 +31,22 @@ use services::{
 use std::env;
 use std::net::SocketAddr;
 use tokio_postgres::NoTls;
+use tower_http::trace::TraceLayer;
 use tower_http::{
     cors::{Any, CorsLayer},
     services::ServeDir,
 };
+use tracing_subscriber::EnvFilter;
 type ConnectionPool = Pool<PostgresConnectionManager<NoTls>>;
 
 #[tokio::main]
 async fn main() {
     dotenv().ok(); // Reads the .env file
+
+    // tracing_subscriber::fmt()
+    //     .with_max_level(tracing::Level::DEBUG)
+    //     .init();
+
     let db_port = env::var("DB_PORT").unwrap();
     let db_postgres_password = env::var("DB_POSTGRES_PASSWORD").unwrap();
     let db_postgres_user = env::var("DB_POSTGRES_USER").unwrap();

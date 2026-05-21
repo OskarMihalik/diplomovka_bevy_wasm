@@ -17,6 +17,21 @@ services:
       context: .
       dockerfile: Dockerfile.backend-express
     ports:
+      - "4001:4001"
+    depends_on:
+      - postgres
+    environment:
+      - DB_POSTGRES_PORT=5432
+      - DB_POSTGRES_USER=postgres
+      - DB_POSTGRES_PASSWORD=postgres
+      - DB_POSTGRES_DB=bevy
+      - DB_POSTGRES_HOST=postgres
+      - BACKEND_PORT=4001
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
       - "4000:4000"
     depends_on:
       - postgres
@@ -27,18 +42,7 @@ services:
       - DB_POSTGRES_DB=bevy
       - DB_POSTGRES_HOST=postgres
       - BACKEND_PORT=4000
-  # backend:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile.backend
-  #   ports:
-  #     - "4000:4000"
-  #   depends_on:
-  #     - postgres
-  #   environment:
-  #     - DB_PORT=5438
-  #     - BACKEND_PORT=4000
-  #     - SKIP_DB_BUILD
+      - SKIP_DB_BUILD
   #     # Additional backend env variables
 
   # bevy_diplomovka:
