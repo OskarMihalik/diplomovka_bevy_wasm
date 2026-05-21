@@ -9,12 +9,13 @@ use std::env;
 // file with a `include_str` statement in your project.
 fn main() -> Result<(), Error> {
     dotenv().ok(); // Reads the .env file
-    let db_port = env::var("DB_PORT").unwrap();
 
     if env::var("SKIP_DB_BUILD").is_ok() {
         println!("cargo:warning=Skipping cornucopia DB generation");
         return Ok(());
     }
+    let db_port = env::var("DB_POSTGRES_PORT").unwrap();
+
     let mut client = Client::connect(
         &format!("host=localhost user=postgres password=postgres port={db_port} dbname=bevy")
             .to_string(),

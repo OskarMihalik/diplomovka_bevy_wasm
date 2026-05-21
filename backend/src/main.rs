@@ -47,7 +47,7 @@ async fn main() {
     //     .with_max_level(tracing::Level::DEBUG)
     //     .init();
 
-    let db_port = env::var("DB_PORT").unwrap();
+    let db_port = env::var("DB_POSTGRES_PORT").unwrap();
     let db_postgres_password = env::var("DB_POSTGRES_PASSWORD").unwrap();
     let db_postgres_user = env::var("DB_POSTGRES_USER").unwrap();
     let db_postgres_db = env::var("DB_POSTGRES_DB").unwrap();
