@@ -700,7 +700,7 @@ GenericClient
         Ok(it)
     }
 }pub fn select_tags() -> SelectTagsStmt
-{ SelectTagsStmt(cornucopia_async::private::Stmt::new("SELECT DISTINCT tag.id, \"user\".\"email\", \"user\".username, tag.title, tag.project_id, tag.position_x, tag.position_y, tag.position_z, tag.created_by_id, tag.created_at,
+{ SelectTagsStmt(cornucopia_async::private::Stmt::new("SELECT tag.id, \"user\".\"email\", \"user\".username, tag.title, tag.project_id, tag.position_x, tag.position_y, tag.position_z, tag.created_by_id, tag.created_at,
 \"status\".shape, tag.scale_x, tag.scale_y, tag.scale_z, tag.rotation_x, tag.rotation_y, tag.rotation_z,
 \"status\".title as status_title, \"status\".id as status_id, \"status\".color_r as status_color_r, \"status\".color_g as status_color_g, \"status\".color_b as status_color_b, \"status\".project_id as status_project_id
 FROM public.\"Tag\" tag

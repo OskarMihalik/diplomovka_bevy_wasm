@@ -1,13 +1,27 @@
-use dto::auth::LoginDto;
+use dto::{
+    auth::{AuthDtoResponse, LoginDto, UserDto},
+    default::NewTagDto,
+    model::ModelsDtoResponse,
+    project::{NewProjectDto, ProjectsDtoResponse},
+};
 use goose::prelude::*;
 use plotters::prelude::*;
-use std::sync::{Arc, Mutex};
-
+use std::{
+    sync::{Arc, Mutex},
+    time::{SystemTime, UNIX_EPOCH},
+};
 #[derive(Clone, Default)]
 struct StatPoint {
     time_sec: f32,
     cpu: f32,
     mem: f32,
+}
+
+#[derive(Clone)]
+struct Session {
+    user_dto: UserDto,
+    project_id: Option<i32>,
+    model_id: Option<i32>,
 }
 
 #[derive(Default, Clone)]
@@ -16,12 +30,212 @@ struct ContainerStats {
     backend_express: Vec<StatPoint>,
 }
 
-async fn loadtest_index(user: &mut GooseUser) -> TransactionResult {
+async fn login_to_system(user: &mut GooseUser) -> TransactionResult {
     let body = LoginDto {
         email: "user@mail.com".to_string(),
         password: "user@mail.com".to_string(),
     };
-    let _goose_metrics = user.post_json("/login", &body).await?;
+    let mut goose_response = user.post_json("/login", &body).await?;
+
+    let response = goose_response.response?.json::<AuthDtoResponse>().await?;
+
+    let user_dto = match response {
+        Ok(dto) => dto,
+        Err(e) => {
+            return user.set_failure(
+                &format!("error: {}", e.message),
+                &mut goose_response.request,
+                None,
+                None,
+            );
+        }
+    };
+
+    user.set_session_data(Session {
+        user_dto,
+        project_id: None,
+        model_id: None,
+    });
+
+    Ok(())
+}
+
+fn unique_suffix() -> String {
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    nanos.to_string()
+}
+
+async fn create_project(user: &mut GooseUser) -> TransactionResult {
+    let session = user.get_session_data_unchecked::<Session>();
+    let user_dto = session.user_dto.clone();
+    let project_name = format!("goose-project-{}", unique_suffix());
+    let body = NewProjectDto {
+        name: project_name,
+        description: "goose loadtest session project".to_string(),
+    };
+
+    let reqwest_request_builder = user
+        .get_request_builder(&GooseMethod::Post, "/project")?
+        .json(&body)
+        .header("authorization", &session.user_dto.token);
+
+    let goose_request = GooseRequest::builder()
+        .set_request_builder(reqwest_request_builder)
+        .build();
+
+    let mut goose_response = user.request(goose_request).await?;
+    let response = goose_response
+        .response?
+        .json::<ProjectsDtoResponse>()
+        .await?;
+
+    let project_id = match response {
+        Ok(projects) => match projects.into_iter().next() {
+            Some(project) => project.id,
+            None => {
+                return user.set_failure(
+                    "error: /project returned no projects",
+                    &mut goose_response.request,
+                    None,
+                    None,
+                );
+            }
+        },
+        Err(e) => {
+            return user.set_failure(
+                &format!("error: {}", e.message),
+                &mut goose_response.request,
+                None,
+                None,
+            );
+        }
+    };
+
+    user.set_session_data(Session {
+        user_dto,
+        project_id: Some(project_id),
+        model_id: None,
+    });
+
+    Ok(())
+}
+
+async fn create_model(user: &mut GooseUser) -> TransactionResult {
+    let session = user.get_session_data_unchecked::<Session>();
+    let user_dto = session.user_dto.clone();
+    let project_id = match session.project_id {
+        Some(id) => id,
+        None => return Err("error: missing project_id in session".into()),
+    };
+
+    let model_name = format!("goose-model-{}", unique_suffix());
+    let path = format!("/model/{project_id}/{model_name}");
+    let part = reqwest::multipart::Part::bytes(vec![0_u8; 16])
+        .file_name("loadtest.glb")
+        .mime_str("model/gltf-binary")
+        .unwrap();
+    let form = reqwest::multipart::Form::new().part("file", part);
+
+    let reqwest_request_builder = user
+        .get_request_builder(&GooseMethod::Post, &path)?
+        .multipart(form)
+        .header("authorization", &session.user_dto.token);
+
+    let goose_request = GooseRequest::builder()
+        .set_request_builder(reqwest_request_builder)
+        .build();
+
+    let mut goose_response = user.request(goose_request).await?;
+    let response = goose_response.response?.json::<ModelsDtoResponse>().await?;
+
+    let model_id = match response {
+        Ok(models) => match models.get(0) {
+            Some(model) => model.id,
+            None => {
+                return user.set_failure(
+                    "error: /model upload returned no models",
+                    &mut goose_response.request,
+                    None,
+                    None,
+                );
+            }
+        },
+        Err(e) => {
+            return user.set_failure(
+                &format!("error: {}", e.message),
+                &mut goose_response.request,
+                None,
+                None,
+            );
+        }
+    };
+
+    user.set_session_data(Session {
+        user_dto,
+        project_id: Some(project_id),
+        model_id: Some(model_id),
+    });
+
+    Ok(())
+}
+
+async fn create_tag(user: &mut GooseUser) -> TransactionResult {
+    // This will panic if the session is missing or if the session is not of the right type.
+    // Use `get_session_data` to handle a missing session.
+    let session = user.get_session_data_unchecked::<Session>();
+    let project_id = match session.project_id {
+        Some(id) => id,
+        None => {
+            return Err("error: missing project_id in session".to_string().into());
+        }
+    };
+
+    let body = NewTagDto {
+        title: "new test tag".to_string(),
+        project_id,
+        position_x: 7.089879,
+        position_y: 2.999879,
+        position_z: -28.943491,
+    };
+
+    // Create a Reqwest RequestBuilder object and configure bearer authentication when making
+    // a GET request for the index.
+    let reqwest_request_builder = user
+        .get_request_builder(&GooseMethod::Post, "/tags")?
+        .json(&body)
+        .header("authorization", &session.user_dto.token);
+
+    // Add the manually created RequestBuilder and build a GooseRequest object.
+    let goose_request = GooseRequest::builder()
+        .set_request_builder(reqwest_request_builder)
+        .build();
+
+    // Make the actual request.
+    user.request(goose_request).await?;
+
+    Ok(())
+}
+
+async fn cleanup_project(user: &mut GooseUser) -> TransactionResult {
+    let session = user.get_session_data_unchecked::<Session>();
+    let project_id = match session.project_id {
+        Some(id) => id,
+        None => return Ok(()),
+    };
+
+    let path = format!("/project/{project_id}");
+    let reqwest_request_builder = user
+        .get_request_builder(&GooseMethod::Delete, &path)?
+        .header("authorization", &session.user_dto.token);
+
+    let goose_request = GooseRequest::builder()
+        .set_request_builder(reqwest_request_builder)
+        .build();
+
+    user.request(goose_request).await?;
 
     Ok(())
 }
@@ -243,10 +457,20 @@ async fn main() -> Result<(), GooseError> {
     });
 
     println!("Starting GooseAttack for axum...");
+
+    let scenario1 = scenario!("session tag creation")
+        .register_transaction(transaction!(login_to_system).set_on_start())
+        .register_transaction(transaction!(create_project).set_on_start())
+        .register_transaction(transaction!(create_model).set_on_start())
+        .register_transaction(transaction!(create_tag))
+        .register_transaction(transaction!(cleanup_project).set_on_stop());
+
+    let scenario_only_login =
+        scenario!("login").register_transaction(transaction!(login_to_system));
+
     GooseAttack::initialize()?
-        .register_scenario(
-            scenario!("LoadtestTransactions").register_transaction(transaction!(loadtest_index)),
-        )
+        .register_scenario(scenario1.clone())
+        // .register_scenario(scenario_only_login.clone())
         .set_default(GooseDefault::Host, "http://localhost:4000/")?
         .set_default(GooseDefault::ReportFile, "axumReport.html")?
         .set_default(GooseDefault::NoResetMetrics, true)?
@@ -255,9 +479,8 @@ async fn main() -> Result<(), GooseError> {
 
     println!("Starting GooseAttack for express...");
     GooseAttack::initialize()?
-        .register_scenario(
-            scenario!("LoadtestTransactions").register_transaction(transaction!(loadtest_index)),
-        )
+        .register_scenario(scenario1.clone())
+        // .register_scenario(scenario_only_login.clone())
         .set_default(GooseDefault::Host, "http://localhost:4001/")?
         .set_default(GooseDefault::ReportFile, "expressReport.html")?
         .set_default(GooseDefault::NoResetMetrics, true)?

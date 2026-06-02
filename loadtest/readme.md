@@ -1,0 +1,1 @@
+cargo run --release -- -t 10s --startup-time 5
