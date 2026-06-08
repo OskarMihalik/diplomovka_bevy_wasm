@@ -6,4 +6,4 @@ authors = ["Oskar Mihalik"]
 edition = "2021"
 
 [workspace]
-members = ["backend", "bevy_diplomovka", "dto", "model", "run-wasm"]
+members = ["backend", "bevy_diplomovka", "dto", "loadtest", "model", "run-wasm"]

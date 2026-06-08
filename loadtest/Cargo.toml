@@ -1,0 +1,19 @@
+[package]
+name = "loadtest"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+dto = { path = "../dto" }
+goose = { git = "https://github.com/tag1consulting/goose.git" }
+goose-eggs = "0.6.0"
+plotters = "0.3.7"
+reqwest = { version = "0.13.4", features = ["multipart"] }
+time = "0.3.47"
+tokio = { version = "1.52.3", features = [
+    "process",
+    "macros",
+    "rt-multi-thread",
+    "sync",
+    "time",
+] }

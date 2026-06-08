@@ -1,0 +1,57 @@
+FROM rust:latest as builder
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y pkg-config libssl-dev
+
+# Copy the workspace
+COPY . .
+
+ARG SKIP_DB_BUILD
+ENV SKIP_DB_BUILD=${SKIP_DB_BUILD}
+ARG DB_POSTGRES_PORT
+ENV DB_POSTGRES_PORT=${DB_POSTGRES_PORT}
+ARG DB_POSTGRES_PASSWORD
+ENV DB_POSTGRES_PASSWORD=${DB_POSTGRES_PASSWORD}
+ARG DB_POSTGRES_USER
+ENV DB_POSTGRES_USER=${DB_POSTGRES_USER}
+ARG DB_POSTGRES_DB
+ENV DB_POSTGRES_DB=${DB_POSTGRES_DB}
+ARG DB_HOST
+ENV DB_HOST=${DB_HOST}
+ARG BACKEND_PORT
+ENV BACKEND_PORT=${BACKEND_PORT}
+
+# Build the backend
+RUN cargo build -p backend --release
+
+# Serve stage
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y ca-certificates libssl3 && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+
+ARG SKIP_DB_BUILD
+ENV SKIP_DB_BUILD=${SKIP_DB_BUILD}
+ARG DB_POSTGRES_PORT
+ENV DB_POSTGRES_PORT=${DB_POSTGRES_PORT}
+ARG DB_POSTGRES_PASSWORD
+ENV DB_POSTGRES_PASSWORD=${DB_POSTGRES_PASSWORD}
+ARG DB_POSTGRES_USER
+ENV DB_POSTGRES_USER=${DB_POSTGRES_USER}
+ARG DB_POSTGRES_DB
+ENV DB_POSTGRES_DB=${DB_POSTGRES_DB}
+ARG DB_HOST
+ENV DB_HOST=${DB_HOST}
+ARG BACKEND_PORT
+ENV BACKEND_PORT=${BACKEND_PORT}
+
+# Copy the compiled binary
+COPY --from=builder /app/target/release/backend /usr/local/bin/backend
+
+# Copy backend assets if needed (e.g., templates, static files)
+COPY --from=builder /app/backend/assets /app/backend/assets
+
+# EXPOSE 4000
+
+# ENV RUST_LOG=info
+
+CMD ["backend"]

@@ -1,0 +1,40 @@
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+COPY backend-express ./backend-express
+
+WORKDIR /app/backend-express
+RUN npm install
+RUN npm run build
+
+# Stage 2: Production environment
+FROM node:20-alpine
+
+WORKDIR /app/backend-express
+
+COPY backend-express/package*.json ./
+RUN npm install --omit=dev
+
+COPY --from=builder /app/backend-express/dist ./dist
+
+# Directory /app/backend/assets mapped so ../../backend/assets works
+COPY backend/assets /app/backend/assets
+
+ARG DB_POSTGRES_PORT
+ENV DB_POSTGRES_PORT=${DB_POSTGRES_PORT}
+ARG DB_POSTGRES_USER
+ENV DB_POSTGRES_USER=${DB_POSTGRES_USER}
+ARG DB_POSTGRES_PASSWORD
+ENV DB_POSTGRES_PASSWORD=${DB_POSTGRES_PASSWORD}
+ARG DB_POSTGRES_DB
+ENV DB_POSTGRES_DB=${DB_POSTGRES_DB}
+ARG DB_POSTGRES_HOST
+ENV DB_POSTGRES_HOST=${DB_POSTGRES_HOST}
+ARG BACKEND_PORT
+ENV BACKEND_PORT=${BACKEND_PORT}
+
+# EXPOSE 4000
+# ENV BACKEND_PORT=4000
+
+CMD ["node", "dist/index.js"]

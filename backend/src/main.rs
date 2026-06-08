@@ -3,6 +3,8 @@
 //! ```not_rust
 //! cargo run -p example-cors
 //! ```
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 mod auth;
 mod services;
@@ -14,6 +16,7 @@ use axum::{
 };
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
+use dotenv::dotenv;
 use services::{
     model::{get_model_service, get_models_service, upload_new_model_service},
     project::{
@@ -27,22 +30,37 @@ use services::{
     tags::{delete_tag_service, get_tag_service, insert_tag_service, update_tag_service},
     users::{add_user_to_project_service, get_users_in_project_service, get_users_service},
 };
+use std::env;
 use std::net::SocketAddr;
 use tokio_postgres::NoTls;
+use tower_http::trace::TraceLayer;
 use tower_http::{
     cors::{Any, CorsLayer},
     services::ServeDir,
 };
-
+use tracing_subscriber::EnvFilter;
 type ConnectionPool = Pool<PostgresConnectionManager<NoTls>>;
 
 #[tokio::main]
 async fn main() {
-    let manager = PostgresConnectionManager::new_from_stringlike(
-        "host=localhost user=postgres password=postgres dbname=bevy port=5438",
-        NoTls,
-    )
-    .unwrap();
+    dotenv().ok(); // Reads the .env file
+
+    // tracing_subscriber::fmt()
+    //     .with_max_level(tracing::Level::DEBUG)
+    //     .init();
+
+    let db_port = env::var("DB_POSTGRES_PORT").unwrap();
+    let db_postgres_password = env::var("DB_POSTGRES_PASSWORD").unwrap();
+    let db_postgres_user = env::var("DB_POSTGRES_USER").unwrap();
+    let db_postgres_db = env::var("DB_POSTGRES_DB").unwrap();
+    let db_host = env::var("DB_HOST").unwrap();
+    let backend_port: u16 = env::var("BACKEND_PORT").unwrap().parse::<u16>().unwrap();
+    let db_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
+        format!("host={db_host} user={db_postgres_user} password={db_postgres_password} dbname={db_postgres_db} port={db_port}")
+            .to_string()
+    });
+
+    let manager = PostgresConnectionManager::new_from_stringlike(db_url, NoTls).unwrap();
     let pool = Pool::builder().build(manager).await.unwrap();
     let backend = async {
         let app = Router::new()
@@ -87,14 +105,14 @@ async fn main() {
                     .allow_methods(Any)
                     .allow_headers([http::header::CONTENT_TYPE, http::header::AUTHORIZATION]),
             );
-        serve(app, 4000).await;
+        serve(app, backend_port).await;
     };
 
     tokio::join!(backend);
 }
 
 async fn serve(app: Router, port: u16) {
-    let addr = SocketAddr::from(([127, 0, 0, 1], port));
+    let addr = SocketAddr::from(([0, 0, 0, 0], port));
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }

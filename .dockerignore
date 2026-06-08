@@ -1,0 +1,9 @@
+target/
+db/data/
+db/dump*.sql
+.git/
+.env
+node_modules/
+prisma/node_modules/
+dist/
+build/

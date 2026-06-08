@@ -96,8 +96,8 @@ GenericClient
 { pub id : i32,pub email : String,pub username : String,pub password : String,pub salt : String,}pub struct SelectUserBorrowed<'a> { pub id : i32,pub email : &'a str,pub username : &'a str,pub password : &'a str,pub salt : &'a str,}
 impl<'a> From<SelectUserBorrowed<'a>> for SelectUser
 {
-    fn from(SelectUserBorrowed { id,email,username,password,salt,}: SelectUserBorrowed<'a>) ->
-    Self { Self { id,email: email.into(),username: username.into(),password: password.into(),salt: salt.into(),} }
+    fn from(SelectUserBorrowed { id,email,username,password,salt,}: SelectUserBorrowed<'a>) -> Self
+    { Self { id,email: email.into(),username: username.into(),password: password.into(),salt: salt.into(),} }
 }pub struct SelectUserQuery<'a, C: GenericClient, T, const N: usize>
 {
     client: &'a  C, params:
@@ -149,8 +149,8 @@ cornucopia_async::StringSql,T2:
 cornucopia_async::StringSql,T3:
 cornucopia_async::StringSql,T4:
 cornucopia_async::StringSql,>(&'a mut self, client: &'a  C,
-email: &'a T1,username: &'a T2,password: &'a T3,salt: &'a T4,) -> I32Query<'a,C,
-i32, 4>
+email: &'a T1,username: &'a T2,password: &'a T3,salt: &'a T4,) -> I32Query<'a,C, i32,
+4>
 {
     I32Query
     {
@@ -158,8 +158,8 @@ i32, 4>
         |row| { row.get(0) }, mapper: |it| { it },
     }
 } }impl <'a, C: GenericClient,T1: cornucopia_async::StringSql,T2: cornucopia_async::StringSql,T3: cornucopia_async::StringSql,T4: cornucopia_async::StringSql,> cornucopia_async::Params<'a,
-InsertUserParams<T1,T2,T3,T4,>, I32Query<'a, C,
-i32, 4>, C> for InsertUserStmt
+InsertUserParams<T1,T2,T3,T4,>, I32Query<'a, C, i32,
+4>, C> for InsertUserStmt
 {
     fn
     params(&'a mut self, client: &'a  C, params: &'a
@@ -173,8 +173,8 @@ SelectUserStmt(cornucopia_async::private::Stmt); impl SelectUserStmt
 { pub fn bind<'a, C:
 GenericClient,T1:
 cornucopia_async::StringSql,>(&'a mut self, client: &'a  C,
-email: &'a T1,) -> SelectUserQuery<'a,C,
-SelectUser, 1>
+email: &'a T1,) -> SelectUserQuery<'a,C, SelectUser,
+1>
 {
     SelectUserQuery
     {
@@ -186,8 +186,8 @@ SelectUser, 1>
 { pub id : i32,pub title : String,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,pub color_r : f32,pub color_g : f32,pub color_b : f32,pub project_id : i32,pub shape : super::super::types::public::Shape,}pub struct SelectStatusesBorrowed<'a> { pub id : i32,pub title : &'a str,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,pub color_r : f32,pub color_g : f32,pub color_b : f32,pub project_id : i32,pub shape : super::super::types::public::Shape,}
 impl<'a> From<SelectStatusesBorrowed<'a>> for SelectStatuses
 {
-    fn from(SelectStatusesBorrowed { id,title,created_at,updated_at,color_r,color_g,color_b,project_id,shape,}: SelectStatusesBorrowed<'a>) ->
-    Self { Self { id,title: title.into(),created_at,updated_at,color_r,color_g,color_b,project_id,shape,} }
+    fn from(SelectStatusesBorrowed { id,title,created_at,updated_at,color_r,color_g,color_b,project_id,shape,}: SelectStatusesBorrowed<'a>) -> Self
+    { Self { id,title: title.into(),created_at,updated_at,color_r,color_g,color_b,project_id,shape,} }
 }pub struct SelectStatusesQuery<'a, C: GenericClient, T, const N: usize>
 {
     client: &'a  C, params:
@@ -276,8 +276,8 @@ OFFSET $4")) } pub struct
 SelectStatusesStmt(cornucopia_async::private::Stmt); impl SelectStatusesStmt
 { pub fn bind<'a, C:
 GenericClient,>(&'a mut self, client: &'a  C,
-user_id: &'a i32,project_id: &'a i32,limit: &'a i64,offset: &'a i64,) -> SelectStatusesQuery<'a,C,
-SelectStatuses, 4>
+user_id: &'a i32,project_id: &'a i32,limit: &'a i64,offset: &'a i64,) -> SelectStatusesQuery<'a,C, SelectStatuses,
+4>
 {
     SelectStatusesQuery
     {
@@ -285,8 +285,8 @@ SelectStatuses, 4>
         |row| { SelectStatusesBorrowed { id: row.get(0),title: row.get(1),created_at: row.get(2),updated_at: row.get(3),color_r: row.get(4),color_g: row.get(5),color_b: row.get(6),project_id: row.get(7),shape: row.get(8),} }, mapper: |it| { <SelectStatuses>::from(it) },
     }
 } }impl <'a, C: GenericClient,> cornucopia_async::Params<'a,
-SelectStatusesParams<>, SelectStatusesQuery<'a, C,
-SelectStatuses, 4>, C> for SelectStatusesStmt
+SelectStatusesParams<>, SelectStatusesQuery<'a, C, SelectStatuses,
+4>, C> for SelectStatusesStmt
 {
     fn
     params(&'a mut self, client: &'a  C, params: &'a
@@ -302,8 +302,8 @@ InsertStatusStmt(cornucopia_async::private::Stmt); impl InsertStatusStmt
 { pub fn bind<'a, C:
 GenericClient,T1:
 cornucopia_async::StringSql,>(&'a mut self, client: &'a  C,
-title: &'a T1,color_r: &'a f32,color_g: &'a f32,color_b: &'a f32,project_id: &'a i32,shape: &'a super::super::types::public::Shape,) -> I32Query<'a,C,
-i32, 6>
+title: &'a T1,color_r: &'a f32,color_g: &'a f32,color_b: &'a f32,project_id: &'a i32,shape: &'a super::super::types::public::Shape,) -> I32Query<'a,C, i32,
+6>
 {
     I32Query
     {
@@ -311,8 +311,8 @@ i32, 6>
         |row| { row.get(0) }, mapper: |it| { it },
     }
 } }impl <'a, C: GenericClient,T1: cornucopia_async::StringSql,> cornucopia_async::Params<'a,
-InsertStatusParams<T1,>, I32Query<'a, C,
-i32, 6>, C> for InsertStatusStmt
+InsertStatusParams<T1,>, I32Query<'a, C, i32,
+6>, C> for InsertStatusStmt
 {
     fn
     params(&'a mut self, client: &'a  C, params: &'a
@@ -355,8 +355,8 @@ id: &'a i32,) -> Result<u64, tokio_postgres::Error>
 { pub id : i32,pub email : String,pub username : String,pub title : String,pub project_id : i32,pub position_x : f32,pub position_y : f32,pub position_z : f32,pub created_by_id : i32,pub created_at : time::PrimitiveDateTime,pub shape : Option<super::super::types::public::Shape>,pub scale_x : f32,pub scale_y : f32,pub scale_z : f32,pub rotation_x : f32,pub rotation_y : f32,pub rotation_z : f32,pub status_title : Option<String>,pub status_id : Option<i32>,pub status_color_r : Option<f32>,pub status_color_g : Option<f32>,pub status_color_b : Option<f32>,pub status_project_id : Option<i32>,}pub struct TagBorrowed<'a> { pub id : i32,pub email : &'a str,pub username : &'a str,pub title : &'a str,pub project_id : i32,pub position_x : f32,pub position_y : f32,pub position_z : f32,pub created_by_id : i32,pub created_at : time::PrimitiveDateTime,pub shape : Option<super::super::types::public::Shape>,pub scale_x : f32,pub scale_y : f32,pub scale_z : f32,pub rotation_x : f32,pub rotation_y : f32,pub rotation_z : f32,pub status_title : Option<&'a str>,pub status_id : Option<i32>,pub status_color_r : Option<f32>,pub status_color_g : Option<f32>,pub status_color_b : Option<f32>,pub status_project_id : Option<i32>,}
 impl<'a> From<TagBorrowed<'a>> for Tag
 {
-    fn from(TagBorrowed { id,email,username,title,project_id,position_x,position_y,position_z,created_by_id,created_at,shape,scale_x,scale_y,scale_z,rotation_x,rotation_y,rotation_z,status_title,status_id,status_color_r,status_color_g,status_color_b,status_project_id,}: TagBorrowed<'a>) ->
-    Self { Self { id,email: email.into(),username: username.into(),title: title.into(),project_id,position_x,position_y,position_z,created_by_id,created_at,shape,scale_x,scale_y,scale_z,rotation_x,rotation_y,rotation_z,status_title: status_title.map(|v| v.into()),status_id,status_color_r,status_color_g,status_color_b,status_project_id,} }
+    fn from(TagBorrowed { id,email,username,title,project_id,position_x,position_y,position_z,created_by_id,created_at,shape,scale_x,scale_y,scale_z,rotation_x,rotation_y,rotation_z,status_title,status_id,status_color_r,status_color_g,status_color_b,status_project_id,}: TagBorrowed<'a>) -> Self
+    { Self { id,email: email.into(),username: username.into(),title: title.into(),project_id,position_x,position_y,position_z,created_by_id,created_at,shape,scale_x,scale_y,scale_z,rotation_x,rotation_y,rotation_z,status_title: status_title.map(|v| v.into()),status_id,status_color_r,status_color_g,status_color_b,status_project_id,} }
 }pub struct TagQuery<'a, C: GenericClient, T, const N: usize>
 {
     client: &'a  C, params:
@@ -400,8 +400,8 @@ GenericClient
 { pub id : i32,pub version : i32,pub model_link : String,pub name : String,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,pub project_id : i32,}pub struct SelectModelBorrowed<'a> { pub id : i32,pub version : i32,pub model_link : &'a str,pub name : &'a str,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,pub project_id : i32,}
 impl<'a> From<SelectModelBorrowed<'a>> for SelectModel
 {
-    fn from(SelectModelBorrowed { id,version,model_link,name,created_at,updated_at,project_id,}: SelectModelBorrowed<'a>) ->
-    Self { Self { id,version,model_link: model_link.into(),name: name.into(),created_at,updated_at,project_id,} }
+    fn from(SelectModelBorrowed { id,version,model_link,name,created_at,updated_at,project_id,}: SelectModelBorrowed<'a>) -> Self
+    { Self { id,version,model_link: model_link.into(),name: name.into(),created_at,updated_at,project_id,} }
 }pub struct SelectModelQuery<'a, C: GenericClient, T, const N: usize>
 {
     client: &'a  C, params:
@@ -484,8 +484,8 @@ GenericClient
 { pub id : i32,pub version : i32,pub model_link : String,pub name : String,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,pub project_id : i32,}pub struct SelectModelsBorrowed<'a> { pub id : i32,pub version : i32,pub model_link : &'a str,pub name : &'a str,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,pub project_id : i32,}
 impl<'a> From<SelectModelsBorrowed<'a>> for SelectModels
 {
-    fn from(SelectModelsBorrowed { id,version,model_link,name,created_at,updated_at,project_id,}: SelectModelsBorrowed<'a>) ->
-    Self { Self { id,version,model_link: model_link.into(),name: name.into(),created_at,updated_at,project_id,} }
+    fn from(SelectModelsBorrowed { id,version,model_link,name,created_at,updated_at,project_id,}: SelectModelsBorrowed<'a>) -> Self
+    { Self { id,version,model_link: model_link.into(),name: name.into(),created_at,updated_at,project_id,} }
 }pub struct SelectModelsQuery<'a, C: GenericClient, T, const N: usize>
 {
     client: &'a  C, params:
@@ -529,8 +529,8 @@ GenericClient
 { pub id : i32,pub name : String,pub description : String,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,pub created_by_id : i32,}pub struct SelectProjectBorrowed<'a> { pub id : i32,pub name : &'a str,pub description : &'a str,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,pub created_by_id : i32,}
 impl<'a> From<SelectProjectBorrowed<'a>> for SelectProject
 {
-    fn from(SelectProjectBorrowed { id,name,description,created_at,updated_at,created_by_id,}: SelectProjectBorrowed<'a>) ->
-    Self { Self { id,name: name.into(),description: description.into(),created_at,updated_at,created_by_id,} }
+    fn from(SelectProjectBorrowed { id,name,description,created_at,updated_at,created_by_id,}: SelectProjectBorrowed<'a>) -> Self
+    { Self { id,name: name.into(),description: description.into(),created_at,updated_at,created_by_id,} }
 }pub struct SelectProjectQuery<'a, C: GenericClient, T, const N: usize>
 {
     client: &'a  C, params:
@@ -613,8 +613,8 @@ GenericClient
 { pub id : i32,pub name : String,pub description : String,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,pub created_by_id : i32,}pub struct SelectProjectsBorrowed<'a> { pub id : i32,pub name : &'a str,pub description : &'a str,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,pub created_by_id : i32,}
 impl<'a> From<SelectProjectsBorrowed<'a>> for SelectProjects
 {
-    fn from(SelectProjectsBorrowed { id,name,description,created_at,updated_at,created_by_id,}: SelectProjectsBorrowed<'a>) ->
-    Self { Self { id,name: name.into(),description: description.into(),created_at,updated_at,created_by_id,} }
+    fn from(SelectProjectsBorrowed { id,name,description,created_at,updated_at,created_by_id,}: SelectProjectsBorrowed<'a>) -> Self
+    { Self { id,name: name.into(),description: description.into(),created_at,updated_at,created_by_id,} }
 }pub struct SelectProjectsQuery<'a, C: GenericClient, T, const N: usize>
 {
     client: &'a  C, params:
@@ -658,8 +658,8 @@ GenericClient
 { pub id : i32,pub text : String,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,pub username : String,pub user_id : i32,pub email : String,pub is_admin : bool,pub created_by_id : i32,}pub struct SelectTagMessagesBorrowed<'a> { pub id : i32,pub text : &'a str,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,pub username : &'a str,pub user_id : i32,pub email : &'a str,pub is_admin : bool,pub created_by_id : i32,}
 impl<'a> From<SelectTagMessagesBorrowed<'a>> for SelectTagMessages
 {
-    fn from(SelectTagMessagesBorrowed { id,text,created_at,updated_at,username,user_id,email,is_admin,created_by_id,}: SelectTagMessagesBorrowed<'a>) ->
-    Self { Self { id,text: text.into(),created_at,updated_at,username: username.into(),user_id,email: email.into(),is_admin,created_by_id,} }
+    fn from(SelectTagMessagesBorrowed { id,text,created_at,updated_at,username,user_id,email,is_admin,created_by_id,}: SelectTagMessagesBorrowed<'a>) -> Self
+    { Self { id,text: text.into(),created_at,updated_at,username: username.into(),user_id,email: email.into(),is_admin,created_by_id,} }
 }pub struct SelectTagMessagesQuery<'a, C: GenericClient, T, const N: usize>
 {
     client: &'a  C, params:
@@ -700,7 +700,7 @@ GenericClient
         Ok(it)
     }
 }pub fn select_tags() -> SelectTagsStmt
-{ SelectTagsStmt(cornucopia_async::private::Stmt::new("SELECT DISTINCT tag.id, \"user\".\"email\", \"user\".username, tag.title, tag.project_id, tag.position_x, tag.position_y, tag.position_z, tag.created_by_id, tag.created_at,
+{ SelectTagsStmt(cornucopia_async::private::Stmt::new("SELECT tag.id, \"user\".\"email\", \"user\".username, tag.title, tag.project_id, tag.position_x, tag.position_y, tag.position_z, tag.created_by_id, tag.created_at,
 \"status\".shape, tag.scale_x, tag.scale_y, tag.scale_z, tag.rotation_x, tag.rotation_y, tag.rotation_z,
 \"status\".title as status_title, \"status\".id as status_id, \"status\".color_r as status_color_r, \"status\".color_g as status_color_g, \"status\".color_b as status_color_b, \"status\".project_id as status_project_id
 FROM public.\"Tag\" tag
@@ -713,8 +713,8 @@ OFFSET $3")) } pub struct
 SelectTagsStmt(cornucopia_async::private::Stmt); impl SelectTagsStmt
 { pub fn bind<'a, C:
 GenericClient,>(&'a mut self, client: &'a  C,
-project_id: &'a i32,limit: &'a i64,offset: &'a i64,) -> TagQuery<'a,C,
-Tag, 3>
+project_id: &'a i32,limit: &'a i64,offset: &'a i64,) -> TagQuery<'a,C, Tag,
+3>
 {
     TagQuery
     {
@@ -722,8 +722,8 @@ Tag, 3>
         |row| { TagBorrowed { id: row.get(0),email: row.get(1),username: row.get(2),title: row.get(3),project_id: row.get(4),position_x: row.get(5),position_y: row.get(6),position_z: row.get(7),created_by_id: row.get(8),created_at: row.get(9),shape: row.get(10),scale_x: row.get(11),scale_y: row.get(12),scale_z: row.get(13),rotation_x: row.get(14),rotation_y: row.get(15),rotation_z: row.get(16),status_title: row.get(17),status_id: row.get(18),status_color_r: row.get(19),status_color_g: row.get(20),status_color_b: row.get(21),status_project_id: row.get(22),} }, mapper: |it| { <Tag>::from(it) },
     }
 } }impl <'a, C: GenericClient,> cornucopia_async::Params<'a,
-SelectTagsParams<>, TagQuery<'a, C,
-Tag, 3>, C> for SelectTagsStmt
+SelectTagsParams<>, TagQuery<'a, C, Tag,
+3>, C> for SelectTagsStmt
 {
     fn
     params(&'a mut self, client: &'a  C, params: &'a
@@ -791,8 +791,8 @@ OFFSET $3")) } pub struct
 SelectModelStmt(cornucopia_async::private::Stmt); impl SelectModelStmt
 { pub fn bind<'a, C:
 GenericClient,>(&'a mut self, client: &'a  C,
-id: &'a i32,limit: &'a i64,offset: &'a i64,) -> SelectModelQuery<'a,C,
-SelectModel, 3>
+id: &'a i32,limit: &'a i64,offset: &'a i64,) -> SelectModelQuery<'a,C, SelectModel,
+3>
 {
     SelectModelQuery
     {
@@ -800,8 +800,8 @@ SelectModel, 3>
         |row| { SelectModelBorrowed { id: row.get(0),version: row.get(1),model_link: row.get(2),name: row.get(3),created_at: row.get(4),updated_at: row.get(5),project_id: row.get(6),} }, mapper: |it| { <SelectModel>::from(it) },
     }
 } }impl <'a, C: GenericClient,> cornucopia_async::Params<'a,
-SelectModelParams<>, SelectModelQuery<'a, C,
-SelectModel, 3>, C> for SelectModelStmt
+SelectModelParams<>, SelectModelQuery<'a, C, SelectModel,
+3>, C> for SelectModelStmt
 {
     fn
     params(&'a mut self, client: &'a  C, params: &'a
@@ -818,8 +818,8 @@ InsertModelStmt(cornucopia_async::private::Stmt); impl InsertModelStmt
 GenericClient,T1:
 cornucopia_async::StringSql,T2:
 cornucopia_async::StringSql,>(&'a mut self, client: &'a  C,
-version: &'a i32,model_link: &'a T1,name: &'a T2,project_id: &'a i32,created_by_id: &'a i32,) -> I32Query<'a,C,
-i32, 5>
+version: &'a i32,model_link: &'a T1,name: &'a T2,project_id: &'a i32,created_by_id: &'a i32,) -> I32Query<'a,C, i32,
+5>
 {
     I32Query
     {
@@ -827,8 +827,8 @@ i32, 5>
         |row| { row.get(0) }, mapper: |it| { it },
     }
 } }impl <'a, C: GenericClient,T1: cornucopia_async::StringSql,T2: cornucopia_async::StringSql,> cornucopia_async::Params<'a,
-InsertModelParams<T1,T2,>, I32Query<'a, C,
-i32, 5>, C> for InsertModelStmt
+InsertModelParams<T1,T2,>, I32Query<'a, C, i32,
+5>, C> for InsertModelStmt
 {
     fn
     params(&'a mut self, client: &'a  C, params: &'a
@@ -845,8 +845,8 @@ OFFSET $4")) } pub struct
 SelectModelsStmt(cornucopia_async::private::Stmt); impl SelectModelsStmt
 { pub fn bind<'a, C:
 GenericClient,>(&'a mut self, client: &'a  C,
-project_id: &'a i32,user_id: &'a i32,limit: &'a i64,offset: &'a i64,) -> SelectModelsQuery<'a,C,
-SelectModels, 4>
+project_id: &'a i32,user_id: &'a i32,limit: &'a i64,offset: &'a i64,) -> SelectModelsQuery<'a,C, SelectModels,
+4>
 {
     SelectModelsQuery
     {
@@ -854,8 +854,8 @@ SelectModels, 4>
         |row| { SelectModelsBorrowed { id: row.get(0),version: row.get(1),model_link: row.get(2),name: row.get(3),created_at: row.get(4),updated_at: row.get(5),project_id: row.get(6),} }, mapper: |it| { <SelectModels>::from(it) },
     }
 } }impl <'a, C: GenericClient,> cornucopia_async::Params<'a,
-SelectModelsParams<>, SelectModelsQuery<'a, C,
-SelectModels, 4>, C> for SelectModelsStmt
+SelectModelsParams<>, SelectModelsQuery<'a, C, SelectModels,
+4>, C> for SelectModelsStmt
 {
     fn
     params(&'a mut self, client: &'a  C, params: &'a
@@ -869,8 +869,8 @@ WHERE id=($1)")) } pub struct
 SelectProjectStmt(cornucopia_async::private::Stmt); impl SelectProjectStmt
 { pub fn bind<'a, C:
 GenericClient,>(&'a mut self, client: &'a  C,
-id: &'a i32,) -> SelectProjectQuery<'a,C,
-SelectProject, 1>
+id: &'a i32,) -> SelectProjectQuery<'a,C, SelectProject,
+1>
 {
     SelectProjectQuery
     {
@@ -884,8 +884,8 @@ WHERE projectUser.user_id = ($1) AND projectUser.project_id = ($2)")) } pub stru
 IsProjectAdminStmt(cornucopia_async::private::Stmt); impl IsProjectAdminStmt
 { pub fn bind<'a, C:
 GenericClient,>(&'a mut self, client: &'a  C,
-user_id: &'a i32,project_id: &'a i32,) -> BoolQuery<'a,C,
-bool, 2>
+user_id: &'a i32,project_id: &'a i32,) -> BoolQuery<'a,C, bool,
+2>
 {
     BoolQuery
     {
@@ -893,8 +893,8 @@ bool, 2>
         |row| { row.get(0) }, mapper: |it| { it },
     }
 } }impl <'a, C: GenericClient,> cornucopia_async::Params<'a,
-IsProjectAdminParams<>, BoolQuery<'a, C,
-bool, 2>, C> for IsProjectAdminStmt
+IsProjectAdminParams<>, BoolQuery<'a, C, bool,
+2>, C> for IsProjectAdminStmt
 {
     fn
     params(&'a mut self, client: &'a  C, params: &'a
@@ -922,8 +922,8 @@ OFFSET $3")) } pub struct
 SelectProjectsStmt(cornucopia_async::private::Stmt); impl SelectProjectsStmt
 { pub fn bind<'a, C:
 GenericClient,>(&'a mut self, client: &'a  C,
-user_id: &'a i32,limit: &'a i64,offset: &'a i64,) -> SelectProjectsQuery<'a,C,
-SelectProjects, 3>
+user_id: &'a i32,limit: &'a i64,offset: &'a i64,) -> SelectProjectsQuery<'a,C, SelectProjects,
+3>
 {
     SelectProjectsQuery
     {
@@ -931,8 +931,8 @@ SelectProjects, 3>
         |row| { SelectProjectsBorrowed { id: row.get(0),name: row.get(1),description: row.get(2),created_at: row.get(3),updated_at: row.get(4),created_by_id: row.get(5),} }, mapper: |it| { <SelectProjects>::from(it) },
     }
 } }impl <'a, C: GenericClient,> cornucopia_async::Params<'a,
-SelectProjectsParams<>, SelectProjectsQuery<'a, C,
-SelectProjects, 3>, C> for SelectProjectsStmt
+SelectProjectsParams<>, SelectProjectsQuery<'a, C, SelectProjects,
+3>, C> for SelectProjectsStmt
 {
     fn
     params(&'a mut self, client: &'a  C, params: &'a
@@ -949,8 +949,8 @@ InsertProjectStmt(cornucopia_async::private::Stmt); impl InsertProjectStmt
 GenericClient,T1:
 cornucopia_async::StringSql,T2:
 cornucopia_async::StringSql,>(&'a mut self, client: &'a  C,
-name: &'a T1,description: &'a T2,created_by_id: &'a i32,) -> I32Query<'a,C,
-i32, 3>
+name: &'a T1,description: &'a T2,created_by_id: &'a i32,) -> I32Query<'a,C, i32,
+3>
 {
     I32Query
     {
@@ -958,8 +958,8 @@ i32, 3>
         |row| { row.get(0) }, mapper: |it| { it },
     }
 } }impl <'a, C: GenericClient,T1: cornucopia_async::StringSql,T2: cornucopia_async::StringSql,> cornucopia_async::Params<'a,
-InsertProjectParams<T1,T2,>, I32Query<'a, C,
-i32, 3>, C> for InsertProjectStmt
+InsertProjectParams<T1,T2,>, I32Query<'a, C, i32,
+3>, C> for InsertProjectStmt
 {
     fn
     params(&'a mut self, client: &'a  C, params: &'a
@@ -1023,8 +1023,8 @@ OFFSET $4")) } pub struct
 SelectTagMessagesStmt(cornucopia_async::private::Stmt); impl SelectTagMessagesStmt
 { pub fn bind<'a, C:
 GenericClient,>(&'a mut self, client: &'a  C,
-tag_id: &'a i32,user_id: &'a i32,limit: &'a i64,offset: &'a i64,) -> SelectTagMessagesQuery<'a,C,
-SelectTagMessages, 4>
+tag_id: &'a i32,user_id: &'a i32,limit: &'a i64,offset: &'a i64,) -> SelectTagMessagesQuery<'a,C, SelectTagMessages,
+4>
 {
     SelectTagMessagesQuery
     {
@@ -1032,8 +1032,8 @@ SelectTagMessages, 4>
         |row| { SelectTagMessagesBorrowed { id: row.get(0),text: row.get(1),created_at: row.get(2),updated_at: row.get(3),username: row.get(4),user_id: row.get(5),email: row.get(6),is_admin: row.get(7),created_by_id: row.get(8),} }, mapper: |it| { <SelectTagMessages>::from(it) },
     }
 } }impl <'a, C: GenericClient,> cornucopia_async::Params<'a,
-SelectTagMessagesParams<>, SelectTagMessagesQuery<'a, C,
-SelectTagMessages, 4>, C> for SelectTagMessagesStmt
+SelectTagMessagesParams<>, SelectTagMessagesQuery<'a, C, SelectTagMessages,
+4>, C> for SelectTagMessagesStmt
 {
     fn
     params(&'a mut self, client: &'a  C, params: &'a
@@ -1045,8 +1045,8 @@ SelectTagMessages, 4>, C> for SelectTagMessagesStmt
 { pub id : i32,pub email : String,pub username : String,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,}pub struct SelectUsersBorrowed<'a> { pub id : i32,pub email : &'a str,pub username : &'a str,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,}
 impl<'a> From<SelectUsersBorrowed<'a>> for SelectUsers
 {
-    fn from(SelectUsersBorrowed { id,email,username,created_at,updated_at,}: SelectUsersBorrowed<'a>) ->
-    Self { Self { id,email: email.into(),username: username.into(),created_at,updated_at,} }
+    fn from(SelectUsersBorrowed { id,email,username,created_at,updated_at,}: SelectUsersBorrowed<'a>) -> Self
+    { Self { id,email: email.into(),username: username.into(),created_at,updated_at,} }
 }pub struct SelectUsersQuery<'a, C: GenericClient, T, const N: usize>
 {
     client: &'a  C, params:
@@ -1090,8 +1090,8 @@ GenericClient
 { pub id : i32,pub email : String,pub username : String,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,pub is_admin : bool,}pub struct SelectUsersInProjectBorrowed<'a> { pub id : i32,pub email : &'a str,pub username : &'a str,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,pub is_admin : bool,}
 impl<'a> From<SelectUsersInProjectBorrowed<'a>> for SelectUsersInProject
 {
-    fn from(SelectUsersInProjectBorrowed { id,email,username,created_at,updated_at,is_admin,}: SelectUsersInProjectBorrowed<'a>) ->
-    Self { Self { id,email: email.into(),username: username.into(),created_at,updated_at,is_admin,} }
+    fn from(SelectUsersInProjectBorrowed { id,email,username,created_at,updated_at,is_admin,}: SelectUsersInProjectBorrowed<'a>) -> Self
+    { Self { id,email: email.into(),username: username.into(),created_at,updated_at,is_admin,} }
 }pub struct SelectUsersInProjectQuery<'a, C: GenericClient, T, const N: usize>
 {
     client: &'a  C, params:
@@ -1135,8 +1135,8 @@ GenericClient
 { pub id : i32,pub email : String,pub username : String,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,}pub struct SelectUserByIdBorrowed<'a> { pub id : i32,pub email : &'a str,pub username : &'a str,pub created_at : time::PrimitiveDateTime,pub updated_at : time::PrimitiveDateTime,}
 impl<'a> From<SelectUserByIdBorrowed<'a>> for SelectUserById
 {
-    fn from(SelectUserByIdBorrowed { id,email,username,created_at,updated_at,}: SelectUserByIdBorrowed<'a>) ->
-    Self { Self { id,email: email.into(),username: username.into(),created_at,updated_at,} }
+    fn from(SelectUserByIdBorrowed { id,email,username,created_at,updated_at,}: SelectUserByIdBorrowed<'a>) -> Self
+    { Self { id,email: email.into(),username: username.into(),created_at,updated_at,} }
 }pub struct SelectUserByIdQuery<'a, C: GenericClient, T, const N: usize>
 {
     client: &'a  C, params:
@@ -1187,8 +1187,8 @@ SelectUsersStmt(cornucopia_async::private::Stmt); impl SelectUsersStmt
 { pub fn bind<'a, C:
 GenericClient,T1:
 cornucopia_async::StringSql,>(&'a mut self, client: &'a  C,
-email: &'a T1,limit: &'a i64,offset: &'a i64,) -> SelectUsersQuery<'a,C,
-SelectUsers, 3>
+email: &'a T1,limit: &'a i64,offset: &'a i64,) -> SelectUsersQuery<'a,C, SelectUsers,
+3>
 {
     SelectUsersQuery
     {
@@ -1196,8 +1196,8 @@ SelectUsers, 3>
         |row| { SelectUsersBorrowed { id: row.get(0),email: row.get(1),username: row.get(2),created_at: row.get(3),updated_at: row.get(4),} }, mapper: |it| { <SelectUsers>::from(it) },
     }
 } }impl <'a, C: GenericClient,T1: cornucopia_async::StringSql,> cornucopia_async::Params<'a,
-SelectUsersParams<T1,>, SelectUsersQuery<'a, C,
-SelectUsers, 3>, C> for SelectUsersStmt
+SelectUsersParams<T1,>, SelectUsersQuery<'a, C, SelectUsers,
+3>, C> for SelectUsersStmt
 {
     fn
     params(&'a mut self, client: &'a  C, params: &'a
@@ -1215,8 +1215,8 @@ OFFSET $3")) } pub struct
 SelectUsersInProjectStmt(cornucopia_async::private::Stmt); impl SelectUsersInProjectStmt
 { pub fn bind<'a, C:
 GenericClient,>(&'a mut self, client: &'a  C,
-project_id: &'a i32,limit: &'a i64,offset: &'a i64,) -> SelectUsersInProjectQuery<'a,C,
-SelectUsersInProject, 3>
+project_id: &'a i32,limit: &'a i64,offset: &'a i64,) -> SelectUsersInProjectQuery<'a,C, SelectUsersInProject,
+3>
 {
     SelectUsersInProjectQuery
     {
@@ -1224,8 +1224,8 @@ SelectUsersInProject, 3>
         |row| { SelectUsersInProjectBorrowed { id: row.get(0),email: row.get(1),username: row.get(2),created_at: row.get(3),updated_at: row.get(4),is_admin: row.get(5),} }, mapper: |it| { <SelectUsersInProject>::from(it) },
     }
 } }impl <'a, C: GenericClient,> cornucopia_async::Params<'a,
-SelectUsersInProjectParams<>, SelectUsersInProjectQuery<'a, C,
-SelectUsersInProject, 3>, C> for SelectUsersInProjectStmt
+SelectUsersInProjectParams<>, SelectUsersInProjectQuery<'a, C, SelectUsersInProject,
+3>, C> for SelectUsersInProjectStmt
 {
     fn
     params(&'a mut self, client: &'a  C, params: &'a
@@ -1239,8 +1239,8 @@ WHERE id = $1")) } pub struct
 SelectUserByIdStmt(cornucopia_async::private::Stmt); impl SelectUserByIdStmt
 { pub fn bind<'a, C:
 GenericClient,>(&'a mut self, client: &'a  C,
-id: &'a i32,) -> SelectUserByIdQuery<'a,C,
-SelectUserById, 1>
+id: &'a i32,) -> SelectUserByIdQuery<'a,C, SelectUserById,
+1>
 {
     SelectUserByIdQuery
     {

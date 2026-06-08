@@ -124,3 +124,9 @@ enum Shape {
   ConicalFrustum
   Sphere
 }
+
+generator kysely {
+    provider = "prisma-kysely"
+    output = "../../backend-express/src/db"
+    fileName = "types.ts"
+}

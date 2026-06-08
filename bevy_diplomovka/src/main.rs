@@ -14,6 +14,8 @@ use std::io::Cursor;
 use std::time::Duration;
 use winit::window::Icon; // ToDo: Replace bevy_game with your new crate name.
                          // mod asset;
+#[macro_use]
+extern crate dotenv_codegen;
 
 fn main() {
     // this breaks the wasm build
