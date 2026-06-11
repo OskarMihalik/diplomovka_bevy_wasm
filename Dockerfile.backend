@@ -18,8 +18,8 @@ ARG DB_POSTGRES_DB
 ENV DB_POSTGRES_DB=${DB_POSTGRES_DB}
 ARG DB_HOST
 ENV DB_HOST=${DB_HOST}
-ARG BACKEND_PORT
-ENV BACKEND_PORT=${BACKEND_PORT}
+ARG PORT
+ENV PORT=${PORT}
 
 # Build the backend
 RUN cargo build -p backend --release
@@ -41,8 +41,8 @@ ARG DB_POSTGRES_DB
 ENV DB_POSTGRES_DB=${DB_POSTGRES_DB}
 ARG DB_HOST
 ENV DB_HOST=${DB_HOST}
-ARG BACKEND_PORT
-ENV BACKEND_PORT=${BACKEND_PORT}
+ARG PORT
+ENV PORT=${PORT}
 
 # Copy the compiled binary
 COPY --from=builder /app/target/release/backend /usr/local/bin/backend

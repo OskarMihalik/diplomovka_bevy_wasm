@@ -54,7 +54,7 @@ async fn main() {
     let db_postgres_user = env::var("DB_POSTGRES_USER").unwrap();
     let db_postgres_db = env::var("DB_POSTGRES_DB").unwrap();
     let db_host = env::var("DB_HOST").unwrap();
-    let backend_port: u16 = env::var("BACKEND_PORT").unwrap().parse::<u16>().unwrap();
+    let PORT: u16 = env::var("PORT").unwrap().parse::<u16>().unwrap();
     let db_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
         format!("host={db_host} user={db_postgres_user} password={db_postgres_password} dbname={db_postgres_db} port={db_port}")
             .to_string()
@@ -105,7 +105,7 @@ async fn main() {
                     .allow_methods(Any)
                     .allow_headers([http::header::CONTENT_TYPE, http::header::AUTHORIZATION]),
             );
-        serve(app, backend_port).await;
+        serve(app, PORT).await;
     };
 
     tokio::join!(backend);

@@ -104,7 +104,7 @@ app.put("/status", asyncHandler(createStatus))
 app.post("/status", asyncHandler(updateStatus))
 app.delete("/status/:status_id", asyncHandler(deleteStatus))
 
-const port = process.env.BACKEND_PORT || 3000
+const port = process.env.PORT || 3000
 app.listen(port, () => {
   console.log(`Backend Express running on port ${port}`)
 })

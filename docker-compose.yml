@@ -22,7 +22,7 @@ services:
   #       - DB_POSTGRES_PASSWORD=postgres
   #       - DB_POSTGRES_DB=bevy
   #       - DB_POSTGRES_HOST=postgres
-  #       - BACKEND_PORT=4001
+  #       - PORT=4001
   #   ports:
   #     - "4001:4001"
   #   depends_on:
@@ -38,7 +38,7 @@ services:
         - DB_POSTGRES_USER=postgres
         - DB_POSTGRES_DB=bevy
         - DB_HOST=postgres
-        - BACKEND_PORT=4000
+        - PORT=4000
     ports:
       - "4000:4000"
     depends_on:
