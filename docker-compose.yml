@@ -12,21 +12,21 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_DB=bevy
 
-  backend-express:
-    build:
-      context: .
-      dockerfile: Dockerfile.backend-express
-      args:
-        - DB_POSTGRES_PORT=5432
-        - DB_POSTGRES_USER=postgres
-        - DB_POSTGRES_PASSWORD=postgres
-        - DB_POSTGRES_DB=bevy
-        - DB_POSTGRES_HOST=postgres
-        - BACKEND_PORT=4001
-    ports:
-      - "4001:4001"
-    depends_on:
-      - postgres
+  # backend-express:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.backend-express
+  #     args:
+  #       - DB_POSTGRES_PORT=5432
+  #       - DB_POSTGRES_USER=postgres
+  #       - DB_POSTGRES_PASSWORD=postgres
+  #       - DB_POSTGRES_DB=bevy
+  #       - DB_POSTGRES_HOST=postgres
+  #       - BACKEND_PORT=4001
+  #   ports:
+  #     - "4001:4001"
+  #   depends_on:
+  #     - postgres
   backend:
     build:
       context: .

@@ -153,7 +153,7 @@ fn ui_model_screen(
         egui::ScrollArea::vertical().show(ui, |ui| {
             // lorem_ipsum(ui);
             ui.vertical(|ui| {
-                if ui.button("Add new model").clicked() {
+                if current_selected_project_dto.is_some() && ui.button("Add new model").clicked() {
                     *new_model_modal_open = true;
                 }
                 let mut v = 0;
