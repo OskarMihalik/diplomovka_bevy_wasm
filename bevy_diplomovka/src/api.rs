@@ -60,7 +60,8 @@ impl Plugin for ApiPlugin {
             .add_observer(delete_status)
             .add_observer(delete_tag)
             .add_observer(get_projects)
-            .track_api::<NewProjectEvent>();
+            .track_api::<NewProjectEvent>()
+            .track_api::<CreateModelEvent>();
     }
 }
 
@@ -245,6 +246,7 @@ pub struct CreateModelEvent {
 
 fn create_model(
     trigger: Trigger<CreateModelEvent>,
+    mut commands: Commands,
     mut client: BevyReqwest,
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
@@ -264,8 +266,7 @@ fn create_model(
         .build()
         .unwrap();
 
-    client
-        .send(reqwest_request)
+    send_tracked::<CreateModelEvent>(&mut client, &mut commands, reqwest_request)
         .on_json_response(
             |trigger: Trigger<JsonResponse<ModelsDtoResponse>>, mut commands: Commands| {
                 match &trigger.0 {

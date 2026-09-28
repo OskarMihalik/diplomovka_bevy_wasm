@@ -4,10 +4,7 @@ use bevy_egui::{
     EguiContexts, EguiPlugin,
 };
 use bevy_file_dialog::prelude::*;
-use dto::{
-    model::NewModelDto,
-    users::{GetUsersDto, OtherUserDto, ProjectUserDto, UserToProjectDto},
-};
+use dto::users::{GetUsersDto, OtherUserDto, ProjectUserDto, UserToProjectDto};
 use egui_toast::{Toast, ToastKind, ToastOptions, Toasts};
 
 use crate::{
@@ -25,7 +22,9 @@ use crate::{
 use super::{
     auth_screen::{login_screen, reset_auth_forms, AuthForms},
     confirm_modal::{confirm_modal, ConfirmModalResult},
+    glb_picker::{set_uploaded_glb, GlbPickerPlugin},
     kanban::kanban_window,
+    new_model_modal::{new_model_modal, NewModelModal},
     new_project_modal::{new_project_modal, NewProjectModal},
     light_controls::{light_controls_window, on_light_gizmos_added, on_light_gizmos_removed},
     status_modal::ui_status_modal,
@@ -52,6 +51,7 @@ pub struct UiContexts {
 impl Plugin for GuiPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(EguiPlugin)
+            .add_plugins(GlbPickerPlugin)
             .add_plugins(
                 FileDialogPlugin::new()
                     // allow saving of files marked with TextFileContents
@@ -127,8 +127,8 @@ fn ui_model_screen(
     mut contexts: EguiContexts,
     query_projects: Query<(Entity, &ProjectData, Option<&ThisProjectIsSelected>)>,
     mut query_models: Query<(Entity, &mut ModelData, Option<&ThisModelIsSelected>)>,
-    mut new_model_modal_open: Local<bool>,
-    mut new_model_dto: Local<NewModelDto>,
+    mut new_model: Local<NewModelModal>,
+    mut new_model_status: ApiStatus<CreateModelEvent>,
     query_loaded_glb: Query<(Entity, &UploadedGlbFile)>,
 ) {
     let ctx = contexts.ctx_mut();
@@ -157,7 +157,7 @@ fn ui_model_screen(
             // lorem_ipsum(ui);
             ui.vertical(|ui| {
                 if current_selected_project_dto.is_some() && ui.button("Add new model").clicked() {
-                    *new_model_modal_open = true;
+                    new_model.open = true;
                 }
                 let mut v = 0;
                 for (entity, mut model_data, selected_model) in query_models
@@ -209,53 +209,14 @@ fn ui_model_screen(
             })
         });
     });
-    if *new_model_modal_open {
-        let modal = egui::Modal::new(Id::new("Add new model modal")).show(ctx, |ui| {
-            ui.label("Model name:");
-            ui.text_edit_singleline(&mut new_model_dto.name);
-            match query_loaded_glb.get_single() {
-                Ok((entity, uploaded_glb)) => {
-                    ui.label("Glb file loaded");
-                    ui.label(&uploaded_glb.file_name);
-                    if ui.button("Submit").clicked() {
-                        match current_selected_project_dto {
-                            Some(selected_project) => {
-                                commands.trigger(CreateModelEvent {
-                                    name: new_model_dto.name.clone(),
-                                    project_id: selected_project.dto.id,
-                                    model_bytes: uploaded_glb.contents.clone(),
-                                });
-                                commands.entity(entity).despawn_recursive();
-                            }
-                            None => {
-                                bevy::log::error!("No project selected");
-                            }
-                        }
-                        // commands.trigger(CreateModelEvent {
-                        //     name: new_model_dto.name.clone(),
-                        //     project_id: 0,
-                        //     model_bytes: uploaded_glb.contents.clone(),
-                        // });
-                        // commands.entity(entity).despawn_recursive();
-                    }
-                }
-                Err(_) => {
-                    ui.label("No glb file loaded");
-                    if ui.button("Load glb file").clicked() {
-                        commands
-                            .dialog()
-                            .add_filter("Glb", &["glb"])
-                            .load_file::<GlbFileContents>();
-                    }
-                }
-            }
-        });
-        if modal.should_close() {
-            *new_model_modal_open = false;
-            new_model_dto.name = String::new();
-            new_model_dto.project_id = 0;
-        }
-    }
+    new_model_modal(
+        ctx,
+        &mut commands,
+        &mut new_model,
+        &mut new_model_status,
+        current_selected_project_dto.map(|project| project.dto.id),
+        query_loaded_glb.get_single().ok(),
+    );
 }
 
 fn ui_project_screen(
@@ -518,13 +479,15 @@ fn show_toasts(mut contexts: EguiContexts, mut ui_contexts: ResMut<UiContexts>) 
 fn file_loaded(
     mut ev_loaded: EventReader<DialogFileLoaded<GlbFileContents>>,
     mut commands: Commands,
+    query_loaded_glb: Query<Entity, With<UploadedGlbFile>>,
 ) {
     for ev in ev_loaded.read() {
-        bevy::log::info!("Loaded file {} with contents", ev.file_name);
-        commands.spawn(UploadedGlbFile {
-            file_name: ev.file_name.clone(),
-            contents: ev.contents.clone(),
-        });
+        set_uploaded_glb(
+            &mut commands,
+            query_loaded_glb.iter(),
+            ev.file_name.clone(),
+            ev.contents.clone(),
+        );
     }
 }
 

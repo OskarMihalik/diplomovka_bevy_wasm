@@ -41,7 +41,17 @@ transform-gizmo = { git = "https://github.com/ethereumdegen/transform-gizmo.git"
 bevy-inspector-egui = "0.29"
 js-sys = "0.3.66"
 wasm-bindgen-futures = "0.4.39"
-web-sys = { version = "0.3.98", features = ["Request", "Window", "Response"] }
+web-sys = { version = "0.3.98", features = [
+    "Request",
+    "Window",
+    "Response",
+    "Document",
+    "Element",
+    "HtmlInputElement",
+    "FileList",
+    "File",
+    "Blob",
+] }
 serde = "1.0.217"
 base64 = "0.22.0"
 time = { version = "0.3.18", features = ["serde"] }

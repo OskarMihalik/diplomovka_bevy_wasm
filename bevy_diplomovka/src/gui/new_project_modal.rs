@@ -6,7 +6,9 @@ use garde::Validate;
 
 use crate::{api::NewProjectEvent, api_tracking::ApiStatus};
 
-use super::form::{enter_pressed, not_blank, submit_button, text_area, text_input};
+use super::form::{
+    enter_pressed, not_blank, secondary_button, submit_button, text_area, text_input,
+};
 
 const FORM_WIDTH: f32 = 300.0;
 
@@ -83,9 +85,7 @@ pub fn new_project_modal(
                 .add_enabled_ui(!pending, |ui| submit_button(ui, "Create project"))
                 .inner;
             let cancel = ui
-                .add_enabled_ui(!pending, |ui| {
-                    ui.add_sized([ui.available_width(), 24.0], egui::Button::new("Cancel"))
-                })
+                .add_enabled_ui(!pending, |ui| secondary_button(ui, "Cancel"))
                 .inner;
             if pending {
                 ui.vertical_centered(|ui| ui.spinner());

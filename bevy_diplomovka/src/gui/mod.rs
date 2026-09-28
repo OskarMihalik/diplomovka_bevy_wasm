@@ -1,5 +1,7 @@
 pub mod auth_screen;
 pub mod form;
+pub mod glb_picker;
+pub mod new_model_modal;
 pub mod new_project_modal;
 pub mod confirm_modal;
 pub mod gui;

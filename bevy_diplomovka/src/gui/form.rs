@@ -14,6 +14,10 @@ pub fn submit_button(ui: &mut egui::Ui, text: &str) -> egui::Response {
     ui.add_sized([ui.available_width(), 32.0], egui::Button::new(text))
 }
 
+pub fn secondary_button(ui: &mut egui::Ui, text: &str) -> egui::Response {
+    ui.add_sized([ui.available_width(), 24.0], egui::Button::new(text))
+}
+
 /// Enter inside any of the (single line) text inputs submits the form.
 pub fn enter_pressed(ui: &egui::Ui, fields: &[&egui::Response]) -> bool {
     fields.iter().any(|field| field.lost_focus()) && ui.input(|i| i.key_pressed(egui::Key::Enter))
