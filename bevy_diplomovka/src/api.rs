@@ -1,5 +1,5 @@
 use ::serde::de;
-use bevy::{ecs::system::IntoObserverSystem, prelude::*};
+use bevy::prelude::*;
 use bevy_mod_reqwest::*;
 use dto::{
     auth::{AuthDtoResponse, LoginDto, RegisterDto},
@@ -17,8 +17,8 @@ use dto::{
 
 use crate::{
     building::{
-        ModelData, ProjectData, ProjectStatusesData, RebuildTagsEvent, TagData, TagMessagesData,
-        ThisModelIsSelected, ThisProjectIsSelected,
+        ProjectData, ProjectStatusesData, RebuildTagsEvent, TagData, TagMessagesData,
+        ThisProjectIsSelected,
     },
     gui::gui::{ShowErrorEvent, ShowSuccessEvent},
     models::UpdateModelsEvent,
@@ -26,9 +26,7 @@ use crate::{
     utils::get_token_from_user,
     GameState,
 };
-use dotenv::dotenv;
 use dotenv_codegen::dotenv;
-use std::env;
 
 pub const BACKEND_URL: &str = dotenv!("FRONTEND_BACKEND_URL");
 
@@ -41,7 +39,6 @@ impl Plugin for ApiPlugin {
         app.add_observer(get_tags)
             .add_observer(create_new_tag)
             .add_observer(get_model)
-            .add_observer(get_tags)
             .add_observer(get_project)
             .add_observer(update_tag)
             .add_observer(get_models)
@@ -96,7 +93,6 @@ fn get_tags(
 ) {
     let url = format!("{BACKEND_URL}/tags/{:?}", trigger.project_id);
 
-    // use regular reqwest http calls, then poll them to completion.
     let reqwest_request = client
         .get(url)
         .header("authorization", get_token_from_user(query_user))
@@ -104,25 +100,21 @@ fn get_tags(
         .unwrap();
 
     client
-        // Sends the created http request
         .send(reqwest_request)
-        // The response from the http request can be reached using an observersystem,
-        // where the only requirement is that the first parameter in the system is the specific Trigger type
-        // the rest is the same as a regular system
-        .on_response(
-            |trigger: Trigger<ReqwestResponseEvent>, mut commands: Commands| {
-                let parsed = parse_response::<TagDtoResponse>(trigger);
-                match parsed {
+        .on_json_response(
+            |trigger: Trigger<JsonResponse<TagDtoResponse>>, mut commands: Commands| {
+                match &trigger.0 {
                     Ok(tags) => {
-                        commands.trigger(RebuildTagsEvent { new_tag_dtos: tags });
+                        commands.trigger(RebuildTagsEvent {
+                            new_tag_dtos: tags.clone(),
+                        });
                     }
                     Err(error_dto) => commands.trigger(ShowErrorEvent {
-                        message: error_dto.message,
+                        message: error_dto.message.clone(),
                     }),
                 };
             },
         )
-        // In case of request error, it can be reached using an observersystem as well
         .on_error(on_reqwest_error);
 }
 
@@ -138,7 +130,6 @@ fn delete_tag(
 ) {
     let url = format!("{BACKEND_URL}/tag/{:?}", trigger.tag_id);
 
-    // use regular reqwest http calls, then poll them to completion.
     let reqwest_request = client
         .delete(url)
         .header("authorization", get_token_from_user(query_user))
@@ -146,29 +137,23 @@ fn delete_tag(
         .unwrap();
 
     client
-        // Sends the created http request
         .send(reqwest_request)
-        // The response from the http request can be reached using an observersystem,
-        // where the only requirement is that the first parameter in the system is the specific Trigger type
-        // the rest is the same as a regular system
-        .on_response(
-            |trigger: Trigger<ReqwestResponseEvent>,
+        .on_json_response(
+            |trigger: Trigger<JsonResponse<EmptyResponse>>,
              mut commands: Commands,
              query_project: Single<(&ProjectData, &ThisProjectIsSelected)>| {
-                let parsed = parse_response::<EmptyResponse>(trigger);
-                match parsed {
-                    Ok(_) => {
+                match &trigger.0 {
+                    Ok(()) => {
                         commands.trigger(GetTagsEvent {
                             project_id: query_project.0.dto.id,
                         });
                     }
                     Err(error_dto) => commands.trigger(ShowErrorEvent {
-                        message: error_dto.message,
+                        message: error_dto.message.clone(),
                     }),
                 };
             },
         )
-        // In case of request error, it can be reached using an observersystem as well
         .on_error(on_reqwest_error);
 }
 
@@ -184,36 +169,30 @@ fn create_new_tag(
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
     let url = format!("{BACKEND_URL}/tags");
-    let body = trigger.new_tag_dto.clone();
-    let parent_entity = trigger.parent_entity.clone();
-    // use regular reqwest http calls, then poll them to completion.
+
     let reqwest_request = client
         .post(url)
-        .json(&body)
+        .json(&trigger.new_tag_dto)
         .header("authorization", get_token_from_user(query_user))
         .build()
         .unwrap();
 
     client
-        // Sends the created http request
         .send(reqwest_request)
-        // The response from the http request can be reached using an observersystem,
-        // where the only requirement is that the first parameter in the system is the specific Trigger type
-        // the rest is the same as a regular system
-        .on_response(
-            move |trigger: Trigger<ReqwestResponseEvent>, mut commands: Commands| {
-                let parsed: TagDtoResponse = parse_response(trigger);
-                match parsed {
+        .on_json_response(
+            |trigger: Trigger<JsonResponse<TagDtoResponse>>, mut commands: Commands| {
+                match &trigger.0 {
                     Ok(tags) => {
-                        commands.trigger(RebuildTagsEvent { new_tag_dtos: tags });
+                        commands.trigger(RebuildTagsEvent {
+                            new_tag_dtos: tags.clone(),
+                        });
                     }
                     Err(error_dto) => commands.trigger(ShowErrorEvent {
-                        message: error_dto.message,
+                        message: error_dto.message.clone(),
                     }),
                 };
             },
         )
-        // In case of request error, it can be reached using an observersystem as well
         .on_error(on_reqwest_error);
 }
 
@@ -228,7 +207,7 @@ fn get_model(
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
     let url = format!("{BACKEND_URL}/model/{:?}", trigger.model_id);
-    // use regular reqwest http calls, then poll them to completion.
+
     let reqwest_request = client
         .get(url)
         .header("authorization", get_token_from_user(query_user))
@@ -237,18 +216,16 @@ fn get_model(
 
     client
         .send(reqwest_request)
-        .on_response(
-            move |trigger: Trigger<ReqwestResponseEvent>, mut commands: Commands| {
-                let parsed: ModelDtoResponse = parse_response(trigger);
-                match parsed {
+        .on_json_response(
+            |trigger: Trigger<JsonResponse<ModelDtoResponse>>, mut commands: Commands| {
+                match &trigger.0 {
                     Ok(_) => (),
                     Err(error_dto) => commands.trigger(ShowErrorEvent {
-                        message: error_dto.message,
+                        message: error_dto.message.clone(),
                     }),
                 };
             },
         )
-        // In case of request error, it can be reached using an observersystem as well
         .on_error(on_reqwest_error);
 }
 
@@ -272,7 +249,7 @@ fn create_model(
         "file",
         reqwest::multipart::Part::bytes(trigger.model_bytes.clone()),
     );
-    // let parent_entity = trigger.parent_entity.clone();
+
     let reqwest_request = client
         .post(url)
         .header("authorization", get_token_from_user(query_user))
@@ -281,27 +258,17 @@ fn create_model(
         .unwrap();
 
     client
-        // Sends the created http request
         .send(reqwest_request)
-        // The response from the http request can be reached using an observersystem,
-        // where the only requirement is that the first parameter in the system is the specific Trigger type
-        // the rest is the same as a regular system
-        .on_response(
-            move |trigger: Trigger<ReqwestResponseEvent>, mut commands: Commands| {
-                let parsed: ModelsDtoResponse = parse_response(trigger);
-                let dtos = match parsed {
-                    Ok(dto) => dto,
-                    Err(error_dto) => {
-                        commands.trigger(ShowErrorEvent {
-                            message: error_dto.message,
-                        });
-                        return;
-                    }
+        .on_json_response(
+            |trigger: Trigger<JsonResponse<ModelsDtoResponse>>, mut commands: Commands| {
+                match &trigger.0 {
+                    Ok(dtos) => commands.trigger(UpdateModelsEvent { dtos: dtos.clone() }),
+                    Err(error_dto) => commands.trigger(ShowErrorEvent {
+                        message: error_dto.message.clone(),
+                    }),
                 };
-                commands.trigger(UpdateModelsEvent { dtos });
             },
         )
-        // In case of request error, it can be reached using an observersystem as well
         .on_error(on_reqwest_error);
 }
 
@@ -316,7 +283,7 @@ fn get_models(
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
     let url = format!("{BACKEND_URL}/models/{:?}", trigger.project_id);
-    // use regular reqwest http calls, then poll them to completion.
+
     let reqwest_request = client
         .get(url)
         .header("authorization", get_token_from_user(query_user))
@@ -325,22 +292,16 @@ fn get_models(
 
     client
         .send(reqwest_request)
-        .on_response(
-            move |trigger: Trigger<ReqwestResponseEvent>, mut commands: Commands| {
-                let parsed: ModelsDtoResponse = parse_response(trigger);
-                let dtos = match parsed {
-                    Ok(dto) => dto,
-                    Err(error_dto) => {
-                        commands.trigger(ShowErrorEvent {
-                            message: error_dto.message,
-                        });
-                        return;
-                    }
+        .on_json_response(
+            |trigger: Trigger<JsonResponse<ModelsDtoResponse>>, mut commands: Commands| {
+                match &trigger.0 {
+                    Ok(dtos) => commands.trigger(UpdateModelsEvent { dtos: dtos.clone() }),
+                    Err(error_dto) => commands.trigger(ShowErrorEvent {
+                        message: error_dto.message.clone(),
+                    }),
                 };
-                commands.trigger(UpdateModelsEvent { dtos });
             },
         )
-        // In case of request error, it can be reached using an observersystem as well
         .on_error(on_reqwest_error);
 }
 
@@ -355,37 +316,33 @@ fn update_tag(
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
     let url = format!("{BACKEND_URL}/tags");
-    let body = trigger.tag_dto.clone();
+
     let reqwest_request = client
         .patch(url)
-        .json(&body)
+        .json(&trigger.tag_dto)
         .header("authorization", get_token_from_user(query_user))
         .build()
         .unwrap();
 
     client
-        // Sends the created http request
         .send(reqwest_request)
-        // The response from the http request can be reached using an observersystem,
-        // where the only requirement is that the first parameter in the system is the specific Trigger type
-        // the rest is the same as a regular system
-        .on_response(
-            move |trigger: Trigger<ReqwestResponseEvent>, mut commands: Commands| {
-                let parsed: TagDtoResponse = parse_response(trigger);
-                match parsed {
+        .on_json_response(
+            |trigger: Trigger<JsonResponse<TagDtoResponse>>, mut commands: Commands| {
+                match &trigger.0 {
                     Ok(tags) => {
-                        commands.trigger(RebuildTagsEvent { new_tag_dtos: tags });
+                        commands.trigger(RebuildTagsEvent {
+                            new_tag_dtos: tags.clone(),
+                        });
                         commands.trigger(ShowSuccessEvent {
                             message: "Tag updated".to_string(),
                         });
                     }
                     Err(error_dto) => commands.trigger(ShowErrorEvent {
-                        message: error_dto.message,
+                        message: error_dto.message.clone(),
                     }),
                 };
             },
         )
-        // In case of request error, it can be reached using an observersystem as well
         .on_error(on_reqwest_error);
 }
 
@@ -401,7 +358,6 @@ fn get_project(
 ) {
     let url = format!("{BACKEND_URL}/project/{:?}", trigger.project_id);
 
-    // use regular reqwest http calls, then poll them to completion.
     let reqwest_request = client
         .get(url)
         .header("authorization", get_token_from_user(query_user))
@@ -409,27 +365,19 @@ fn get_project(
         .unwrap();
 
     client
-        // Sends the created http request
         .send(reqwest_request)
-        // The response from the http request can be reached using an observersystem,
-        // where the only requirement is that the first parameter in the system is the specific Trigger type
-        // the rest is the same as a regular system
-        .on_response(
-            |trigger: Trigger<ReqwestResponseEvent>, mut commands: Commands| {
-                let response = trigger.event();
-                let data = response.as_str().unwrap();
-                let parsed: ProjectDtoResponse = serde_json::from_str(data).unwrap();
-                match parsed {
-                    Ok(dto) => {
+        .on_json_response(
+            |trigger: Trigger<JsonResponse<ProjectDtoResponse>>, mut commands: Commands| {
+                match &trigger.0 {
+                    Ok(_dto) => {
                         // TODO: update selected project
                     }
                     Err(error_dto) => commands.trigger(ShowErrorEvent {
-                        message: error_dto.message,
+                        message: error_dto.message.clone(),
                     }),
                 };
             },
         )
-        // In case of request error, it can be reached using an observersystem as well
         .on_error(on_reqwest_error);
 }
 
@@ -445,7 +393,6 @@ fn update_project(
 ) {
     let url = format!("{BACKEND_URL}/project");
 
-    // use regular reqwest http calls, then poll them to completion.
     let reqwest_request = client
         .patch(url)
         .json(&trigger.dto)
@@ -482,7 +429,6 @@ fn delete_project(
 ) {
     let url = format!("{BACKEND_URL}/project/{}", trigger.project_id);
 
-    // use regular reqwest http calls, then poll them to completion.
     let reqwest_request = client
         .delete(url)
         .header("authorization", get_token_from_user(query_user))
@@ -516,63 +462,43 @@ fn get_projects(
 ) {
     let url: String = format!("{BACKEND_URL}/project");
 
-    // use regular reqwest http calls, then poll them to completion.
     bevy::log::info!("sending request to {url}");
     let reqwest_request = client
         .get(url)
         .header("authorization", get_token_from_user(query_user))
         .build()
         .unwrap();
+
     client
-        // Sends the created http request
         .send(reqwest_request)
-        // The response from the http request can be reached using an observersystem,
-        // where the only requirement is that the first parameter in the system is the specific Trigger type
-        // the rest is the same as a regular system
-        .on_response(
-            |trigger: Trigger<ReqwestResponseEvent>,
+        .on_json_response(
+            |trigger: Trigger<JsonResponse<ProjectsDtoResponse>>,
              mut commands: Commands,
-             query_selected_project: Option<
-                Single<(Entity, &ProjectData, &ThisProjectIsSelected)>,
-            >,
-             query_projects: Query<(Entity, &ProjectData)>| {
-                let response = trigger.event();
-                let data = response.as_str().unwrap();
-                let parsed: ProjectsDtoResponse = serde_json::from_str(data).unwrap();
-                let dtos = match parsed {
+             query_selected_project: Option<Single<(&ProjectData, &ThisProjectIsSelected)>>,
+             query_projects: Query<Entity, With<ProjectData>>| {
+                let dtos = match &trigger.0 {
                     Ok(dtos) => dtos,
                     Err(error_dto) => {
                         commands.trigger(ShowErrorEvent {
-                            message: error_dto.message,
+                            message: error_dto.message.clone(),
                         });
                         return;
                     }
                 };
-                match query_selected_project {
-                    Some(selected) => {
-                        for (entity, _) in query_projects.iter() {
-                            commands.entity(entity).despawn_recursive()
-                        }
-                        for dto in dtos {
-                            let dto_id = dto.id;
-                            let mut builder = commands.spawn(ProjectData { dto });
-                            if dto_id == selected.1.dto.id {
-                                builder.insert(ThisProjectIsSelected {});
-                            }
-                        }
-                    }
-                    None => {
-                        for (entity, _) in query_projects.iter() {
-                            commands.entity(entity).despawn_recursive()
-                        }
-                        for dto in dtos {
-                            commands.spawn(ProjectData { dto });
-                        }
+
+                let selected_id = query_selected_project.map(|selected| selected.0.dto.id);
+
+                for entity in query_projects.iter() {
+                    commands.entity(entity).despawn_recursive();
+                }
+                for dto in dtos {
+                    let mut builder = commands.spawn(ProjectData { dto: dto.clone() });
+                    if Some(dto.id) == selected_id {
+                        builder.insert(ThisProjectIsSelected {});
                     }
                 }
             },
         )
-        // In case of request error, it can be reached using an observersystem as well
         .on_error(on_reqwest_error);
 }
 
@@ -587,26 +513,49 @@ fn insert_project(
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
     let url: String = format!("{BACKEND_URL}/project");
-    // use regular reqwest http calls, then poll them to completion.
+
     let reqwest_request = client
         .post(url)
         .json(&trigger.dto)
         .header("authorization", get_token_from_user(query_user))
         .build()
         .unwrap();
+
     client
         .send(reqwest_request)
         .on_json_response(
             |trigger: Trigger<JsonResponse<ProjectsDtoResponse>>, mut commands: Commands| {
                 match &trigger.0 {
                     Ok(_) => commands.trigger(GetProjectsEvent {}),
-                    Err(error) => commands.trigger(ShowErrorEvent {
-                        message: error.message.clone(),
+                    Err(error_dto) => commands.trigger(ShowErrorEvent {
+                        message: error_dto.message.clone(),
                     }),
-                }
+                };
             },
         )
         .on_error(on_reqwest_error);
+}
+
+/// Shared response handler for login and register: replaces the logged in user and moves on.
+fn on_auth_response(
+    trigger: Trigger<JsonResponse<AuthDtoResponse>>,
+    mut commands: Commands,
+    query_user: Option<Single<(Entity, &LoggedUser)>>,
+) {
+    match &trigger.0 {
+        Ok(user_dto) => {
+            if let Some(query_user) = query_user {
+                commands.entity(query_user.0).despawn_recursive();
+            }
+            commands.spawn(LoggedUser {
+                dto: user_dto.clone(),
+            });
+            commands.set_state(GameState::SelectingProjectAndModel);
+        }
+        Err(error_dto) => commands.trigger(ShowErrorEvent {
+            message: error_dto.message.clone(),
+        }),
+    };
 }
 
 #[derive(Event)]
@@ -617,66 +566,27 @@ pub struct LoginEvent {
 fn login_user(trigger: Trigger<LoginEvent>, mut client: BevyReqwest) {
     let url = format!("{BACKEND_URL}/login");
 
-    // use regular reqwest http calls, then poll them to completion.
     let reqwest_request = client.post(url).json(&trigger.dto).build().unwrap();
 
     client
         .send(reqwest_request)
-        .on_response(
-            |trigger: Trigger<ReqwestResponseEvent>,
-             mut commands: Commands,
-             query_user: Option<Single<(Entity, &LoggedUser)>>| {
-                let parsed = parse_response::<AuthDtoResponse>(trigger);
-                match parsed {
-                    Ok(user_dto) => {
-                        if let Some(query_user) = query_user {
-                            commands.entity(query_user.0).despawn_recursive();
-                        }
-                        commands.spawn(LoggedUser { dto: user_dto });
-                        commands.set_state(GameState::SelectingProjectAndModel);
-                    }
-                    Err(error_dto) => commands.trigger(ShowErrorEvent {
-                        message: error_dto.message,
-                    }),
-                };
-            },
-        )
+        .on_json_response(on_auth_response)
         .on_error(on_reqwest_error);
 }
 
-// todo register
 #[derive(Event)]
 pub struct RegisterEvent {
     pub dto: RegisterDto,
 }
-// todo
+
 fn register_user(trigger: Trigger<RegisterEvent>, mut client: BevyReqwest) {
     let url = format!("{BACKEND_URL}/register");
 
-    // use regular reqwest http calls, then poll them to completion.
     let reqwest_request = client.post(url).json(&trigger.dto).build().unwrap();
 
     client
         .send(reqwest_request)
-        .on_response(
-            |trigger: Trigger<ReqwestResponseEvent>,
-             mut commands: Commands,
-             query_user: Option<Single<(Entity, &LoggedUser)>>| {
-                let parsed = parse_response::<AuthDtoResponse>(trigger);
-                match parsed {
-                    Ok(user_dto) => {
-                        if let Some(query_user) = query_user {
-                            commands.entity(query_user.0).despawn_recursive();
-                        }
-                        commands.spawn(LoggedUser { dto: user_dto });
-                        commands.set_state(GameState::SelectingProjectAndModel);
-                    }
-                    Err(error_dto) => commands.trigger(ShowErrorEvent {
-                        message: error_dto.message,
-                    }),
-                };
-            },
-        )
+        .on_json_response(on_auth_response)
         .on_error(on_reqwest_error);
 }
 
@@ -684,13 +594,14 @@ fn register_user(trigger: Trigger<RegisterEvent>, mut client: BevyReqwest) {
 pub struct GetUsersEvent {
     pub dto: GetUsersDto,
 }
+
 fn get_users(
     trigger: Trigger<GetUsersEvent>,
     mut client: BevyReqwest,
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
     let url = format!("{BACKEND_URL}/users");
-    // use regular reqwest http calls, then poll them to completion.
+
     let reqwest_request = client
         .post(url)
         .json(&trigger.dto)
@@ -700,25 +611,23 @@ fn get_users(
 
     client
         .send(reqwest_request)
-        .on_response(
-            move |trigger: Trigger<ReqwestResponseEvent>,
-                  mut commands: Commands,
-                  query_user: Option<Single<(Entity, &OtherUsers)>>| {
-                let parsed: OtherUsersDtoResponse = parse_response(trigger);
-                match parsed {
+        .on_json_response(
+            |trigger: Trigger<JsonResponse<OtherUsersDtoResponse>>,
+             mut commands: Commands,
+             query_users: Option<Single<(Entity, &OtherUsers)>>| {
+                match &trigger.0 {
                     Ok(dtos) => {
-                        if let Some(query_user) = query_user {
-                            commands.entity(query_user.0).despawn_recursive();
+                        if let Some(query_users) = query_users {
+                            commands.entity(query_users.0).despawn_recursive();
                         }
-                        commands.spawn(OtherUsers { dtos });
+                        commands.spawn(OtherUsers { dtos: dtos.clone() });
                     }
                     Err(error_dto) => commands.trigger(ShowErrorEvent {
-                        message: error_dto.message,
+                        message: error_dto.message.clone(),
                     }),
                 };
             },
         )
-        // In case of request error, it can be reached using an observersystem as well
         .on_error(on_reqwest_error);
 }
 
@@ -726,13 +635,14 @@ fn get_users(
 pub struct GetUsersInProjectEvent {
     pub project_id: i32,
 }
+
 fn get_users_in_project(
     trigger: Trigger<GetUsersInProjectEvent>,
     mut client: BevyReqwest,
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
     let url = format!("{BACKEND_URL}/users/{}", trigger.project_id);
-    // use regular reqwest http calls, then poll them to completion.
+
     let reqwest_request = client
         .get(url)
         .header("authorization", get_token_from_user(query_user))
@@ -741,25 +651,23 @@ fn get_users_in_project(
 
     client
         .send(reqwest_request)
-        .on_response(
-            move |trigger: Trigger<ReqwestResponseEvent>,
-                  mut commands: Commands,
-                  query_user: Option<Single<(Entity, &UsersInProject)>>| {
-                let parsed: ProjectUsersDtoResponse = parse_response(trigger);
-                match parsed {
+        .on_json_response(
+            |trigger: Trigger<JsonResponse<ProjectUsersDtoResponse>>,
+             mut commands: Commands,
+             query_users: Option<Single<(Entity, &UsersInProject)>>| {
+                match &trigger.0 {
                     Ok(dtos) => {
-                        if let Some(query_user) = query_user {
-                            commands.entity(query_user.0).despawn_recursive();
+                        if let Some(query_users) = query_users {
+                            commands.entity(query_users.0).despawn_recursive();
                         }
-                        commands.spawn(UsersInProject { dtos });
+                        commands.spawn(UsersInProject { dtos: dtos.clone() });
                     }
                     Err(error_dto) => commands.trigger(ShowErrorEvent {
-                        message: error_dto.message,
+                        message: error_dto.message.clone(),
                     }),
                 };
             },
         )
-        // In case of request error, it can be reached using an observersystem as well
         .on_error(on_reqwest_error);
 }
 
@@ -767,13 +675,14 @@ fn get_users_in_project(
 pub struct AddUserToProjectEvent {
     pub dto: UserToProjectDto,
 }
+
 fn add_user_to_project(
     trigger: Trigger<AddUserToProjectEvent>,
     mut client: BevyReqwest,
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
     let url = format!("{BACKEND_URL}/project_user");
-    // use regular reqwest http calls, then poll them to completion.
+
     let reqwest_request = client
         .post(url)
         .json(&trigger.dto)
@@ -783,30 +692,24 @@ fn add_user_to_project(
 
     client
         .send(reqwest_request)
-        .on_response(
-            move |trigger: Trigger<ReqwestResponseEvent>,
-                  mut commands: Commands,
-                  selected_project_query: Option<
-                Single<(&ProjectData, &ThisProjectIsSelected)>,
-            >| {
-                let parsed: OtherUserDtoResponse = parse_response(trigger);
-                match parsed {
-                    Ok(dto) => dto,
-                    Err(error_dto) => {
-                        commands.trigger(ShowErrorEvent {
-                            message: error_dto.message,
-                        });
-                        return;
+        .on_json_response(
+            |trigger: Trigger<JsonResponse<OtherUserDtoResponse>>,
+             mut commands: Commands,
+             selected_project_query: Option<Single<(&ProjectData, &ThisProjectIsSelected)>>| {
+                match &trigger.0 {
+                    Ok(_) => {
+                        if let Some(selected_project_query) = selected_project_query {
+                            commands.trigger(GetUsersInProjectEvent {
+                                project_id: selected_project_query.0.dto.id,
+                            });
+                        }
                     }
+                    Err(error_dto) => commands.trigger(ShowErrorEvent {
+                        message: error_dto.message.clone(),
+                    }),
                 };
-                if let Some(selected_project_query) = selected_project_query {
-                    commands.trigger(GetUsersInProjectEvent {
-                        project_id: selected_project_query.0.dto.id,
-                    });
-                }
             },
         )
-        // In case of request error, it can be reached using an observersystem as well
         .on_error(on_reqwest_error);
 }
 
@@ -821,39 +724,30 @@ fn create_tag_message(
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
     let url = format!("{BACKEND_URL}/tag_message");
-    let body = trigger.dto.clone();
+    let tag_id = trigger.dto.tag_id;
+
     let reqwest_request = client
         .post(url)
-        .json(&body)
+        .json(&trigger.dto)
         .header("authorization", get_token_from_user(query_user))
         .build()
         .unwrap();
 
     client
-        // Sends the created http request
         .send(reqwest_request)
-        // The response from the http request can be reached using an observersystem,
-        // where the only requirement is that the first parameter in the system is the specific Trigger type
-        // the rest is the same as a regular system
-        .on_response(
-            move |trigger: Trigger<ReqwestResponseEvent>,
-                  mut commands: Commands,
-                  query_tags: Query<(Entity, &TagData, Option<&TagMessagesData>)>| {
-                let parsed: CreatedTagMessageDtoResponse = parse_response(trigger);
-                bevy::log::info!("CreatedTagMessageDtoResponse: {:?}", parsed);
-                match parsed {
-                    Ok(_) => {
-                        commands.trigger(GetTagMessagesEvent {
-                            tag_id: body.tag_id,
-                        });
+        .on_json_response(
+            move |trigger: Trigger<JsonResponse<CreatedTagMessageDtoResponse>>,
+                  mut commands: Commands| {
+                match &trigger.0 {
+                    Ok(()) => {
+                        commands.trigger(GetTagMessagesEvent { tag_id });
                     }
                     Err(error_dto) => commands.trigger(ShowErrorEvent {
-                        message: error_dto.message,
+                        message: error_dto.message.clone(),
                     }),
                 };
             },
         )
-        // In case of request error, it can be reached using an observersystem as well
         .on_error(on_reqwest_error);
 }
 
@@ -869,6 +763,7 @@ fn get_tag_messages(
 ) {
     let url = format!("{BACKEND_URL}/tag_message/{:?}", trigger.tag_id);
     let tag_id = trigger.tag_id;
+
     let reqwest_request = client
         .get(url)
         .header("authorization", get_token_from_user(query_user))
@@ -876,49 +771,41 @@ fn get_tag_messages(
         .unwrap();
 
     client
-        // Sends the created http request
         .send(reqwest_request)
-        // The response from the http request can be reached using an observersystem,
-        // where the only requirement is that the first parameter in the system is the specific Trigger type
-        // the rest is the same as a regular system
-        .on_response(
-            move |trigger: Trigger<ReqwestResponseEvent>,
+        .on_json_response(
+            move |trigger: Trigger<JsonResponse<TagMessagesDtoResponse>>,
                   mut commands: Commands,
                   mut query_tags: Query<(Entity, &TagData, Option<&mut TagMessagesData>)>| {
-                let parsed = match parse_response::<TagMessagesDtoResponse>(trigger) {
-                    Ok(ok) => ok,
+                let dtos = match &trigger.0 {
+                    Ok(dtos) => dtos,
                     Err(error_dto) => {
                         commands.trigger(ShowErrorEvent {
-                            message: error_dto.message,
+                            message: error_dto.message.clone(),
                         });
                         return;
                     }
                 };
 
-                let tag = match query_tags.iter_mut().find(|query| query.1.dto.id == tag_id) {
-                    Some(ok) => ok,
-                    None => {
-                        return;
-                    }
+                let Some((entity, _, tag_messages)) = query_tags
+                    .iter_mut()
+                    .find(|(_, tag, _)| tag.dto.id == tag_id)
+                else {
+                    return;
                 };
 
-                match tag.2 {
-                    Some(mut tag_message) => {
-                        tag_message.dtos.clear();
-                        tag_message.dtos.extend(parsed);
-                        bevy::log::info!("tag_message.dtos: {:?}", tag_message.dtos);
+                match tag_messages {
+                    Some(mut tag_messages) => {
+                        tag_messages.dtos.clear();
+                        tag_messages.dtos.extend(dtos.iter().cloned());
                     }
                     None => {
-                        if let Some(mut entity) = commands.get_entity(tag.0) {
-                            entity.insert(TagMessagesData { dtos: parsed.clone() });
-                            bevy::log::info!("TagMessagesData: {:?}", parsed);
-
+                        if let Some(mut entity) = commands.get_entity(entity) {
+                            entity.insert(TagMessagesData { dtos: dtos.clone() });
                         }
                     }
                 }
             },
         )
-        // In case of request error, it can be reached using an observersystem as well
         .on_error(on_reqwest_error);
 }
 
@@ -933,6 +820,7 @@ fn get_statuses(
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
     let url = format!("{BACKEND_URL}/statuses/{:?}", trigger.project_id);
+
     let reqwest_request = client
         .get(url)
         .header("authorization", get_token_from_user(query_user))
@@ -940,33 +828,24 @@ fn get_statuses(
         .unwrap();
 
     client
-        // Sends the created http request
         .send(reqwest_request)
-        // The response from the http request can be reached using an observersystem,
-        // where the only requirement is that the first parameter in the system is the specific Trigger type
-        // the rest is the same as a regular system
-        .on_response(
-            move |trigger: Trigger<ReqwestResponseEvent>,
-                  mut commands: Commands,
-                  query_status: Query<(Entity, &ProjectStatusesData)>| {
-                let parsed = match parse_response::<StatusesResponse>(trigger) {
-                    Ok(ok) => ok,
-                    Err(error_dto) => {
-                        commands.trigger(ShowErrorEvent {
-                            message: error_dto.message,
-                        });
-                        return;
+        .on_json_response(
+            |trigger: Trigger<JsonResponse<StatusesResponse>>,
+             mut commands: Commands,
+             query_status: Query<Entity, With<ProjectStatusesData>>| {
+                match &trigger.0 {
+                    Ok(dtos) => {
+                        for entity in query_status.iter() {
+                            commands.entity(entity).despawn_recursive();
+                        }
+                        commands.spawn(ProjectStatusesData { dtos: dtos.clone() });
                     }
+                    Err(error_dto) => commands.trigger(ShowErrorEvent {
+                        message: error_dto.message.clone(),
+                    }),
                 };
-
-                query_status.iter().for_each(|(entity, _status)| {
-                    commands.entity(entity).despawn_recursive();
-                });
-
-                commands.spawn(ProjectStatusesData { dtos: parsed });
             },
         )
-        // In case of request error, it can be reached using an observersystem as well
         .on_error(on_reqwest_error);
 }
 
@@ -981,38 +860,29 @@ fn update_status(
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
     let url = format!("{BACKEND_URL}/status");
-    let body = trigger.dto.clone();
+    let project_id = trigger.dto.project_id;
+
     let reqwest_request = client
         .post(url)
-        .json(&body)
+        .json(&trigger.dto)
         .header("authorization", get_token_from_user(query_user))
         .build()
         .unwrap();
 
     client
-        // Sends the created http request
         .send(reqwest_request)
-        // The response from the http request can be reached using an observersystem,
-        // where the only requirement is that the first parameter in the system is the specific Trigger type
-        // the rest is the same as a regular system
-        .on_response(
-            move |trigger: Trigger<ReqwestResponseEvent>, mut commands: Commands| {
-                let parsed = match parse_response::<EmptyResponse>(trigger) {
-                    Ok(ok) => {
-                        commands.trigger(GetStatusesEvent {
-                            project_id: body.project_id,
-                        });
+        .on_json_response(
+            move |trigger: Trigger<JsonResponse<EmptyResponse>>, mut commands: Commands| {
+                match &trigger.0 {
+                    Ok(()) => {
+                        commands.trigger(GetStatusesEvent { project_id });
                     }
-                    Err(error_dto) => {
-                        commands.trigger(ShowErrorEvent {
-                            message: error_dto.message,
-                        });
-                        return;
-                    }
+                    Err(error_dto) => commands.trigger(ShowErrorEvent {
+                        message: error_dto.message.clone(),
+                    }),
                 };
             },
         )
-        // In case of request error, it can be reached using an observersystem as well
         .on_error(on_reqwest_error);
 }
 
@@ -1027,38 +897,29 @@ fn create_status(
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
     let url = format!("{BACKEND_URL}/status");
-    let body = trigger.dto.clone();
+    let project_id = trigger.dto.project_id;
+
     let reqwest_request = client
         .put(url)
-        .json(&body)
+        .json(&trigger.dto)
         .header("authorization", get_token_from_user(query_user))
         .build()
         .unwrap();
 
     client
-        // Sends the created http request
         .send(reqwest_request)
-        // The response from the http request can be reached using an observersystem,
-        // where the only requirement is that the first parameter in the system is the specific Trigger type
-        // the rest is the same as a regular system
-        .on_response(
-            move |trigger: Trigger<ReqwestResponseEvent>, mut commands: Commands| {
-                let parsed = match parse_response::<EmptyResponse>(trigger) {
-                    Ok(ok) => {
-                        commands.trigger(GetStatusesEvent {
-                            project_id: body.project_id,
-                        });
+        .on_json_response(
+            move |trigger: Trigger<JsonResponse<EmptyResponse>>, mut commands: Commands| {
+                match &trigger.0 {
+                    Ok(()) => {
+                        commands.trigger(GetStatusesEvent { project_id });
                     }
-                    Err(error_dto) => {
-                        commands.trigger(ShowErrorEvent {
-                            message: error_dto.message,
-                        });
-                        return;
-                    }
+                    Err(error_dto) => commands.trigger(ShowErrorEvent {
+                        message: error_dto.message.clone(),
+                    }),
                 };
             },
         )
-        // In case of request error, it can be reached using an observersystem as well
         .on_error(on_reqwest_error);
 }
 
@@ -1074,7 +935,8 @@ fn delete_status(
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
     let url = format!("{BACKEND_URL}/status/{:?}", trigger.status_id);
-    let project_id = trigger.project_id.clone();
+    let project_id = trigger.project_id;
+
     let reqwest_request = client
         .delete(url)
         .header("authorization", get_token_from_user(query_user))
@@ -1082,27 +944,19 @@ fn delete_status(
         .unwrap();
 
     client
-        // Sends the created http request
         .send(reqwest_request)
-        // The response from the http request can be reached using an observersystem,
-        // where the only requirement is that the first parameter in the system is the specific Trigger type
-        // the rest is the same as a regular system
-        .on_response(
-            move |trigger: Trigger<ReqwestResponseEvent>, mut commands: Commands| {
-                let _ = match parse_response::<EmptyResponse>(trigger) {
-                    Ok(_) => {
+        .on_json_response(
+            move |trigger: Trigger<JsonResponse<EmptyResponse>>, mut commands: Commands| {
+                match &trigger.0 {
+                    Ok(()) => {
                         commands.trigger(GetStatusesEvent { project_id });
                         commands.trigger(GetTagsEvent { project_id });
                     }
-                    Err(error_dto) => {
-                        commands.trigger(ShowErrorEvent {
-                            message: error_dto.message,
-                        });
-                        return;
-                    }
+                    Err(error_dto) => commands.trigger(ShowErrorEvent {
+                        message: error_dto.message.clone(),
+                    }),
                 };
             },
         )
-        // In case of request error, it can be reached using an observersystem as well
         .on_error(on_reqwest_error);
 }
