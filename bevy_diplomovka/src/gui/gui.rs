@@ -6,7 +6,6 @@ use bevy_egui::{
 use bevy_file_dialog::prelude::*;
 use dto::{
     model::NewModelDto,
-    project::NewProjectDto,
     users::{GetUsersDto, OtherUserDto, ProjectUserDto, UserToProjectDto},
 };
 use egui_toast::{Toast, ToastKind, ToastOptions, Toasts};
@@ -27,6 +26,7 @@ use super::{
     auth_screen::{login_screen, reset_auth_forms, AuthForms},
     confirm_modal::{confirm_modal, ConfirmModalResult},
     kanban::kanban_window,
+    new_project_modal::{new_project_modal, NewProjectModal},
     light_controls::{light_controls_window, on_light_gizmos_added, on_light_gizmos_removed},
     status_modal::ui_status_modal,
     theme::theme_picker,
@@ -263,9 +263,8 @@ fn ui_project_screen(
     mut contexts: EguiContexts,
     window: Single<&Window>,
     mut query_projects: Query<(Entity, &mut ProjectData, Option<&ThisProjectIsSelected>)>,
-    mut modal_open: Local<bool>,
+    mut new_project: Local<NewProjectModal>,
     mut modal_add_user_open: Local<bool>,
-    mut new_project_dto: Local<NewProjectDto>,
     mut new_project_status: ApiStatus<NewProjectEvent>,
     query_project_users: Option<Single<(Entity, &UsersInProject)>>,
     mut user_email: Local<String>,
@@ -345,7 +344,7 @@ fn ui_project_screen(
             }
             ui.horizontal(|ui| {
                 if ui.button("Add new project").clicked() {
-                    *modal_open = true;
+                    new_project.open = true;
                 }
                 if ui.button("⟲").clicked() {
                     commands.trigger(GetProjectsEvent {});
@@ -410,42 +409,7 @@ fn ui_project_screen(
             });
         });
 
-    // close the modal only after the server confirmed the project was created,
-    // on failure it stays open with the inputs so they can be fixed
-    if new_project_status.succeeded() {
-        *modal_open = false;
-        *new_project_dto = default();
-    }
-    let pending = new_project_status.is_pending();
-    egui::Window::new("Add new project")
-        .open(&mut modal_open)
-        .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
-        .show(ctx, |ui| {
-            // inputs are locked while waiting for the server
-            ui.add_enabled_ui(!pending, |ui| {
-                ui.horizontal(|ui| {
-                    ui.label(format!("Name: "));
-                    ui.text_edit_singleline(&mut new_project_dto.name);
-                });
-                ui.horizontal(|ui| {
-                    ui.label(format!("Description: "));
-                    ui.text_edit_multiline(&mut new_project_dto.description);
-                });
-            });
-            ui.horizontal(|ui| {
-                if ui
-                    .add_enabled(!pending, egui::Button::new("Submit"))
-                    .clicked()
-                {
-                    commands.trigger(NewProjectEvent {
-                        dto: new_project_dto.clone(),
-                    });
-                }
-                if pending {
-                    ui.spinner();
-                }
-            });
-        });
+    new_project_modal(ctx, &mut commands, &mut new_project, &mut new_project_status);
 
     match confirm_modal(ctx, "Delete project?", &open_delete_dialog, 123) {
         ConfirmModalResult::Confirm => {

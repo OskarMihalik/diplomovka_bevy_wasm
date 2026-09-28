@@ -1,4 +1,6 @@
 pub mod auth_screen;
+pub mod form;
+pub mod new_project_modal;
 pub mod confirm_modal;
 pub mod gui;
 pub mod kanban;

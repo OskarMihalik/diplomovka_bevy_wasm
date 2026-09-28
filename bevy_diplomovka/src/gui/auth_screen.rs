@@ -6,6 +6,8 @@ use garde::Validate;
 
 use crate::api::{LoginEvent, RegisterEvent};
 
+use super::form::{enter_pressed, submit_button, text_input};
+
 const FORM_WIDTH: f32 = 300.0;
 
 #[derive(Default, PartialEq, Clone, Copy)]
@@ -163,17 +165,4 @@ fn register_form(ui: &mut egui::Ui, commands: &mut Commands, forms: &mut AuthFor
             forms.auth_type = AuthType::Login;
         }
     });
-}
-
-fn text_input(text: &mut String) -> egui::TextEdit<'_> {
-    egui::TextEdit::singleline(text).desired_width(f32::INFINITY)
-}
-
-fn submit_button(ui: &mut egui::Ui, text: &str) -> egui::Response {
-    ui.add_sized([ui.available_width(), 32.0], egui::Button::new(text))
-}
-
-/// Enter inside any of the text inputs submits the form.
-fn enter_pressed(ui: &egui::Ui, fields: &[&egui::Response]) -> bool {
-    fields.iter().any(|field| field.lost_focus()) && ui.input(|i| i.key_pressed(egui::Key::Enter))
 }
