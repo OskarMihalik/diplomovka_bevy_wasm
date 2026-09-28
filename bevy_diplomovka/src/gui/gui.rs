@@ -23,7 +23,7 @@ use crate::{
 };
 
 use super::{
-    auth_screen::login_screen,
+    auth_screen::{login_screen, reset_auth_forms, AuthForms},
     confirm_modal::{confirm_modal, ConfirmModalResult},
     kanban::kanban_window,
     light_controls::{light_controls_window, on_light_gizmos_added, on_light_gizmos_removed},
@@ -60,12 +60,14 @@ impl Plugin for GuiPlugin {
             )
             .init_resource::<UiState>()
             .init_resource::<UiContexts>()
+            .init_resource::<AuthForms>()
             .add_systems(Startup, setup_toasts)
             .add_systems(
                 OnEnter(GameState::SelectingProjectAndModel),
                 setup_selecting_project_and_model,
             )
             .add_systems(Update, (login_screen).run_if(in_state(GameState::Auth)))
+            .add_systems(OnExit(GameState::Auth), reset_auth_forms)
             .add_systems(
                 Update,
                 (ui_project_screen, ui_model_screen)

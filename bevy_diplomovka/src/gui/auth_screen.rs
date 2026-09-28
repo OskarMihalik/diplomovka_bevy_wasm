@@ -1,98 +1,179 @@
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
 use dto::auth::{LoginDto, RegisterDto};
+use egui_form::{garde::GardeReport, Form, FormField};
+use garde::Validate;
 
 use crate::api::{LoginEvent, RegisterEvent};
 
-#[derive(Default)]
+const FORM_WIDTH: f32 = 300.0;
+
+#[derive(Default, PartialEq, Clone, Copy)]
 pub enum AuthType {
     #[default]
     Login,
     Register,
 }
 
-#[derive(Default)]
+#[derive(Validate, Default, Clone)]
+pub struct LoginForm {
+    #[garde(email)]
+    pub email: String,
+    #[garde(length(min = 1))]
+    pub password: String,
+}
 
-pub struct LocalAuthType {
+#[derive(Validate, Default, Clone)]
+pub struct RegisterForm {
+    // keep in sync with backend-express/src/controllers/auth.ts
+    #[garde(length(min = 3))]
+    pub username: String,
+    #[garde(email)]
+    pub email: String,
+    #[garde(length(min = 8))]
+    pub password: String,
+    #[garde(matches(password))]
+    pub password_repeat: String,
+}
+
+/// Auth form state. Inputs are kept between frames and after failed submits,
+/// and cleared only when leaving the auth screen (see [`reset_auth_forms`]).
+#[derive(Resource, Default)]
+pub struct AuthForms {
     pub auth_type: AuthType,
+    pub login: LoginForm,
+    pub register: RegisterForm,
+    /// Bumped on reset so egui_form forgets which fields were already touched.
+    generation: u32,
+}
+
+pub fn reset_auth_forms(mut forms: ResMut<AuthForms>) {
+    let generation = forms.generation.wrapping_add(1);
+    *forms = AuthForms {
+        generation,
+        ..default()
+    };
 }
 
 pub fn login_screen(
     mut commands: Commands,
     mut contexts: EguiContexts,
-    mut login_dto: Local<LoginDto>,
-    mut register_dto: Local<RegisterDto>,
-    mut auth_type: Local<LocalAuthType>,
+    mut forms: ResMut<AuthForms>,
 ) {
     let ctx = contexts.ctx_mut();
-    let _ = match auth_type.auth_type {
-        AuthType::Login => egui::CentralPanel::default().show(ctx, |ui| {
-            ui.vertical_centered(|ui| {
-                ui.add_space(20.0);
+    let forms = &mut *forms;
 
-                ui.heading("Login");
-
-                ui.add_space(20.0);
-
-                ui.label("Email:");
-                ui.text_edit_singleline(&mut login_dto.email);
-
-                ui.add_space(10.0);
-
-                ui.label("Password:");
-                // ui.text_edit_singleline(&mut login_dto.password);
-                ui.add(egui::TextEdit::singleline(&mut login_dto.password).password(true));
-
-                ui.add_space(20.0);
-
-                if ui.button("Submit").clicked() {
-                    // Handle login logic here
-                    commands.trigger(LoginEvent {
-                        dto: (*login_dto).clone(),
-                    });
-                    login_dto.reset();
-                }
-                ui.add_space(30.0);
-                if ui.button("Register").clicked() {
-                    auth_type.auth_type = AuthType::Register
-                }
+    egui::CentralPanel::default().show(ctx, |ui| {
+        ui.add_space(40.0);
+        ui.vertical_centered(|ui| {
+            ui.allocate_ui(egui::vec2(FORM_WIDTH, 0.0), |ui| {
+                ui.push_id(
+                    (forms.generation, forms.auth_type as u8),
+                    |ui| match forms.auth_type {
+                        AuthType::Login => login_form(ui, &mut commands, forms),
+                        AuthType::Register => register_form(ui, &mut commands, forms),
+                    },
+                );
             });
-        }),
-        AuthType::Register => egui::CentralPanel::default().show(ctx, |ui| {
-            ui.vertical_centered(|ui| {
-                ui.heading("Register");
-                ui.add_space(10.0);
+        });
+    });
+}
 
-                ui.label("Username:");
-                ui.text_edit_singleline(&mut register_dto.username);
+fn login_form(ui: &mut egui::Ui, commands: &mut Commands, forms: &mut AuthForms) {
+    let login = &mut forms.login;
+    let mut form = Form::new().add_report(GardeReport::new(login.validate()));
 
-                ui.add_space(10.0);
+    ui.heading("Login");
+    ui.add_space(20.0);
 
-                ui.label("Email:");
-                ui.text_edit_singleline(&mut register_dto.email);
+    let email = FormField::new(&mut form, "email")
+        .label("Email")
+        .ui(ui, text_input(&mut login.email));
+    let password = FormField::new(&mut form, "password")
+        .label("Password")
+        .ui(ui, text_input(&mut login.password).password(true));
 
-                ui.add_space(10.0);
+    ui.add_space(10.0);
+    let submit = submit_button(ui, "Log in");
 
-                ui.label("Password:");
-                ui.add(egui::TextEdit::singleline(&mut register_dto.password).password(true));
+    if (submit.clicked() || enter_pressed(ui, &[&email, &password])) && form.try_submit(ui).is_ok()
+    {
+        commands.trigger(LoginEvent {
+            dto: LoginDto {
+                email: login.email.clone(),
+                password: login.password.clone(),
+            },
+        });
+    }
 
-                ui.label("Repeat password:");
-                ui.add(egui::TextEdit::singleline(&mut register_dto.password).password(true));
+    ui.add_space(20.0);
+    ui.horizontal(|ui| {
+        ui.label("Don't have an account?");
+        if ui.link("Register").clicked() {
+            // carry the email over so it doesn't have to be typed twice
+            if forms.register.email.is_empty() {
+                forms.register.email = forms.login.email.clone();
+            }
+            forms.auth_type = AuthType::Register;
+        }
+    });
+}
 
-                ui.add_space(10.0);
+fn register_form(ui: &mut egui::Ui, commands: &mut Commands, forms: &mut AuthForms) {
+    let register = &mut forms.register;
+    let mut form = Form::new().add_report(GardeReport::new(register.validate()));
 
-                if ui.button("Submit").clicked() {
-                    // Handle login logic here
-                    commands.trigger(RegisterEvent {
-                        dto: (*register_dto).clone(),
-                    });
-                    register_dto.reset();
-                }
-                ui.add_space(30.0);
-                if ui.button("Go to login").clicked() {
-                    auth_type.auth_type = AuthType::Login
-                }
-            });
-        }),
-    };
+    ui.heading("Register");
+    ui.add_space(20.0);
+
+    let username = FormField::new(&mut form, "username")
+        .label("Username")
+        .ui(ui, text_input(&mut register.username));
+    let email = FormField::new(&mut form, "email")
+        .label("Email")
+        .ui(ui, text_input(&mut register.email));
+    let password = FormField::new(&mut form, "password")
+        .label("Password")
+        .ui(ui, text_input(&mut register.password).password(true));
+    let password_repeat = FormField::new(&mut form, "password_repeat")
+        .label("Repeat password")
+        .ui(ui, text_input(&mut register.password_repeat).password(true));
+
+    ui.add_space(10.0);
+    let submit = submit_button(ui, "Create account");
+
+    let fields = [&username, &email, &password, &password_repeat];
+    if (submit.clicked() || enter_pressed(ui, &fields)) && form.try_submit(ui).is_ok() {
+        commands.trigger(RegisterEvent {
+            dto: RegisterDto {
+                username: register.username.clone(),
+                email: register.email.clone(),
+                password: register.password.clone(),
+            },
+        });
+    }
+
+    ui.add_space(20.0);
+    ui.horizontal(|ui| {
+        ui.label("Already have an account?");
+        if ui.link("Log in").clicked() {
+            if forms.login.email.is_empty() {
+                forms.login.email = forms.register.email.clone();
+            }
+            forms.auth_type = AuthType::Login;
+        }
+    });
+}
+
+fn text_input(text: &mut String) -> egui::TextEdit<'_> {
+    egui::TextEdit::singleline(text).desired_width(f32::INFINITY)
+}
+
+fn submit_button(ui: &mut egui::Ui, text: &str) -> egui::Response {
+    ui.add_sized([ui.available_width(), 32.0], egui::Button::new(text))
+}
+
+/// Enter inside any of the text inputs submits the form.
+fn enter_pressed(ui: &egui::Ui, fields: &[&egui::Response]) -> bool {
+    fields.iter().any(|field| field.lost_focus()) && ui.input(|i| i.key_pressed(egui::Key::Enter))
 }
