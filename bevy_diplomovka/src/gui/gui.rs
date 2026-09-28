@@ -4,13 +4,18 @@ use bevy_egui::{
     EguiContexts, EguiPlugin,
 };
 use bevy_file_dialog::prelude::*;
-use dto::users::{GetUsersDto, OtherUserDto, ProjectUserDto, UserToProjectDto};
+use dto::{
+    model::UpdateModelDto,
+    project::ProjectDto,
+    users::{GetUsersDto, OtherUserDto, ProjectUserDto, UserToProjectDto},
+};
+use std::collections::HashMap;
 use egui_toast::{Toast, ToastKind, ToastOptions, Toasts};
 
 use crate::{
     api::{
         AddUserToProjectEvent, CreateModelEvent, DeleteProjectEvent, GetProjectsEvent,
-        GetUsersEvent, NewProjectEvent, UpdateProjectEvent,
+        GetUsersEvent, NewProjectEvent, UpdateModelEvent, UpdateProjectEvent,
     },
     api_tracking::ApiStatus,
     building::{ModelData, ProjectData, ThisModelIsSelected, ThisProjectIsSelected},
@@ -126,7 +131,8 @@ fn ui_model_screen(
     mut commands: Commands,
     mut contexts: EguiContexts,
     query_projects: Query<(Entity, &ProjectData, Option<&ThisProjectIsSelected>)>,
-    mut query_models: Query<(Entity, &mut ModelData, Option<&ThisModelIsSelected>)>,
+    query_models: Query<(Entity, &ModelData, Option<&ThisModelIsSelected>)>,
+    mut model_name_drafts: Local<HashMap<i32, String>>,
     mut new_model: Local<NewModelModal>,
     mut new_model_status: ApiStatus<CreateModelEvent>,
     query_loaded_glb: Query<(Entity, &UploadedGlbFile)>,
@@ -160,19 +166,25 @@ fn ui_model_screen(
                     new_model.open = true;
                 }
                 let mut v = 0;
-                for (entity, mut model_data, selected_model) in query_models
-                    .iter_mut()
+                for (entity, model_data, selected_model) in query_models
+                    .iter()
                     .sort_by::<&ModelData>(|value_1, value_2| {
                         compare_by_created_at(&value_1.dto.created_at, &value_2.dto.created_at)
                     })
                 {
+                    // edits go into a draft, ModelData stays what the server sent
+                    let saved_name = &model_data.dto.name;
+                    let mut draft_name = model_name_drafts
+                        .get(&model_data.dto.id)
+                        .cloned()
+                        .unwrap_or_else(|| saved_name.clone());
+
                     egui::Grid::new(Id::new(model_data.dto.id))
                         .num_columns(2)
                         .spacing([40.0, 4.0])
                         .show(ui, |ui| {
-                            // self.gallery_grid_contents(ui);
                             ui.label(format!("Name: "));
-                            ui.text_edit_singleline(&mut model_data.dto.name);
+                            ui.text_edit_singleline(&mut draft_name);
                             ui.end_row();
 
                             ui.label(format!("Version: "));
@@ -199,10 +211,33 @@ fn ui_model_screen(
                                 }
                             }
                         }
-                        if ui.button("Submit").clicked() {
-                            // trigger update project
+                        // only offer saving when the name was edited
+                        if draft_name != *saved_name {
+                            let valid = !draft_name.trim().is_empty();
+                            if ui
+                                .add_enabled(valid, egui::Button::new("Submit"))
+                                .on_disabled_hover_text("Name must not be empty")
+                                .clicked()
+                            {
+                                commands.trigger(UpdateModelEvent {
+                                    dto: UpdateModelDto {
+                                        id: model_data.dto.id,
+                                        name: draft_name.trim().to_string(),
+                                    },
+                                });
+                            }
+                            if ui.button("Revert").clicked() {
+                                draft_name = saved_name.clone();
+                            }
                         }
                     });
+
+                    // a draft equal to the server data (saved or reverted) isn't needed anymore
+                    if draft_name == *saved_name {
+                        model_name_drafts.remove(&model_data.dto.id);
+                    } else {
+                        model_name_drafts.insert(model_data.dto.id, draft_name);
+                    }
 
                     ui.separator();
                 }
@@ -219,11 +254,28 @@ fn ui_model_screen(
     );
 }
 
+/// Unsaved edits of a project in the project list.
+#[derive(Clone, PartialEq)]
+struct ProjectDraft {
+    name: String,
+    description: String,
+}
+
+impl ProjectDraft {
+    fn from_dto(dto: &ProjectDto) -> Self {
+        Self {
+            name: dto.name.clone(),
+            description: dto.description.clone(),
+        }
+    }
+}
+
 fn ui_project_screen(
     mut commands: Commands,
     mut contexts: EguiContexts,
     window: Single<&Window>,
-    mut query_projects: Query<(Entity, &mut ProjectData, Option<&ThisProjectIsSelected>)>,
+    query_projects: Query<(Entity, &ProjectData, Option<&ThisProjectIsSelected>)>,
+    mut project_drafts: Local<HashMap<i32, ProjectDraft>>,
     mut new_project: Local<NewProjectModal>,
     mut modal_add_user_open: Local<bool>,
     mut new_project_status: ApiStatus<NewProjectEvent>,
@@ -316,24 +368,30 @@ fn ui_project_screen(
             egui::ScrollArea::vertical().show(ui, |ui| {
                 // lorem_ipsum(ui);
                 ui.vertical(|ui| {
-                    for (entity, mut project_data, selected_model) in query_projects
-                        .iter_mut()
+                    for (entity, project_data, selected_model) in query_projects
+                        .iter()
                         .sort_by::<&ProjectData>(
                         |value_1, value_2| {
                             compare_by_created_at(&value_1.dto.created_at, &value_2.dto.created_at)
                         },
                     ) {
+                        // edits go into a draft, ProjectData stays what the server sent
+                        let saved = ProjectDraft::from_dto(&project_data.dto);
+                        let mut draft = project_drafts
+                            .get(&project_data.dto.id)
+                            .cloned()
+                            .unwrap_or_else(|| saved.clone());
+
                         egui::Grid::new(Id::new(project_data.dto.id))
                             .num_columns(2)
                             .spacing([40.0, 4.0])
                             .show(ui, |ui| {
-                                // self.gallery_grid_contents(ui);
                                 ui.label(format!("Name: "));
-                                ui.text_edit_singleline(&mut project_data.dto.name);
+                                ui.text_edit_singleline(&mut draft.name);
                                 ui.end_row();
 
                                 ui.label(format!("Description: "));
-                                ui.text_edit_multiline(&mut project_data.dto.description);
+                                ui.text_edit_multiline(&mut draft.description);
                                 ui.end_row();
                             });
                         let checked = selected_model.is_some();
@@ -350,11 +408,20 @@ fn ui_project_screen(
                                     }
                                 }
                             }
-                            if ui.button("Submit").clicked() {
-                                // trigger update project
-                                commands.trigger(UpdateProjectEvent {
-                                    dto: project_data.dto.clone(),
-                                });
+                            // only offer saving when something was edited
+                            if draft != saved {
+                                if ui.button("Submit").clicked() {
+                                    commands.trigger(UpdateProjectEvent {
+                                        dto: ProjectDto {
+                                            name: draft.name.clone(),
+                                            description: draft.description.clone(),
+                                            ..project_data.dto.clone()
+                                        },
+                                    });
+                                }
+                                if ui.button("Revert").clicked() {
+                                    draft = saved.clone();
+                                }
                             }
                             if logged_user.dto.id == project_data.dto.created_by_id
                                 && ui.button("Delete").clicked()
@@ -363,6 +430,13 @@ fn ui_project_screen(
                                 *project_to_delete = project_data.dto.id;
                             }
                         });
+
+                        // a draft equal to the server data (saved or reverted) isn't needed anymore
+                        if draft == saved {
+                            project_drafts.remove(&project_data.dto.id);
+                        } else {
+                            project_drafts.insert(project_data.dto.id, draft);
+                        }
 
                         ui.separator();
                     }

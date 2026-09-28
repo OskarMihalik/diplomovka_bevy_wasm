@@ -18,6 +18,12 @@ pub type ModelDtoResponse = Result<ModelDto, ErrorDto>;
 pub type ModelsDtoResponse = Result<Vec<ModelDto>, ErrorDto>;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct UpdateModelDto {
+    pub id: i32,
+    pub name: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct NewModelDto {
     pub name: String,
     pub project_id: i32,

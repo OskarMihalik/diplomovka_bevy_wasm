@@ -10,15 +10,16 @@ use std::io;
 use tokio::{fs::File, io::BufWriter};
 use tokio_util::io::StreamReader;
 
-use super::utils::map_err_pool_con;
+use super::utils::{map_err_pool_con, map_error_reason, map_sql_error};
 use crate::{auth::claim::Claims, ConnectionPool};
 use cornucopia_async::Params;
 use dto::{
     default::ErrorDto,
-    model::{ModelDto, ModelDtoResponse, ModelsDtoResponse},
+    model::{ModelDto, ModelDtoResponse, ModelsDtoResponse, UpdateModelDto},
 };
 use model::cornucopia::queries::tags::{
-    insert_model, select_model, select_models, SelectModelsParams,
+    insert_model, select_model, select_models, update_model, SelectModelsParams,
+    UpdateModelParams,
 };
 use tokio_postgres::GenericClient;
 
@@ -101,6 +102,81 @@ pub async fn get_models_service(
                 error
             ))))
         }
+    }
+}
+
+/// Renames a model. Returns the updated list of models of its project.
+#[debug_handler]
+pub async fn update_model_service(
+    claims: Claims,
+    State(pool): State<ConnectionPool>,
+    Json(dto): Json<UpdateModelDto>,
+) -> Json<ModelsDtoResponse> {
+    let name = dto.name.trim();
+    if name.is_empty() {
+        return map_error_reason(
+            "Model name must not be empty",
+            dto::default::ErrorReason::BadRequest,
+        );
+    }
+
+    let connection = match pool.get().await {
+        Ok(connection) => connection,
+        Err(error) => return map_err_pool_con(error),
+    };
+
+    // updates only if the user is a member of the model's project
+    let project_id = match update_model()
+        .params(
+            connection.client(),
+            &UpdateModelParams {
+                name,
+                id: dto.id,
+                user_id: claims.id,
+            },
+        )
+        .opt()
+        .await
+    {
+        Ok(Some(project_id)) => project_id,
+        Ok(None) => {
+            return map_error_reason(
+                "Model not found or you are not a member of its project",
+                dto::default::ErrorReason::Unauthorized,
+            )
+        }
+        Err(error) => return map_sql_error(error),
+    };
+
+    let result = select_models()
+        .params(
+            connection.client(),
+            &SelectModelsParams {
+                user_id: claims.id,
+                project_id,
+                limit: 100,
+                offset: 0,
+            },
+        )
+        .all()
+        .await;
+
+    match result {
+        Ok(models) => Json(ModelsDtoResponse::Ok(
+            models
+                .into_iter()
+                .map(|model| ModelDto {
+                    id: model.id,
+                    version: model.version,
+                    model_link: model.model_link,
+                    name: model.name,
+                    created_at: model.created_at,
+                    updated_at: model.updated_at,
+                    project_id: model.project_id,
+                })
+                .collect(),
+        )),
+        Err(error) => map_sql_error(error),
     }
 }
 

@@ -7,7 +7,7 @@ use dto::{
         CreatedTagMessageDtoResponse, EmptyResponse, NewStatusDto, NewTagDto, NewTagMessageDto,
         StatusDto, StatusesResponse, TagDto, TagDtoResponse, TagMessagesDtoResponse,
     },
-    model::{ModelDtoResponse, ModelsDtoResponse},
+    model::{ModelDtoResponse, ModelsDtoResponse, UpdateModelDto},
     project::{NewProjectDto, ProjectDto, ProjectDtoResponse, ProjectsDtoResponse},
     users::{
         GetUsersDto, OtherUserDtoResponse, OtherUsersDtoResponse, ProjectUsersDtoResponse,
@@ -44,6 +44,7 @@ impl Plugin for ApiPlugin {
             .add_observer(update_tag)
             .add_observer(get_models)
             .add_observer(create_model)
+            .add_observer(update_model)
             .add_observer(login_user)
             .add_observer(register_user)
             .add_observer(insert_project)
@@ -267,6 +268,40 @@ fn create_model(
         .unwrap();
 
     send_tracked::<CreateModelEvent>(&mut client, &mut commands, reqwest_request)
+        .on_json_response(
+            |trigger: Trigger<JsonResponse<ModelsDtoResponse>>, mut commands: Commands| {
+                match &trigger.0 {
+                    Ok(dtos) => commands.trigger(UpdateModelsEvent { dtos: dtos.clone() }),
+                    Err(error_dto) => commands.trigger(ShowErrorEvent {
+                        message: error_dto.message.clone(),
+                    }),
+                };
+            },
+        )
+        .on_error(on_reqwest_error);
+}
+
+#[derive(Event)]
+pub struct UpdateModelEvent {
+    pub dto: UpdateModelDto,
+}
+
+fn update_model(
+    trigger: Trigger<UpdateModelEvent>,
+    mut client: BevyReqwest,
+    query_user: Option<Single<(Entity, &LoggedUser)>>,
+) {
+    let url = format!("{BACKEND_URL}/model");
+
+    let reqwest_request = client
+        .patch(url)
+        .json(&trigger.dto)
+        .header("authorization", get_token_from_user(query_user))
+        .build()
+        .unwrap();
+
+    client
+        .send(reqwest_request)
         .on_json_response(
             |trigger: Trigger<JsonResponse<ModelsDtoResponse>>, mut commands: Commands| {
                 match &trigger.0 {
