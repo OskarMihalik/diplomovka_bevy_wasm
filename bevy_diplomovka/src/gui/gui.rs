@@ -16,6 +16,7 @@ use crate::{
         AddUserToProjectEvent, CreateModelEvent, DeleteProjectEvent, GetProjectsEvent,
         GetUsersEvent, NewProjectEvent, UpdateProjectEvent,
     },
+    api_tracking::ApiStatus,
     building::{ModelData, ProjectData, ThisModelIsSelected, ThisProjectIsSelected},
     users::{LoggedUser, OtherUsers, UsersInProject},
     utils::compare_by_created_at,
@@ -265,6 +266,7 @@ fn ui_project_screen(
     mut modal_open: Local<bool>,
     mut modal_add_user_open: Local<bool>,
     mut new_project_dto: Local<NewProjectDto>,
+    mut new_project_status: ApiStatus<NewProjectEvent>,
     query_project_users: Option<Single<(Entity, &UsersInProject)>>,
     mut user_email: Local<String>,
     mut open_delete_dialog: Local<bool>,
@@ -408,23 +410,41 @@ fn ui_project_screen(
             });
         });
 
+    // close the modal only after the server confirmed the project was created,
+    // on failure it stays open with the inputs so they can be fixed
+    if new_project_status.succeeded() {
+        *modal_open = false;
+        *new_project_dto = default();
+    }
+    let pending = new_project_status.is_pending();
     egui::Window::new("Add new project")
         .open(&mut modal_open)
         .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
         .show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.label(format!("Name: "));
-                ui.text_edit_singleline(&mut new_project_dto.name);
-            });
-            ui.horizontal(|ui| {
-                ui.label(format!("Description: "));
-                ui.text_edit_multiline(&mut new_project_dto.description);
-            });
-            if ui.button("Submit").clicked() {
-                commands.trigger(NewProjectEvent {
-                    dto: new_project_dto.clone(),
+            // inputs are locked while waiting for the server
+            ui.add_enabled_ui(!pending, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(format!("Name: "));
+                    ui.text_edit_singleline(&mut new_project_dto.name);
                 });
-            }
+                ui.horizontal(|ui| {
+                    ui.label(format!("Description: "));
+                    ui.text_edit_multiline(&mut new_project_dto.description);
+                });
+            });
+            ui.horizontal(|ui| {
+                if ui
+                    .add_enabled(!pending, egui::Button::new("Submit"))
+                    .clicked()
+                {
+                    commands.trigger(NewProjectEvent {
+                        dto: new_project_dto.clone(),
+                    });
+                }
+                if pending {
+                    ui.spinner();
+                }
+            });
         });
 
     match confirm_modal(ctx, "Delete project?", &open_delete_dialog, 123) {

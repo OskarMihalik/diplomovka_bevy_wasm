@@ -16,6 +16,7 @@ use dto::{
 };
 
 use crate::{
+    api_tracking::{send_tracked, TrackApiExt},
     building::{
         ProjectData, ProjectStatusesData, RebuildTagsEvent, TagData, TagMessagesData,
         ThisProjectIsSelected,
@@ -58,7 +59,8 @@ impl Plugin for ApiPlugin {
             .add_observer(create_status)
             .add_observer(delete_status)
             .add_observer(delete_tag)
-            .add_observer(get_projects);
+            .add_observer(get_projects)
+            .track_api::<NewProjectEvent>();
     }
 }
 
@@ -74,10 +76,15 @@ where
 }
 
 pub fn on_reqwest_error(trigger: Trigger<ReqwestErrorEvent>, mut commands: Commands) {
-    let e = &trigger.event().0;
-    bevy::log::error!("Error: {:?}", &trigger.event());
+    show_reqwest_error(&mut commands, trigger.event());
+}
+
+/// Logs a request error and shows it as a toast.
+/// Use in a custom `on_error` handler that also needs to do something else.
+pub fn show_reqwest_error(commands: &mut Commands, error: &ReqwestErrorEvent) {
+    bevy::log::error!("Error: {:?}", error);
     commands.trigger(ShowErrorEvent {
-        message: e.to_string(),
+        message: error.0.to_string(),
     })
 }
 
@@ -510,6 +517,7 @@ pub struct NewProjectEvent {
 
 fn insert_project(
     trigger: Trigger<NewProjectEvent>,
+    mut commands: Commands,
     mut client: BevyReqwest,
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
@@ -522,8 +530,7 @@ fn insert_project(
         .build()
         .unwrap();
 
-    client
-        .send(reqwest_request)
+    send_tracked::<NewProjectEvent>(&mut client, &mut commands, reqwest_request)
         .on_json_response(
             |trigger: Trigger<JsonResponse<ProjectsDtoResponse>>, mut commands: Commands| {
                 match &trigger.0 {

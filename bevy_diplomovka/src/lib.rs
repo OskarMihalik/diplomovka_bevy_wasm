@@ -1,6 +1,7 @@
 #![allow(clippy::type_complexity)]
 
 mod api;
+mod api_tracking;
 mod asset;
 mod building;
 mod gui;
