@@ -442,6 +442,7 @@ fn delete_project(
                 match &trigger.0 {
                     Ok(()) => {
                         commands.trigger(GetProjectsEvent {});
+                        commands.trigger(UpdateModelsEvent { dtos: vec![] });
                     }
                     Err(error_dto) => commands.trigger(ShowErrorEvent {
                         message: error_dto.message.clone(),
