@@ -233,7 +233,8 @@ pub fn ui_tag_windows(
     query_models: Query<(Entity, &ModelData)>,
     query_projects: Query<(Entity, &ProjectData, Option<&ThisProjectIsSelected>)>,
     mut new_message_text: Local<String>,
-    mut confirm_delete_tag_modal_open: Local<bool>,
+    // tag whose Delete was clicked, waiting for confirmation: (id, title)
+    mut tag_to_delete: Local<Option<(i32, String)>>,
 ) {
     let ctx = contexts.ctx_mut();
 
@@ -245,8 +246,11 @@ pub fn ui_tag_windows(
     for (entity, mut tag_data, mut transform, g_transform, _selected_tag, tag_messages) in
         &mut query_tags
     {
+        // the window is shown while the tag has SelectedTag, X closes it like the Close button
+        let mut window_open = true;
         egui::Window::new(tag_data.dto.title.clone())
             .id(Id::new(tag_data.dto.id))
+            .open(&mut window_open)
             .show(ctx, |ui| {
                 egui::Grid::new(Id::new("Tag grid 1"))
                     .num_columns(2)
@@ -330,11 +334,9 @@ pub fn ui_tag_windows(
                             }
                         }
                         ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
-                            if ui.button("Close").clicked() {
-                                commands.entity(entity).remove::<SelectedTag>();
-                            }
                             if ui.button("Delete").clicked() {
-                                *confirm_delete_tag_modal_open = true;
+                                *tag_to_delete =
+                                    Some((tag_data.dto.id, tag_data.dto.title.clone()));
                             }
                         });
                     });
@@ -369,25 +371,22 @@ pub fn ui_tag_windows(
                     });
                 })
             });
+        if !window_open {
+            commands.entity(entity).remove::<SelectedTag>();
+        }
+    }
 
-        if *confirm_delete_tag_modal_open {
-            match confirm_modal(
-                ctx,
-                "Delete?",
-                &confirm_delete_tag_modal_open,
-                tag_data.dto.id,
-            ) {
-                ConfirmModalResult::Confirm => {
-                    *confirm_delete_tag_modal_open = false;
-                    commands.trigger(DeleteTagEvent {
-                        tag_id: tag_data.dto.id,
-                    });
-                }
-                ConfirmModalResult::Cancel => {
-                    *confirm_delete_tag_modal_open = false;
-                }
-                ConfirmModalResult::Nothing => (),
+    // one confirmation for all tag windows, for the tag whose Delete was clicked
+    if let Some((tag_id, title)) = tag_to_delete.clone() {
+        match confirm_modal(ctx, &format!("Delete tag \"{title}\"?"), &true, tag_id) {
+            ConfirmModalResult::Confirm => {
+                *tag_to_delete = None;
+                commands.trigger(DeleteTagEvent { tag_id });
             }
+            ConfirmModalResult::Cancel => {
+                *tag_to_delete = None;
+            }
+            ConfirmModalResult::Nothing => (),
         }
     }
 }
