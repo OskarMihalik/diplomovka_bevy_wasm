@@ -3,7 +3,7 @@ use bevy_egui::{
     egui::{
         self,
         text::{LayoutJob, TextWrapping},
-        Id, Rounding, ScrollArea, TextFormat, TextStyle,
+        CornerRadius, Id, ScrollArea, TextFormat, TextStyle,
     },
     EguiContexts,
 };
@@ -30,7 +30,7 @@ pub struct FilterChangeEvent {
     pub new_filter: TagFilter,
 }
 pub fn update_filter_change(
-    trigger: Trigger<FilterChangeEvent>,
+    trigger: On<FilterChangeEvent>,
     mut tag_filter: Single<&mut TagFilter>,
 ) {
     **tag_filter = trigger.new_filter.clone();
@@ -54,13 +54,15 @@ pub fn ui_left_panel(
     q_light_controls: Query<(Entity, &LightControlsOpen)>,
     q_projects: Query<&ProjectData, With<ThisProjectIsSelected>>,
 ) {
-    let ctx = contexts.ctx_mut();
+    let Ok(ctx) = contexts.ctx_mut() else {
+        return;
+    };
     let kanban = q_kanban_open.iter().next();
     let light_controls = q_light_controls.iter().next();
     let Some(project_data) = q_projects.iter().next() else {
         return;
     };
-    egui::SidePanel::left("left_panel")
+    egui::Panel::left("left_panel")
         .resizable(true)
         .show(ctx, |ui| {
             if ui.button("⬅").clicked() {
@@ -74,7 +76,7 @@ pub fn ui_left_panel(
                     if ui.selectable_label(kanban.is_some(), "Kanban").clicked() {
                         match kanban {
                             Some((entity, _)) => {
-                                commands.entity(entity).despawn_recursive();
+                                commands.entity(entity).despawn();
                             }
                             None => {
                                 commands.spawn(KanbanOpen {});
@@ -91,7 +93,7 @@ pub fn ui_left_panel(
                     {
                         match light_controls {
                             Some((entity, _)) => {
-                                commands.entity(entity).despawn_recursive();
+                                commands.entity(entity).despawn();
                             }
                             None => {
                                 commands.spawn(LightControlsOpen {});
@@ -237,7 +239,9 @@ pub fn ui_tag_windows(
     // tag whose Delete was clicked, waiting for confirmation: (id, title)
     mut tag_to_delete: Local<Option<(i32, String)>>,
 ) {
-    let ctx = contexts.ctx_mut();
+    let Ok(ctx) = contexts.ctx_mut() else {
+        return;
+    };
 
     let current_selected_project = query_projects
         .iter()
@@ -464,12 +468,7 @@ pub fn status_widget(ui: &mut egui::Ui, status_dto: &StatusDto) {
         .outer_margin(0.)
         .fill(egui_color_bg.clone())
         .stroke(egui::Stroke::new(1.0, egui_color.clone()))
-        .rounding(Rounding {
-            nw: 14.,
-            ne: 14.,
-            sw: 14.,
-            se: 14.,
-        })
+        .corner_radius(CornerRadius::same(14))
         .show(ui, |ui| {
             ui.add(
                 egui::Label::new(egui::RichText::new(&status_dto.title).color(egui_color.clone()))

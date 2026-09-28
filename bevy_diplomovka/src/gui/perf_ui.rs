@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use iyes_perf_ui::{
+use bevy_perf_ui::{
     entries::{
         PerfUiFixedTimeEntries, PerfUiFramerateEntries, PerfUiSystemEntries, PerfUiWindowEntries,
     },

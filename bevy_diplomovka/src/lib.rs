@@ -2,7 +2,6 @@
 
 mod api;
 mod api_tracking;
-mod asset;
 mod building;
 mod gui;
 mod loading;
@@ -54,7 +53,7 @@ impl Plugin for GamePlugin {
                 GuiPlugin,
                 // PerfUI,
                 ModelManagmentPlugin,
-                OutlinePlugin,
+                OutlinePlugin::JUMP_FLOOD,
             ))
             .add_observer(log_entity_components);
 

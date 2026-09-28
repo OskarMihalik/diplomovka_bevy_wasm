@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_egui::{
     egui::{self, Align2, Id},
-    EguiContexts, EguiPlugin,
+    EguiContexts, EguiPlugin, EguiPrimaryContextPass,
 };
 use bevy_file_dialog::prelude::*;
 use dto::{
@@ -55,7 +55,7 @@ pub struct UiContexts {
 
 impl Plugin for GuiPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(EguiPlugin)
+        app.add_plugins(EguiPlugin::default())
             .add_plugins(GlbPickerPlugin)
             .add_plugins(
                 FileDialogPlugin::new()
@@ -72,36 +72,41 @@ impl Plugin for GuiPlugin {
                 OnEnter(GameState::SelectingProjectAndModel),
                 setup_selecting_project_and_model,
             )
-            .add_systems(Update, (login_screen).run_if(in_state(GameState::Auth)))
+            .add_systems(
+                EguiPrimaryContextPass,
+                login_screen.run_if(in_state(GameState::Auth)),
+            )
             .add_systems(OnExit(GameState::Auth), reset_auth_forms)
             .add_systems(
-                Update,
+                EguiPrimaryContextPass,
                 (ui_project_screen, ui_model_screen)
                     .chain()
                     .run_if(in_state(GameState::SelectingProjectAndModel)),
             )
             .add_systems(
-                Update,
+                EguiPrimaryContextPass,
                 (
                     ui_left_panel,
                     ui_tag_windows,
                     ui_status_modal,
                     kanban_window,
                     light_controls_window,
-                    on_light_gizmos_added,
-                    on_light_gizmos_removed,
                 )
                     .run_if(in_state(GameState::ViewingModel)),
             )
             .add_systems(
                 Update,
+                (on_light_gizmos_added, on_light_gizmos_removed)
+                    .run_if(in_state(GameState::ViewingModel)),
+            )
+            .add_systems(EguiPrimaryContextPass, (theme_picker, show_toasts))
+            .add_systems(
+                Update,
                 (
-                    theme_picker,
                     file_loaded,
                     file_saved,
                     file_load_canceled,
                     file_save_canceled,
-                    show_toasts,
                 ),
             )
             .add_observer(update_filter_change)
@@ -137,7 +142,9 @@ fn ui_model_screen(
     mut new_model_status: ApiStatus<CreateModelEvent>,
     query_loaded_glb: Query<(Entity, &UploadedGlbFile)>,
 ) {
-    let ctx = contexts.ctx_mut();
+    let Ok(ctx) = contexts.ctx_mut() else {
+        return;
+    };
     let current_selected_project = query_projects
         .iter()
         .find(|(_, _, selected)| selected.is_some())
@@ -250,7 +257,7 @@ fn ui_model_screen(
         &mut new_model,
         &mut new_model_status,
         current_selected_project_dto.map(|project| project.dto.id),
-        query_loaded_glb.get_single().ok(),
+        query_loaded_glb.single().ok(),
     );
 }
 
@@ -286,7 +293,9 @@ fn ui_project_screen(
     other_users: Option<Single<(Entity, &OtherUsers)>>,
     query_logged_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
-    let ctx = contexts.ctx_mut();
+    let Ok(ctx) = contexts.ctx_mut() else {
+        return;
+    };
     let logged_user = match query_logged_user {
         Some(some) => some.1,
         None => {
@@ -314,9 +323,9 @@ fn ui_project_screen(
         None => &Vec::<ProjectUserDto>::new(),
     };
 
-    egui::TopBottomPanel::top("top_panel")
+    egui::Panel::top("top_panel")
         .resizable(true)
-        .min_height(32.0)
+        .min_size(32.0)
         .show(ctx, |ui| {
             ui.horizontal(|ui| {
                 if project_dto.is_some() && ui.button("Add user").clicked() {
@@ -345,9 +354,9 @@ fn ui_project_screen(
             })
         });
 
-    egui::SidePanel::left("Projects")
+    egui::Panel::left("Projects")
         .resizable(true)
-        .default_width(window.width() / 2.0)
+        .default_size(window.width() / 2.0)
         .show(ctx, |ui| {
             ui.vertical_centered(|ui| {
                 ui.heading("Projects");
@@ -515,7 +524,7 @@ pub struct ShowErrorEvent {
     pub message: String,
 }
 
-fn show_error(trigger: Trigger<ShowErrorEvent>, mut ui_contexts: ResMut<UiContexts>) {
+fn show_error(trigger: On<ShowErrorEvent>, mut ui_contexts: ResMut<UiContexts>) {
     let message = &trigger.event().message;
     bevy::log::error!("Error: {}", message);
     ui_contexts.toasts.add(Toast {
@@ -533,7 +542,7 @@ pub struct ShowSuccessEvent {
     pub message: String,
 }
 
-fn show_success(trigger: Trigger<ShowSuccessEvent>, mut ui_contexts: ResMut<UiContexts>) {
+fn show_success(trigger: On<ShowSuccessEvent>, mut ui_contexts: ResMut<UiContexts>) {
     let message = &trigger.event().message;
     ui_contexts.toasts.add(Toast {
         text: message.into(),
@@ -546,12 +555,17 @@ fn show_success(trigger: Trigger<ShowSuccessEvent>, mut ui_contexts: ResMut<UiCo
 }
 
 fn show_toasts(mut contexts: EguiContexts, mut ui_contexts: ResMut<UiContexts>) {
-    let ctx = contexts.ctx_mut();
-    ui_contexts.toasts.show(ctx);
+    let Ok(ctx) = contexts.ctx_mut() else {
+        return;
+    };
+    // toasts anchor themselves to the screen, the area only provides a `Ui` for them
+    egui::Area::new(egui::Id::new("toasts"))
+        .interactable(false)
+        .show(ctx, |ui| ui_contexts.toasts.show(ui));
 }
 
 fn file_loaded(
-    mut ev_loaded: EventReader<DialogFileLoaded<GlbFileContents>>,
+    mut ev_loaded: MessageReader<DialogFileLoaded<GlbFileContents>>,
     mut commands: Commands,
     query_loaded_glb: Query<Entity, With<UploadedGlbFile>>,
 ) {
@@ -565,13 +579,13 @@ fn file_loaded(
     }
 }
 
-fn file_load_canceled(mut ev_canceled: EventReader<DialogFileLoadCanceled<GlbFileContents>>) {
+fn file_load_canceled(mut ev_canceled: MessageReader<DialogFileLoadCanceled<GlbFileContents>>) {
     for _ in ev_canceled.read() {
         bevy::log::info!("Text file content load canceled");
     }
 }
 
-fn file_saved(mut ev_saved: EventReader<DialogFileSaved<GlbFileContents>>) {
+fn file_saved(mut ev_saved: MessageReader<DialogFileSaved<GlbFileContents>>) {
     for ev in ev_saved.read() {
         match ev.result {
             Ok(_) => bevy::log::info!("File {} successfully saved", ev.file_name),
@@ -580,7 +594,7 @@ fn file_saved(mut ev_saved: EventReader<DialogFileSaved<GlbFileContents>>) {
     }
 }
 
-fn file_save_canceled(mut ev_canceled: EventReader<DialogFileSaveCanceled<GlbFileContents>>) {
+fn file_save_canceled(mut ev_canceled: MessageReader<DialogFileSaveCanceled<GlbFileContents>>) {
     for _ in ev_canceled.read() {
         bevy::log::info!("Text file content save canceled");
     }

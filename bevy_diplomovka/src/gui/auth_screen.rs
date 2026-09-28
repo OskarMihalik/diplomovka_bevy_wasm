@@ -62,7 +62,9 @@ pub fn login_screen(
     mut contexts: EguiContexts,
     mut forms: ResMut<AuthForms>,
 ) {
-    let ctx = contexts.ctx_mut();
+    let Ok(ctx) = contexts.ctx_mut() else {
+        return;
+    };
     let forms = &mut *forms;
 
     egui::CentralPanel::default().show(ctx, |ui| {

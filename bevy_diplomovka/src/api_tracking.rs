@@ -32,7 +32,7 @@ impl<E: Event> Default for ApiRequest<E> {
 }
 
 /// The server answered the request started by `E` with `Ok`.
-#[derive(Event)]
+#[derive(Message)]
 pub struct ApiSucceeded<E: Event>(PhantomData<E>);
 
 pub trait TrackApiExt {
@@ -41,7 +41,7 @@ pub trait TrackApiExt {
 
 impl TrackApiExt for App {
     fn track_api<E: Event>(&mut self) -> &mut Self {
-        self.add_event::<ApiSucceeded<E>>()
+        self.add_message::<ApiSucceeded<E>>()
     }
 }
 
@@ -67,16 +67,16 @@ pub fn send_tracked<'a, E: Event>(
 /// without knowing `T`. Parsing it here (and not via `on_json_response`) also
 /// catches responses that are not valid json.
 fn report_response<E: Event>(
-    trigger: Trigger<ReqwestResponseEvent>,
+    trigger: On<ReqwestResponseEvent>,
     mut commands: Commands,
-    mut succeeded: EventWriter<ApiSucceeded<E>>,
+    mut succeeded: MessageWriter<ApiSucceeded<E>>,
 ) {
     match trigger
         .event()
         .deserialize_json::<Result<IgnoredAny, ErrorDto>>()
     {
         Ok(Ok(_)) => {
-            succeeded.send(ApiSucceeded(PhantomData));
+            succeeded.write(ApiSucceeded(PhantomData));
         }
         // the request's own handler shows the error message
         Ok(Err(_)) => {}
@@ -93,7 +93,7 @@ fn report_response<E: Event>(
 #[derive(SystemParam)]
 pub struct ApiStatus<'w, 's, E: Event> {
     inflight: Query<'w, 's, (), (With<ApiRequest<E>>, With<ReqwestInflight>)>,
-    succeeded: EventReader<'w, 's, ApiSucceeded<E>>,
+    succeeded: MessageReader<'w, 's, ApiSucceeded<E>>,
 }
 
 impl<E: Event> ApiStatus<'_, '_, E> {

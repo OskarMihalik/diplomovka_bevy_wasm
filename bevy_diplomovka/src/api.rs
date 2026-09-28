@@ -66,7 +66,7 @@ impl Plugin for ApiPlugin {
     }
 }
 
-pub fn parse_response<T>(event: Trigger<'_, ReqwestResponseEvent>) -> T
+pub fn parse_response<T>(event: On<ReqwestResponseEvent>) -> T
 where
     T: de::DeserializeOwned,
 {
@@ -77,7 +77,7 @@ where
     return parsed;
 }
 
-pub fn on_reqwest_error(trigger: Trigger<ReqwestErrorEvent>, mut commands: Commands) {
+pub fn on_reqwest_error(trigger: On<ReqwestErrorEvent>, mut commands: Commands) {
     show_reqwest_error(&mut commands, trigger.event());
 }
 
@@ -86,7 +86,7 @@ pub fn on_reqwest_error(trigger: Trigger<ReqwestErrorEvent>, mut commands: Comma
 pub fn show_reqwest_error(commands: &mut Commands, error: &ReqwestErrorEvent) {
     bevy::log::error!("Error: {:?}", error);
     commands.trigger(ShowErrorEvent {
-        message: error.0.to_string(),
+        message: error.error.to_string(),
     })
 }
 
@@ -96,7 +96,7 @@ pub struct GetTagsEvent {
 }
 
 fn get_tags(
-    trigger: Trigger<GetTagsEvent>,
+    trigger: On<GetTagsEvent>,
     mut client: BevyReqwest,
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
@@ -111,8 +111,8 @@ fn get_tags(
     client
         .send(reqwest_request)
         .on_json_response(
-            |trigger: Trigger<JsonResponse<TagDtoResponse>>, mut commands: Commands| {
-                match &trigger.0 {
+            |trigger: On<JsonResponse<TagDtoResponse>>, mut commands: Commands| {
+                match &trigger.data {
                     Ok(tags) => {
                         commands.trigger(RebuildTagsEvent {
                             new_tag_dtos: tags.clone(),
@@ -133,7 +133,7 @@ pub struct DeleteTagEvent {
 }
 
 fn delete_tag(
-    trigger: Trigger<DeleteTagEvent>,
+    trigger: On<DeleteTagEvent>,
     mut client: BevyReqwest,
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
@@ -148,10 +148,10 @@ fn delete_tag(
     client
         .send(reqwest_request)
         .on_json_response(
-            |trigger: Trigger<JsonResponse<EmptyResponse>>,
+            |trigger: On<JsonResponse<EmptyResponse>>,
              mut commands: Commands,
              query_project: Single<(&ProjectData, &ThisProjectIsSelected)>| {
-                match &trigger.0 {
+                match &trigger.data {
                     Ok(()) => {
                         commands.trigger(GetTagsEvent {
                             project_id: query_project.0.dto.id,
@@ -173,7 +173,7 @@ pub struct CreateNewTagEvent {
 }
 
 fn create_new_tag(
-    trigger: Trigger<CreateNewTagEvent>,
+    trigger: On<CreateNewTagEvent>,
     mut client: BevyReqwest,
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
@@ -189,8 +189,8 @@ fn create_new_tag(
     client
         .send(reqwest_request)
         .on_json_response(
-            |trigger: Trigger<JsonResponse<TagDtoResponse>>, mut commands: Commands| {
-                match &trigger.0 {
+            |trigger: On<JsonResponse<TagDtoResponse>>, mut commands: Commands| {
+                match &trigger.data {
                     Ok(tags) => {
                         commands.trigger(RebuildTagsEvent {
                             new_tag_dtos: tags.clone(),
@@ -211,7 +211,7 @@ pub struct GetModelEvent {
 }
 
 fn get_model(
-    trigger: Trigger<GetModelEvent>,
+    trigger: On<GetModelEvent>,
     mut client: BevyReqwest,
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
@@ -226,8 +226,8 @@ fn get_model(
     client
         .send(reqwest_request)
         .on_json_response(
-            |trigger: Trigger<JsonResponse<ModelDtoResponse>>, mut commands: Commands| {
-                match &trigger.0 {
+            |trigger: On<JsonResponse<ModelDtoResponse>>, mut commands: Commands| {
+                match &trigger.data {
                     Ok(_) => (),
                     Err(error_dto) => commands.trigger(ShowErrorEvent {
                         message: error_dto.message.clone(),
@@ -246,7 +246,7 @@ pub struct CreateModelEvent {
 }
 
 fn create_model(
-    trigger: Trigger<CreateModelEvent>,
+    trigger: On<CreateModelEvent>,
     mut commands: Commands,
     mut client: BevyReqwest,
     query_user: Option<Single<(Entity, &LoggedUser)>>,
@@ -269,8 +269,8 @@ fn create_model(
 
     send_tracked::<CreateModelEvent>(&mut client, &mut commands, reqwest_request)
         .on_json_response(
-            |trigger: Trigger<JsonResponse<ModelsDtoResponse>>, mut commands: Commands| {
-                match &trigger.0 {
+            |trigger: On<JsonResponse<ModelsDtoResponse>>, mut commands: Commands| {
+                match &trigger.data {
                     Ok(dtos) => commands.trigger(UpdateModelsEvent { dtos: dtos.clone() }),
                     Err(error_dto) => commands.trigger(ShowErrorEvent {
                         message: error_dto.message.clone(),
@@ -287,7 +287,7 @@ pub struct UpdateModelEvent {
 }
 
 fn update_model(
-    trigger: Trigger<UpdateModelEvent>,
+    trigger: On<UpdateModelEvent>,
     mut client: BevyReqwest,
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
@@ -303,8 +303,8 @@ fn update_model(
     client
         .send(reqwest_request)
         .on_json_response(
-            |trigger: Trigger<JsonResponse<ModelsDtoResponse>>, mut commands: Commands| {
-                match &trigger.0 {
+            |trigger: On<JsonResponse<ModelsDtoResponse>>, mut commands: Commands| {
+                match &trigger.data {
                     Ok(dtos) => commands.trigger(UpdateModelsEvent { dtos: dtos.clone() }),
                     Err(error_dto) => commands.trigger(ShowErrorEvent {
                         message: error_dto.message.clone(),
@@ -321,7 +321,7 @@ pub struct GetModelsEvent {
 }
 
 fn get_models(
-    trigger: Trigger<GetModelsEvent>,
+    trigger: On<GetModelsEvent>,
     mut client: BevyReqwest,
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
@@ -336,8 +336,8 @@ fn get_models(
     client
         .send(reqwest_request)
         .on_json_response(
-            |trigger: Trigger<JsonResponse<ModelsDtoResponse>>, mut commands: Commands| {
-                match &trigger.0 {
+            |trigger: On<JsonResponse<ModelsDtoResponse>>, mut commands: Commands| {
+                match &trigger.data {
                     Ok(dtos) => commands.trigger(UpdateModelsEvent { dtos: dtos.clone() }),
                     Err(error_dto) => commands.trigger(ShowErrorEvent {
                         message: error_dto.message.clone(),
@@ -354,7 +354,7 @@ pub struct UpdateTagEvent {
 }
 
 fn update_tag(
-    trigger: Trigger<UpdateTagEvent>,
+    trigger: On<UpdateTagEvent>,
     mut client: BevyReqwest,
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
@@ -370,8 +370,8 @@ fn update_tag(
     client
         .send(reqwest_request)
         .on_json_response(
-            |trigger: Trigger<JsonResponse<TagDtoResponse>>, mut commands: Commands| {
-                match &trigger.0 {
+            |trigger: On<JsonResponse<TagDtoResponse>>, mut commands: Commands| {
+                match &trigger.data {
                     Ok(tags) => {
                         commands.trigger(RebuildTagsEvent {
                             new_tag_dtos: tags.clone(),
@@ -395,7 +395,7 @@ pub struct GetProjectEvent {
 }
 
 fn get_project(
-    trigger: Trigger<GetProjectEvent>,
+    trigger: On<GetProjectEvent>,
     mut client: BevyReqwest,
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
@@ -410,8 +410,8 @@ fn get_project(
     client
         .send(reqwest_request)
         .on_json_response(
-            |trigger: Trigger<JsonResponse<ProjectDtoResponse>>, mut commands: Commands| {
-                match &trigger.0 {
+            |trigger: On<JsonResponse<ProjectDtoResponse>>, mut commands: Commands| {
+                match &trigger.data {
                     Ok(_dto) => {
                         // TODO: update selected project
                     }
@@ -430,7 +430,7 @@ pub struct UpdateProjectEvent {
 }
 
 fn update_project(
-    trigger: Trigger<UpdateProjectEvent>,
+    trigger: On<UpdateProjectEvent>,
     mut client: BevyReqwest,
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
@@ -446,8 +446,8 @@ fn update_project(
     client
         .send(reqwest_request)
         .on_json_response(
-            |trigger: Trigger<JsonResponse<EmptyResponse>>, mut commands: Commands| {
-                match &trigger.0 {
+            |trigger: On<JsonResponse<EmptyResponse>>, mut commands: Commands| {
+                match &trigger.data {
                     Ok(()) => {
                         commands.trigger(GetProjectsEvent {});
                     }
@@ -466,7 +466,7 @@ pub struct DeleteProjectEvent {
 }
 
 fn delete_project(
-    trigger: Trigger<DeleteProjectEvent>,
+    trigger: On<DeleteProjectEvent>,
     mut client: BevyReqwest,
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
@@ -481,8 +481,8 @@ fn delete_project(
     client
         .send(reqwest_request)
         .on_json_response(
-            |trigger: Trigger<JsonResponse<EmptyResponse>>, mut commands: Commands| {
-                match &trigger.0 {
+            |trigger: On<JsonResponse<EmptyResponse>>, mut commands: Commands| {
+                match &trigger.data {
                     Ok(()) => {
                         commands.trigger(GetProjectsEvent {});
                         commands.trigger(UpdateModelsEvent { dtos: vec![] });
@@ -500,7 +500,7 @@ fn delete_project(
 pub struct GetProjectsEvent {}
 
 fn get_projects(
-    _trigger: Trigger<GetProjectsEvent>,
+    _trigger: On<GetProjectsEvent>,
     mut client: BevyReqwest,
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
@@ -516,11 +516,11 @@ fn get_projects(
     client
         .send(reqwest_request)
         .on_json_response(
-            |trigger: Trigger<JsonResponse<ProjectsDtoResponse>>,
+            |trigger: On<JsonResponse<ProjectsDtoResponse>>,
              mut commands: Commands,
              query_selected_project: Option<Single<(&ProjectData, &ThisProjectIsSelected)>>,
              query_projects: Query<Entity, With<ProjectData>>| {
-                let dtos = match &trigger.0 {
+                let dtos = match &trigger.data {
                     Ok(dtos) => dtos,
                     Err(error_dto) => {
                         commands.trigger(ShowErrorEvent {
@@ -533,7 +533,7 @@ fn get_projects(
                 let selected_id = query_selected_project.map(|selected| selected.0.dto.id);
 
                 for entity in query_projects.iter() {
-                    commands.entity(entity).despawn_recursive();
+                    commands.entity(entity).despawn();
                 }
                 for dto in dtos {
                     let mut builder = commands.spawn(ProjectData { dto: dto.clone() });
@@ -552,7 +552,7 @@ pub struct NewProjectEvent {
 }
 
 fn insert_project(
-    trigger: Trigger<NewProjectEvent>,
+    trigger: On<NewProjectEvent>,
     mut commands: Commands,
     mut client: BevyReqwest,
     query_user: Option<Single<(Entity, &LoggedUser)>>,
@@ -568,8 +568,8 @@ fn insert_project(
 
     send_tracked::<NewProjectEvent>(&mut client, &mut commands, reqwest_request)
         .on_json_response(
-            |trigger: Trigger<JsonResponse<ProjectsDtoResponse>>, mut commands: Commands| {
-                match &trigger.0 {
+            |trigger: On<JsonResponse<ProjectsDtoResponse>>, mut commands: Commands| {
+                match &trigger.data {
                     Ok(_) => commands.trigger(GetProjectsEvent {}),
                     Err(error_dto) => commands.trigger(ShowErrorEvent {
                         message: error_dto.message.clone(),
@@ -582,14 +582,14 @@ fn insert_project(
 
 /// Shared response handler for login and register: replaces the logged in user and moves on.
 fn on_auth_response(
-    trigger: Trigger<JsonResponse<AuthDtoResponse>>,
+    trigger: On<JsonResponse<AuthDtoResponse>>,
     mut commands: Commands,
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
-    match &trigger.0 {
+    match &trigger.data {
         Ok(user_dto) => {
             if let Some(query_user) = query_user {
-                commands.entity(query_user.0).despawn_recursive();
+                commands.entity(query_user.0).despawn();
             }
             commands.spawn(LoggedUser {
                 dto: user_dto.clone(),
@@ -607,7 +607,7 @@ pub struct LoginEvent {
     pub dto: LoginDto,
 }
 
-fn login_user(trigger: Trigger<LoginEvent>, mut client: BevyReqwest) {
+fn login_user(trigger: On<LoginEvent>, mut client: BevyReqwest) {
     let url = format!("{BACKEND_URL}/login");
 
     let reqwest_request = client.post(url).json(&trigger.dto).build().unwrap();
@@ -623,7 +623,7 @@ pub struct RegisterEvent {
     pub dto: RegisterDto,
 }
 
-fn register_user(trigger: Trigger<RegisterEvent>, mut client: BevyReqwest) {
+fn register_user(trigger: On<RegisterEvent>, mut client: BevyReqwest) {
     let url = format!("{BACKEND_URL}/register");
 
     let reqwest_request = client.post(url).json(&trigger.dto).build().unwrap();
@@ -640,7 +640,7 @@ pub struct GetUsersEvent {
 }
 
 fn get_users(
-    trigger: Trigger<GetUsersEvent>,
+    trigger: On<GetUsersEvent>,
     mut client: BevyReqwest,
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
@@ -656,13 +656,13 @@ fn get_users(
     client
         .send(reqwest_request)
         .on_json_response(
-            |trigger: Trigger<JsonResponse<OtherUsersDtoResponse>>,
+            |trigger: On<JsonResponse<OtherUsersDtoResponse>>,
              mut commands: Commands,
              query_users: Option<Single<(Entity, &OtherUsers)>>| {
-                match &trigger.0 {
+                match &trigger.data {
                     Ok(dtos) => {
                         if let Some(query_users) = query_users {
-                            commands.entity(query_users.0).despawn_recursive();
+                            commands.entity(query_users.0).despawn();
                         }
                         commands.spawn(OtherUsers { dtos: dtos.clone() });
                     }
@@ -681,7 +681,7 @@ pub struct GetUsersInProjectEvent {
 }
 
 fn get_users_in_project(
-    trigger: Trigger<GetUsersInProjectEvent>,
+    trigger: On<GetUsersInProjectEvent>,
     mut client: BevyReqwest,
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
@@ -696,13 +696,13 @@ fn get_users_in_project(
     client
         .send(reqwest_request)
         .on_json_response(
-            |trigger: Trigger<JsonResponse<ProjectUsersDtoResponse>>,
+            |trigger: On<JsonResponse<ProjectUsersDtoResponse>>,
              mut commands: Commands,
              query_users: Option<Single<(Entity, &UsersInProject)>>| {
-                match &trigger.0 {
+                match &trigger.data {
                     Ok(dtos) => {
                         if let Some(query_users) = query_users {
-                            commands.entity(query_users.0).despawn_recursive();
+                            commands.entity(query_users.0).despawn();
                         }
                         commands.spawn(UsersInProject { dtos: dtos.clone() });
                     }
@@ -721,7 +721,7 @@ pub struct AddUserToProjectEvent {
 }
 
 fn add_user_to_project(
-    trigger: Trigger<AddUserToProjectEvent>,
+    trigger: On<AddUserToProjectEvent>,
     mut client: BevyReqwest,
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
@@ -737,10 +737,10 @@ fn add_user_to_project(
     client
         .send(reqwest_request)
         .on_json_response(
-            |trigger: Trigger<JsonResponse<OtherUserDtoResponse>>,
+            |trigger: On<JsonResponse<OtherUserDtoResponse>>,
              mut commands: Commands,
              selected_project_query: Option<Single<(&ProjectData, &ThisProjectIsSelected)>>| {
-                match &trigger.0 {
+                match &trigger.data {
                     Ok(_) => {
                         if let Some(selected_project_query) = selected_project_query {
                             commands.trigger(GetUsersInProjectEvent {
@@ -763,7 +763,7 @@ pub struct CreateTagMessageEvent {
 }
 
 fn create_tag_message(
-    trigger: Trigger<CreateTagMessageEvent>,
+    trigger: On<CreateTagMessageEvent>,
     mut client: BevyReqwest,
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
@@ -780,9 +780,9 @@ fn create_tag_message(
     client
         .send(reqwest_request)
         .on_json_response(
-            move |trigger: Trigger<JsonResponse<CreatedTagMessageDtoResponse>>,
+            move |trigger: On<JsonResponse<CreatedTagMessageDtoResponse>>,
                   mut commands: Commands| {
-                match &trigger.0 {
+                match &trigger.data {
                     Ok(()) => {
                         commands.trigger(GetTagMessagesEvent { tag_id });
                     }
@@ -801,7 +801,7 @@ pub struct GetTagMessagesEvent {
 }
 
 fn get_tag_messages(
-    trigger: Trigger<GetTagMessagesEvent>,
+    trigger: On<GetTagMessagesEvent>,
     mut client: BevyReqwest,
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
@@ -817,10 +817,10 @@ fn get_tag_messages(
     client
         .send(reqwest_request)
         .on_json_response(
-            move |trigger: Trigger<JsonResponse<TagMessagesDtoResponse>>,
+            move |trigger: On<JsonResponse<TagMessagesDtoResponse>>,
                   mut commands: Commands,
                   mut query_tags: Query<(Entity, &TagData, Option<&mut TagMessagesData>)>| {
-                let dtos = match &trigger.0 {
+                let dtos = match &trigger.data {
                     Ok(dtos) => dtos,
                     Err(error_dto) => {
                         commands.trigger(ShowErrorEvent {
@@ -843,7 +843,7 @@ fn get_tag_messages(
                         tag_messages.dtos.extend(dtos.iter().cloned());
                     }
                     None => {
-                        if let Some(mut entity) = commands.get_entity(entity) {
+                        if let Ok(mut entity) = commands.get_entity(entity) {
                             entity.insert(TagMessagesData { dtos: dtos.clone() });
                         }
                     }
@@ -859,7 +859,7 @@ pub struct GetStatusesEvent {
 }
 
 fn get_statuses(
-    trigger: Trigger<GetStatusesEvent>,
+    trigger: On<GetStatusesEvent>,
     mut client: BevyReqwest,
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
@@ -874,13 +874,13 @@ fn get_statuses(
     client
         .send(reqwest_request)
         .on_json_response(
-            |trigger: Trigger<JsonResponse<StatusesResponse>>,
+            |trigger: On<JsonResponse<StatusesResponse>>,
              mut commands: Commands,
              query_status: Query<Entity, With<ProjectStatusesData>>| {
-                match &trigger.0 {
+                match &trigger.data {
                     Ok(dtos) => {
                         for entity in query_status.iter() {
-                            commands.entity(entity).despawn_recursive();
+                            commands.entity(entity).despawn();
                         }
                         commands.spawn(ProjectStatusesData { dtos: dtos.clone() });
                     }
@@ -899,7 +899,7 @@ pub struct UpdateStatusEvent {
 }
 
 fn update_status(
-    trigger: Trigger<UpdateStatusEvent>,
+    trigger: On<UpdateStatusEvent>,
     mut client: BevyReqwest,
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
@@ -916,8 +916,8 @@ fn update_status(
     client
         .send(reqwest_request)
         .on_json_response(
-            move |trigger: Trigger<JsonResponse<EmptyResponse>>, mut commands: Commands| {
-                match &trigger.0 {
+            move |trigger: On<JsonResponse<EmptyResponse>>, mut commands: Commands| {
+                match &trigger.data {
                     Ok(()) => {
                         commands.trigger(GetStatusesEvent { project_id });
                     }
@@ -936,7 +936,7 @@ pub struct CreateStatusEvent {
 }
 
 fn create_status(
-    trigger: Trigger<CreateStatusEvent>,
+    trigger: On<CreateStatusEvent>,
     mut client: BevyReqwest,
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
@@ -953,8 +953,8 @@ fn create_status(
     client
         .send(reqwest_request)
         .on_json_response(
-            move |trigger: Trigger<JsonResponse<EmptyResponse>>, mut commands: Commands| {
-                match &trigger.0 {
+            move |trigger: On<JsonResponse<EmptyResponse>>, mut commands: Commands| {
+                match &trigger.data {
                     Ok(()) => {
                         commands.trigger(GetStatusesEvent { project_id });
                     }
@@ -974,7 +974,7 @@ pub struct DeleteStatusEvent {
 }
 
 fn delete_status(
-    trigger: Trigger<DeleteStatusEvent>,
+    trigger: On<DeleteStatusEvent>,
     mut client: BevyReqwest,
     query_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
@@ -990,8 +990,8 @@ fn delete_status(
     client
         .send(reqwest_request)
         .on_json_response(
-            move |trigger: Trigger<JsonResponse<EmptyResponse>>, mut commands: Commands| {
-                match &trigger.0 {
+            move |trigger: On<JsonResponse<EmptyResponse>>, mut commands: Commands| {
+                match &trigger.data {
                     Ok(()) => {
                         commands.trigger(GetStatusesEvent { project_id });
                         commands.trigger(GetTagsEvent { project_id });

@@ -60,7 +60,7 @@ pub fn new_model_modal(
     if status.succeeded() {
         modal.close_and_reset();
         if let Some((entity, _)) = glb_file {
-            commands.entity(entity).despawn_recursive();
+            commands.entity(entity).despawn();
         }
     }
     if !modal.open {

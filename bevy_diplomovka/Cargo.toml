@@ -31,14 +31,8 @@ strip = true
 [features]
 dev = ["bevy/dynamic_linking"]
 
-# All of Bevy's default features exept for the audio related ones (bevy_audio, vorbis), since they clash with bevy_kira_audio
-#   and android_shared_stdcxx/android-game-activity, since those are covered in `mobile`
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-ureq = { version = "2.12", default-features = true }
-
 [dependencies]
-transform-gizmo = { git = "https://github.com/ethereumdegen/transform-gizmo.git" }
-bevy-inspector-egui = "0.29"
+bevy-inspector-egui = "0.37"
 js-sys = "0.3.66"
 wasm-bindgen-futures = "0.4.39"
 web-sys = { version = "0.3.98", features = [
@@ -53,61 +47,34 @@ web-sys = { version = "0.3.98", features = [
     "Blob",
 ] }
 serde = "1.0.217"
-base64 = "0.22.0"
 time = { version = "0.3.18", features = ["serde"] }
-egui-toast = "0.16.0"
+egui-toast = "0.20"
 serde_json = "1.0"
-iyes_perf_ui = { git = "https://github.com/IyesGames/iyes_perf_ui.git" }
-bevy_file_dialog = { git = "https://github.com/richardhozak/bevy_file_dialog.git" }
-bevy_panorbit_camera = { version = "0.22", features = ["bevy_egui"] }
+bevy_perf_ui = "0.7"
+bevy_file_dialog = { git = "https://github.com/superjesse07/bevy_file_dialog.git" }
+bevy_panorbit_camera = { version = "0.35", features = ["bevy_egui"] }
 wasm-bindgen = "=0.2.121"
 dto = { path = "../dto" }
-bevy_egui = { version = "0.32", default-features = false, features = [
+bevy_egui = { version = "0.40", default-features = false, features = [
     "open_url",
     "default_fonts",
     "render",
-    "bevy_picking",
+    "picking",
 ] }
-bevy = { version = "0.15", default-features = false, features = [
-    "animation",
-    "bevy_asset",
-    "bevy_color",
-    "bevy_core_pipeline",
-    "bevy_gilrs",
-    "bevy_gizmos",
-    "bevy_gltf",
-    "bevy_mesh_picking_backend",
-    "bevy_pbr",
-    "bevy_picking",
-    "bevy_render",
-    "bevy_scene",
-    "bevy_sprite",
-    "bevy_sprite_picking_backend",
-    "bevy_state",
-    "bevy_text",
-    "bevy_ui",
-    "bevy_ui_picking_backend",
-    "bevy_window",
-    "bevy_winit",
-    "custom_cursor",
-    "default_font",
-    "hdr",
-    "multi_threaded",
+bevy = { version = "0.19", default-features = false, features = [
+    "3d",
     "jpeg",
-    "png",
-    "smaa_luts",
-    "sysinfo_plugin",
-    "tonemapping_luts",
-    "webgl2",
-    "x11",
+    "web",
+    "http",
+    "https",
     # "dynamic_linking",
 ] }
-bevy_kira_audio = { version = "0.21" }
-bevy_asset_loader = { version = "0.22" }
-rand = { version = "0.8.3" }
-webbrowser = { version = "1", features = ["hardened"] }
-bevy_flycam = "0.15.0"
-bevy_mod_reqwest = { git = "https://github.com/OskarMihalik/bevy_mod_reqwest.git" }
+bevy_asset_loader = { version = "0.27" }
+bevy_mod_reqwest = "0.22.1"
+# only needed to enable the `multipart` feature used in api.rs
+reqwest = { version = "0.12", default-features = false, features = ["multipart"] }
+# glam pulls in getrandom 0.3, which needs the `wasm_js` backend on the web (see .cargo/config.toml)
+getrandom = { version = "0.3", features = ["wasm_js"] }
 
 # keep the following in sync with Bevy's dependencies
 winit = { version = "0.30", default-features = false }
@@ -117,13 +84,13 @@ log = { version = "0.4", features = [
     "max_level_debug",
     "release_max_level_warn",
 ] }
-egui_extras = { version = "0.30.0", default-features = false }
-egui_commonmark = "0.19"
-bevy_mod_outline = "0.9"
+egui_extras = { version = "0.34", default-features = false }
+egui_commonmark = "0.23"
+bevy_mod_outline = "0.13"
 dotenv = "0.15.0"
 dotenv_codegen = "0.15.0"
-egui_form = { version = "0.4", features = ["validator_garde"] }
-garde = { version = "0.20", features = ["derive", "email"] }
+egui_form = { version = "0.8", features = ["validator_garde"] }
+garde = { version = "0.22", features = ["derive", "email"] }
 
 [build-dependencies]
 wasm-bindgen-cli = "0.2.121"

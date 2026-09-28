@@ -51,7 +51,7 @@ pub fn set_uploaded_glb(
 ) {
     bevy::log::info!("Loaded file {file_name}");
     for entity in previous {
-        commands.entity(entity).despawn_recursive();
+        commands.entity(entity).despawn();
     }
     commands.spawn(UploadedGlbFile {
         file_name,
