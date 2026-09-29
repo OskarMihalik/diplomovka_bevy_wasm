@@ -29,7 +29,8 @@ opt-level = 1
 [profile.wasm-release]
 inherits = "release"
 opt-level = "z"
-lto = true
+# fat LTO peaks at ~8.4 GB and runs out of memory on render.com (8 GB), thin peaks at ~5.3 GB
+lto = "thin"
 codegen-units = 1
 strip = true
 
