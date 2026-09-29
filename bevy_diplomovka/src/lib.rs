@@ -14,11 +14,10 @@ use crate::loading::LoadingPlugin;
 use api::ApiPlugin;
 use bevy::app::App;
 use bevy::prelude::*;
-use bevy_inspector_egui::quick::{StateInspectorPlugin, WorldInspectorPlugin};
 use bevy_mod_outline::OutlinePlugin;
 use bevy_panorbit_camera::PanOrbitCameraPlugin;
 use building::BuildingPlugin;
-use gui::{gui::GuiPlugin, perf_ui::PerfUI};
+use gui::gui::GuiPlugin;
 use models::ModelManagmentPlugin;
 use utils::log_entity_components;
 // use gui::GuiPlugin;
@@ -43,15 +42,12 @@ impl Plugin for GamePlugin {
         app.add_plugins(ApiPlugin)
             .init_state::<GameState>()
             .register_type::<GameState>()
-            // .add_plugins(WorldInspectorPlugin::new())
-            // .add_plugins(StateInspectorPlugin::<GameState>::default())
             .add_plugins((
                 PanOrbitCameraPlugin,
                 LoadingPlugin,
                 BuildingPlugin,
                 MeshPickingPlugin,
                 GuiPlugin,
-                // PerfUI,
                 ModelManagmentPlugin,
                 OutlinePlugin::JUMP_FLOOD,
             ))

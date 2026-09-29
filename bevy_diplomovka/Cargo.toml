@@ -6,33 +6,10 @@ authors = ["Oskar Mihalik"]                      # ToDo: you are the author ;)
 edition = "2021"
 exclude = ["dist", "build", "assets", "credits"]
 
-[profile.dev.package."*"]
-opt-level = 3
-
-[profile.dev]
-opt-level = 1
-
-# This is used by trunk as it doesn't support custom profiles: https://github.com/trunk-rs/trunk/issues/605
-# xbuild also uses this profile for building android AABs because I couldn't find a configuration for it
-[profile.release]
-opt-level = "s"
-lto = true
-codegen-units = 1
-strip = true
-
-# Profile for distribution
-[profile.dist]
-inherits = "release"
-opt-level = 3
-lto = true
-codegen-units = 1
-strip = true
-
 [features]
 dev = ["bevy/dynamic_linking"]
 
 [dependencies]
-bevy-inspector-egui = "0.37"
 js-sys = "0.3.66"
 wasm-bindgen-futures = "0.4.39"
 web-sys = { version = "0.3.98", features = [
@@ -50,7 +27,6 @@ serde = "1.0.217"
 time = { version = "0.3.18", features = ["serde"] }
 egui-toast = "0.20"
 serde_json = "1.0"
-bevy_perf_ui = "0.7"
 bevy_file_dialog = { git = "https://github.com/superjesse07/bevy_file_dialog.git" }
 bevy_panorbit_camera = { version = "0.35", features = ["bevy_egui"] }
 wasm-bindgen = "=0.2.121"
@@ -61,10 +37,30 @@ bevy_egui = { version = "0.40", default-features = false, features = [
     "render",
     "picking",
 ] }
+# The `3d` collection minus `reflect_auto_register` (big wasm size cost, nothing here needs it),
+# gamepad support and native-only platform features
 bevy = { version = "0.19", default-features = false, features = [
-    "3d",
+    # default_app
+    "async_executor",
+    "bevy_asset",
+    "bevy_log",
+    "bevy_state",
+    # default_platform
+    "std",
+    "bevy_winit",
+    "bevy_clipboard",
+    "default_font",
+    "multi_threaded",
+    "webgl2",
+    "x11",
+    "custom_cursor",
+    # rendering
+    "3d_bevy_render",
+    "scene",
+    "picking",
     "jpeg",
     "web",
+    # models are loaded from the backend over http(s)
     "http",
     "https",
     # "dynamic_linking",

@@ -8,6 +8,14 @@
     />
     <title>DP</title>
     <!-- ToDo -->
+    <!-- wasm-opt only runs for `trunk build --release`; the flags match the features rustc emits -->
+    <link
+      data-trunk
+      rel="rust"
+      data-bin="bevy_diplomovka"
+      data-wasm-opt="z"
+      data-wasm-opt-params="--enable-bulk-memory --enable-nontrapping-float-to-int --enable-sign-ext --enable-mutable-globals --enable-reference-types --enable-multivalue"
+    />
     <link data-trunk rel="copy-dir" href="assets" />
     <link data-trunk rel="copy-dir" href="credits" />
     <link data-trunk rel="copy-file" href="build/windows/icon.ico" />

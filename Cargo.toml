@@ -15,3 +15,28 @@ members = [
     "run-wasm",
     "backend-wake-up",
 ]
+
+# Profiles only take effect in the workspace root; they apply to every member
+# Optimize dependencies in dev builds, bevy is unusably slow otherwise
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.dev]
+opt-level = 1
+
+# Size-optimized profile for the web build, used by trunk (see bevy_diplomovka/Trunk.toml).
+# Kept separate from `release` so other workspace members (backend, ...) build with defaults.
+[profile.wasm-release]
+inherits = "release"
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
+
+# Profile for distribution
+[profile.dist]
+inherits = "release"
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

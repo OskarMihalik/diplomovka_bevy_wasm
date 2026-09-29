@@ -1,6 +1,8 @@
 [build]
 public_url = "./"
-release = true
+# `trunk serve` / `trunk build` use the fast dev profile.
+# Smallest release bundle (wasm-release profile + wasm-opt, see index.html):
+#   trunk build --release --cargo-profile wasm-release
 
 [serve]
 port = 8081
