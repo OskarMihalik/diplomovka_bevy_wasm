@@ -45,11 +45,6 @@ fn main() {
         )
         .add_systems(Startup, init_refresh_rate)
         .add_plugins(FrameTimeDiagnosticsPlugin::default())
-        .add_plugins(LogDiagnosticsPlugin {
-            debug: true,
-            wait_duration: Duration::new(1, 1),
-            filter: None,
-        })
         .add_plugins(ReqwestPlugin::default())
         .add_plugins(GamePlugin)
         .add_systems(Startup, set_window_icon)

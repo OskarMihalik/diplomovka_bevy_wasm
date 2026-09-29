@@ -9,6 +9,12 @@
 //! - F5: toggle bounding boxes of all meshes
 //! - F6: toggle ground grid
 //! - F7: toggle fps counter and diagnostics windows
+//! - F8: toggle camera auto orbit
+//! - F9: run a benchmark, one full camera orbit, and print the results to the console
+//!
+//! The app runs uncapped (no reactive / low power update mode, no vsync on native) so the
+//! numbers measure the model and not the frame limiter. Every few seconds a short frame time
+//! summary is printed to the console as well.
 
 use bevy::camera::primitives::Aabb;
 use bevy::core_pipeline::prepass::{DepthPrepass, NormalPrepass};
@@ -19,7 +25,8 @@ use bevy::dev_tools::diagnostics_overlay::{
 use bevy::dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin};
 use bevy::dev_tools::infinite_grid::{InfiniteGrid, InfiniteGridPlugin};
 use bevy::diagnostic::{
-    Diagnostic, DiagnosticPath, Diagnostics, EntityCountDiagnosticsPlugin, RegisterDiagnostic,
+    Diagnostic, DiagnosticPath, Diagnostics, DiagnosticsStore, EntityCountDiagnosticsPlugin,
+    RegisterDiagnostic,
 };
 use bevy::gizmos::aabb::AabbGizmoConfigGroup;
 use bevy::mesh::PrimitiveTopology;
@@ -27,7 +34,11 @@ use bevy::pbr::diagnostic::MaterialAllocatorDiagnosticPlugin;
 use bevy::prelude::*;
 use bevy::render::diagnostic::MeshAllocatorDiagnosticPlugin;
 use bevy::time::common_conditions::on_timer;
+use bevy::window::{PresentMode, PrimaryWindow};
+use bevy::winit::WinitSettings;
+use bevy_panorbit_camera::PanOrbitCamera;
 use std::collections::HashSet;
+use std::f32::consts::TAU;
 use std::time::Duration;
 
 const MESH_INSTANCES: DiagnosticPath = DiagnosticPath::const_new("model/mesh_instances");
@@ -41,6 +52,13 @@ const LIGHTS: DiagnosticPath = DiagnosticPath::const_new("model/lights");
 const SIZE_X: DiagnosticPath = DiagnosticPath::const_new("model/size_x");
 const SIZE_Y: DiagnosticPath = DiagnosticPath::const_new("model/size_y");
 const SIZE_Z: DiagnosticPath = DiagnosticPath::const_new("model/size_z");
+
+/// How often the rolling frame time summary is printed
+const SUMMARY_INTERVAL: Duration = Duration::from_secs(5);
+/// How long the F9 benchmark takes, the camera does one full orbit in this time
+const BENCHMARK_DURATION: f32 = 60.;
+/// Auto orbit speed in radians per second
+const ORBIT_SPEED: f32 = TAU / BENCHMARK_DURATION;
 
 pub struct DebugToolsPlugin;
 
@@ -80,13 +98,20 @@ impl Plugin for DebugToolsPlugin {
             app.register_diagnostic(Diagnostic::new(path).with_suffix(suffix));
         }
 
-        app.add_systems(Startup, spawn_overlays).add_systems(
-            Update,
-            (
-                handle_input,
-                measure_model.run_if(on_timer(Duration::from_millis(500))),
-            ),
-        );
+        app.init_resource::<FrameTimes>()
+            .init_resource::<AutoOrbit>()
+            // .add_systems(Startup, spawn_overlays)
+            // after main.rs sets up the reactive update mode in Startup
+            .add_systems(PostStartup, uncap_frame_rate)
+            .add_systems(
+                Update,
+                (
+                    handle_input,
+                    measure_model.run_if(on_timer(Duration::from_millis(500))),
+                    (record_frame_time, orbit_camera, finish_benchmark).chain(),
+                    // print_summary.run_if(on_timer(SUMMARY_INTERVAL)),
+                ),
+            );
     }
 }
 
@@ -270,6 +295,9 @@ fn handle_input(
     q_cameras: Query<(Entity, Has<DepthPrepass>), With<Camera3d>>,
     q_grid: Query<Entity, With<InfiniteGrid>>,
     mut q_overlay_plane: Query<&mut Node, With<DiagnosticsOverlayPlane>>,
+    mut auto_orbit: ResMut<AutoOrbit>,
+    mut frame_times: ResMut<FrameTimes>,
+    q_orbit_camera: Query<&PanOrbitCamera>,
     #[cfg(not(target_arch = "wasm32"))] mut wireframe: ResMut<
         bevy::pbr::wireframe::WireframeConfig,
     >,
@@ -313,5 +341,221 @@ fn handle_input(
                 Display::None
             };
         }
+    }
+    if keyboard.just_pressed(KeyCode::F8) {
+        auto_orbit.0 = !auto_orbit.0;
+    }
+    if keyboard.just_pressed(KeyCode::F9) && frame_times.benchmark.is_none() {
+        let start_yaw = q_orbit_camera
+            .iter()
+            .next()
+            .map(|camera| camera.target_yaw)
+            .unwrap_or_default();
+        info!("Benchmark started, {BENCHMARK_DURATION} s");
+        frame_times.benchmark = Some(BenchmarkRun {
+            elapsed: 0.,
+            start_yaw,
+            frames: Vec::new(),
+        });
+    }
+}
+
+fn uncap_frame_rate(
+    mut winit: ResMut<WinitSettings>,
+    mut q_window: Query<&mut Window, With<PrimaryWindow>>,
+) {
+    *winit = WinitSettings::continuous();
+    // browsers always sync to the display through requestAnimationFrame, this only matters natively
+    // for mut window in &mut q_window {
+    //     window.present_mode = PresentMode::AutoNoVsync;
+    // }
+}
+
+#[derive(Resource, Default)]
+struct AutoOrbit(bool);
+
+#[derive(Resource, Default)]
+struct FrameTimes {
+    /// frame times in ms since the last summary
+    window: Vec<f32>,
+    benchmark: Option<BenchmarkRun>,
+}
+
+struct BenchmarkRun {
+    elapsed: f32,
+    start_yaw: f32,
+    frames: Vec<f32>,
+}
+
+fn record_frame_time(time: Res<Time<Real>>, mut frame_times: ResMut<FrameTimes>) {
+    let frame_ms = time.delta_secs() * 1000.;
+    if frame_ms <= 0. {
+        return;
+    }
+    frame_times.window.push(frame_ms);
+    if let Some(run) = &mut frame_times.benchmark {
+        run.elapsed += time.delta_secs();
+        run.frames.push(frame_ms);
+    }
+}
+
+fn orbit_camera(
+    time: Res<Time<Real>>,
+    auto_orbit: Res<AutoOrbit>,
+    frame_times: Res<FrameTimes>,
+    mut q_camera: Query<&mut PanOrbitCamera>,
+) {
+    for mut camera in &mut q_camera {
+        if let Some(run) = &frame_times.benchmark {
+            // driven by elapsed time so every run covers exactly the same path
+            camera.target_yaw = run.start_yaw + TAU * (run.elapsed / BENCHMARK_DURATION).min(1.);
+        } else if auto_orbit.0 {
+            camera.target_yaw += ORBIT_SPEED * time.delta_secs();
+        }
+    }
+}
+
+fn finish_benchmark(
+    mut frame_times: ResMut<FrameTimes>,
+    diagnostics: Res<DiagnosticsStore>,
+    q_window: Query<&Window, With<PrimaryWindow>>,
+) {
+    if !frame_times
+        .benchmark
+        .as_ref()
+        .is_some_and(|run| run.elapsed >= BENCHMARK_DURATION)
+    {
+        return;
+    }
+    let Some(run) = frame_times.benchmark.take() else {
+        return;
+    };
+    let Some(stats) = FrameStats::new(&run.frames) else {
+        warn!("Benchmark recorded no frames");
+        return;
+    };
+    let value = |path: &DiagnosticPath| {
+        diagnostics
+            .get(path)
+            .and_then(|diagnostic| diagnostic.value())
+            .unwrap_or(0.)
+    };
+    let resolution = q_window
+        .single()
+        .map(|window| format!("{}x{}", window.physical_width(), window.physical_height()))
+        .unwrap_or_default();
+
+    info!(
+        "\n===== Benchmark ({:.1} s, one camera orbit) =====\n\
+         resolution        {resolution}\n\
+         frames            {}\n\
+         average fps       {:.1}\n\
+         1% low fps        {:.1}\n\
+         0.1% low fps      {:.1}\n\
+         frame time avg    {:.2} ms\n\
+         frame time min    {:.2} ms\n\
+         frame time p50    {:.2} ms\n\
+         frame time p95    {:.2} ms\n\
+         frame time p99    {:.2} ms\n\
+         frame time max    {:.2} ms\n\
+         frame time stddev {:.2} ms\n\
+         mesh instances    {:.0}\n\
+         unique meshes     {:.0}\n\
+         vertices          {:.0}\n\
+         triangles         {:.0}\n\
+         materials         {:.0}\n\
+         textures          {:.0} ({:.2} MiB)\n\
+         entities          {:.0}\n\
+         ==============================================",
+        run.elapsed,
+        stats.frames,
+        stats.average_fps,
+        stats.low_1_fps,
+        stats.low_01_fps,
+        stats.average_ms,
+        stats.min_ms,
+        stats.p50_ms,
+        stats.p95_ms,
+        stats.p99_ms,
+        stats.max_ms,
+        stats.stddev_ms,
+        value(&MESH_INSTANCES),
+        value(&UNIQUE_MESHES),
+        value(&VERTICES),
+        value(&TRIANGLES),
+        value(&MATERIALS),
+        value(&TEXTURES),
+        value(&TEXTURE_MEMORY),
+        value(&EntityCountDiagnosticsPlugin::ENTITY_COUNT),
+    );
+}
+
+fn print_summary(mut frame_times: ResMut<FrameTimes>) {
+    let frames = std::mem::take(&mut frame_times.window);
+    let Some(stats) = FrameStats::new(&frames) else {
+        return;
+    };
+    info!(
+        "fps avg {:.1} | 1% low {:.1} | frame time avg {:.2} ms, p50 {:.2}, p95 {:.2}, p99 {:.2}, max {:.2} ({} frames)",
+        stats.average_fps,
+        stats.low_1_fps,
+        stats.average_ms,
+        stats.p50_ms,
+        stats.p95_ms,
+        stats.p99_ms,
+        stats.max_ms,
+        stats.frames,
+    );
+}
+
+struct FrameStats {
+    frames: usize,
+    average_fps: f32,
+    /// fps of the average of the slowest 1% of frames
+    low_1_fps: f32,
+    low_01_fps: f32,
+    average_ms: f32,
+    min_ms: f32,
+    p50_ms: f32,
+    p95_ms: f32,
+    p99_ms: f32,
+    max_ms: f32,
+    stddev_ms: f32,
+}
+
+impl FrameStats {
+    fn new(frame_times_ms: &[f32]) -> Option<Self> {
+        if frame_times_ms.is_empty() {
+            return None;
+        }
+        let mut sorted = frame_times_ms.to_vec();
+        sorted.sort_by(f32::total_cmp);
+        let n = sorted.len();
+        let total: f32 = sorted.iter().sum();
+        let average_ms = total / n as f32;
+        let variance = sorted
+            .iter()
+            .map(|ms| (ms - average_ms).powi(2))
+            .sum::<f32>()
+            / n as f32;
+        let percentile = |p: f32| sorted[((p / 100.) * (n - 1) as f32).round() as usize];
+        let low_fps = |fraction: f32| {
+            let count = ((n as f32 * fraction).ceil() as usize).max(1);
+            let slowest = &sorted[n - count..];
+            1000. / (slowest.iter().sum::<f32>() / count as f32)
+        };
+        Some(Self {
+            frames: n,
+            average_fps: 1000. * n as f32 / total,
+            low_1_fps: low_fps(0.01),
+            low_01_fps: low_fps(0.001),
+            average_ms,
+            min_ms: sorted[0],
+            p50_ms: percentile(50.),
+            p95_ms: percentile(95.),
+            p99_ms: percentile(99.),
+            max_ms: sorted[n - 1],
+            stddev_ms: variance.sqrt(),
+        })
     }
 }

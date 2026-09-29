@@ -3,7 +3,10 @@ use crate::{
     gui::gui::ShowSuccessEvent,
     utils::filter_tags,
 };
-use bevy::{prelude::*, world_serialization::WorldInstanceReady};
+use bevy::{
+    diagnostic::FrameCount, platform::time::Instant, prelude::*,
+    world_serialization::WorldInstanceReady,
+};
 use bevy_mod_outline::*;
 use bevy_panorbit_camera::PanOrbitCamera;
 use dto::{
@@ -16,6 +19,33 @@ use crate::{
     api::{CreateNewTagEvent, GetTagsEvent},
     GameState,
 };
+
+/// Durations of the steps of opening a model, logged by [`log_model_load_timing`]
+#[derive(Component)]
+struct ModelLoadTiming {
+    started: Instant,
+    started_frame: u32,
+    /// end of the previous step
+    last_step: Instant,
+    download_parse_ms: Option<f64>,
+    spawn_ms: Option<f64>,
+    /// frame in which the scene was spawned into the world
+    spawned_frame: Option<u32>,
+}
+
+impl ModelLoadTiming {
+    /// How long the step that just finished took, in ms
+    fn step_ms(&mut self) -> f64 {
+        let now = Instant::now();
+        let step = now.duration_since(self.last_step);
+        self.last_step = now;
+        step.as_secs_f64() * 1000.
+    }
+
+    fn total_ms(&self) -> f64 {
+        self.started.elapsed().as_secs_f64() * 1000.
+    }
+}
 
 #[derive(Component)]
 pub struct TagData {
@@ -91,6 +121,7 @@ impl Plugin for BuildingPlugin {
                     on_tag_filter_change,
                     fade_transparency,
                     set_outline_on_selected,
+                    log_model_load_timing,
                 )
                     .run_if(in_state(GameState::ViewingModel)),
             )
@@ -218,6 +249,7 @@ fn react_to_model_change(
         Single<(Entity, &ModelData, &ThisModelIsSelected), Added<ThisModelIsSelected>>,
     >,
     asset_server: Res<AssetServer>,
+    frame: Res<FrameCount>,
 ) {
     let selected_model = match selected_model_query {
         Some(ok) => ok,
@@ -227,6 +259,7 @@ fn react_to_model_change(
     commands.set_state(GameState::ViewingModel);
 
     let model_dto = &selected_model.1.dto;
+    bevy::log::info!("model {} load: request started", model_dto.id);
     let gltf = asset_server.load(format!(
         "{BACKEND_URL}/assets/model/{:?}.glb#Scene0",
         model_dto.id
@@ -236,14 +269,33 @@ fn react_to_model_change(
         .insert((
             WorldAssetRoot(gltf),
             Transform::from_translation(Vec3::ZERO).with_scale(Vec3::splat(0.25)),
+            ModelLoadTiming {
+                started: Instant::now(),
+                started_frame: frame.0,
+                last_step: Instant::now(),
+                download_parse_ms: None,
+                spawn_ms: None,
+                spawned_frame: None,
+            },
         ))
         .observe(add_tag)
         .observe(
             |trigger: On<WorldInstanceReady>,
              mut commands: Commands,
              q_model: Query<(Entity, &ModelData, &ThisModelIsSelected)>,
+             mut q_timing: Query<(&ModelData, &mut ModelLoadTiming)>,
+             frame: Res<FrameCount>,
              time: Res<Time>| {
                 bevy::log::info!("scene instance ready, {:?}", trigger.entity);
+                if let Ok((model, mut timing)) = q_timing.get_mut(trigger.entity) {
+                    timing.spawned_frame = Some(frame.0);
+                    let spawn_ms = timing.step_ms();
+                    timing.spawn_ms = Some(spawn_ms);
+                    bevy::log::info!(
+                        "model {} load: mesh creation (scene spawn) took {spawn_ms:.1} ms",
+                        model.dto.id,
+                    );
+                }
                 let Ok(model) = q_model.get(trigger.entity) else {
                     return;
                 };
@@ -256,6 +308,71 @@ fn react_to_model_change(
                 });
             },
         );
+}
+
+/// Logs how long downloading + parsing and rendering the first frame took, and a summary of
+/// all steps at the end. Steps are noticed once per frame, so they are precise to one frame time.
+fn log_model_load_timing(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    frame: Res<FrameCount>,
+    mut q_models: Query<(Entity, &ModelData, &WorldAssetRoot, &mut ModelLoadTiming)>,
+    q_children: Query<&Children>,
+    q_meshes: Query<&Mesh3d>,
+    meshes: Res<Assets<Mesh>>,
+) {
+    for (entity, model, root, mut timing) in &mut q_models {
+        let id = model.dto.id;
+        if timing.download_parse_ms.is_none() && asset_server.is_loaded_with_dependencies(&root.0)
+        {
+            let download_parse_ms = timing.step_ms();
+            timing.download_parse_ms = Some(download_parse_ms);
+            bevy::log::info!("model {id} load: download + parsing took {download_parse_ms:.1} ms");
+        }
+        // the frame the scene was spawned in has been rendered once the next frame starts
+        if !timing.spawned_frame.is_some_and(|spawned| frame.0 > spawned) {
+            continue;
+        }
+        let first_frame_ms = timing.step_ms();
+
+        let mut mesh_count = 0;
+        let mut vertices = 0;
+        let mut triangles = 0;
+        for mesh in q_meshes.iter_many(q_children.iter_descendants(entity)) {
+            mesh_count += 1;
+            let Some(mesh) = meshes.get(mesh) else {
+                continue;
+            };
+            let Ok(positions) = mesh.try_attribute(Mesh::ATTRIBUTE_POSITION) else {
+                continue;
+            };
+            vertices += positions.len();
+            triangles += match mesh.try_indices_option() {
+                Ok(Some(indices)) => indices.len(),
+                _ => positions.len(),
+            } / 3;
+        }
+
+        bevy::log::info!(
+            "\n===== model {id} load: {} (version {}) =====\n\
+             download + parsing  {:>9.1} ms\n\
+             mesh creation       {:>9.1} ms\n\
+             first frame render  {:>9.1} ms\n\
+             total               {:>9.1} ms\n\
+             meshes              {mesh_count:>9}\n\
+             vertices            {vertices:>9}\n\
+             triangles           {triangles:>9}\n\
+             frames until shown  {:>9}",
+            model.dto.name,
+            model.dto.version,
+            timing.download_parse_ms.unwrap_or_default(),
+            timing.spawn_ms.unwrap_or_default(),
+            first_frame_ms,
+            timing.total_ms(),
+            frame.0.saturating_sub(timing.started_frame),
+        );
+        commands.entity(entity).remove::<ModelLoadTiming>();
+    }
 }
 
 fn add_tag(
