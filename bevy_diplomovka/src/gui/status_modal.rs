@@ -24,7 +24,9 @@ pub fn ui_status_modal(
     mut new_status: Local<NewStatusDto>,
     selected_project_query: Single<(Entity, &ProjectData, &ThisProjectIsSelected)>,
 ) {
-    let ctx = contexts.ctx_mut();
+    let Ok(ctx) = contexts.ctx_mut() else {
+        return;
+    };
 
     let tag = match query_tags.iter().next() {
         Some(tag) => tag,

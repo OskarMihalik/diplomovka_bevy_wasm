@@ -1,21 +1,23 @@
 use bevy::prelude::*;
 use bevy_egui::{
     egui::{self, Align2, Id},
-    EguiContexts, EguiPlugin,
+    EguiContexts, EguiPlugin, EguiPrimaryContextPass,
 };
 use bevy_file_dialog::prelude::*;
 use dto::{
-    model::NewModelDto,
-    project::NewProjectDto,
+    model::UpdateModelDto,
+    project::ProjectDto,
     users::{GetUsersDto, OtherUserDto, ProjectUserDto, UserToProjectDto},
 };
+use std::collections::HashMap;
 use egui_toast::{Toast, ToastKind, ToastOptions, Toasts};
 
 use crate::{
     api::{
         AddUserToProjectEvent, CreateModelEvent, DeleteProjectEvent, GetProjectsEvent,
-        GetUsersEvent, NewProjectEvent, UpdateProjectEvent,
+        GetUsersEvent, NewProjectEvent, UpdateModelEvent, UpdateProjectEvent,
     },
+    api_tracking::ApiStatus,
     building::{ModelData, ProjectData, ThisModelIsSelected, ThisProjectIsSelected},
     users::{LoggedUser, OtherUsers, UsersInProject},
     utils::compare_by_created_at,
@@ -25,7 +27,10 @@ use crate::{
 use super::{
     auth_screen::{login_screen, reset_auth_forms, AuthForms},
     confirm_modal::{confirm_modal, ConfirmModalResult},
+    glb_picker::{set_uploaded_glb, GlbPickerPlugin},
     kanban::kanban_window,
+    new_model_modal::{new_model_modal, NewModelModal},
+    new_project_modal::{new_project_modal, NewProjectModal},
     light_controls::{light_controls_window, on_light_gizmos_added, on_light_gizmos_removed},
     status_modal::ui_status_modal,
     theme::theme_picker,
@@ -50,7 +55,8 @@ pub struct UiContexts {
 
 impl Plugin for GuiPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(EguiPlugin)
+        app.add_plugins(EguiPlugin::default())
+            .add_plugins(GlbPickerPlugin)
             .add_plugins(
                 FileDialogPlugin::new()
                     // allow saving of files marked with TextFileContents
@@ -66,36 +72,41 @@ impl Plugin for GuiPlugin {
                 OnEnter(GameState::SelectingProjectAndModel),
                 setup_selecting_project_and_model,
             )
-            .add_systems(Update, (login_screen).run_if(in_state(GameState::Auth)))
+            .add_systems(
+                EguiPrimaryContextPass,
+                login_screen.run_if(in_state(GameState::Auth)),
+            )
             .add_systems(OnExit(GameState::Auth), reset_auth_forms)
             .add_systems(
-                Update,
+                EguiPrimaryContextPass,
                 (ui_project_screen, ui_model_screen)
                     .chain()
                     .run_if(in_state(GameState::SelectingProjectAndModel)),
             )
             .add_systems(
-                Update,
+                EguiPrimaryContextPass,
                 (
                     ui_left_panel,
                     ui_tag_windows,
                     ui_status_modal,
                     kanban_window,
                     light_controls_window,
-                    on_light_gizmos_added,
-                    on_light_gizmos_removed,
                 )
                     .run_if(in_state(GameState::ViewingModel)),
             )
             .add_systems(
                 Update,
+                (on_light_gizmos_added, on_light_gizmos_removed)
+                    .run_if(in_state(GameState::ViewingModel)),
+            )
+            .add_systems(EguiPrimaryContextPass, (theme_picker, show_toasts))
+            .add_systems(
+                Update,
                 (
-                    theme_picker,
                     file_loaded,
                     file_saved,
                     file_load_canceled,
                     file_save_canceled,
-                    show_toasts,
                 ),
             )
             .add_observer(update_filter_change)
@@ -125,12 +136,15 @@ fn ui_model_screen(
     mut commands: Commands,
     mut contexts: EguiContexts,
     query_projects: Query<(Entity, &ProjectData, Option<&ThisProjectIsSelected>)>,
-    mut query_models: Query<(Entity, &mut ModelData, Option<&ThisModelIsSelected>)>,
-    mut new_model_modal_open: Local<bool>,
-    mut new_model_dto: Local<NewModelDto>,
+    query_models: Query<(Entity, &ModelData, Option<&ThisModelIsSelected>)>,
+    mut model_name_drafts: Local<HashMap<i32, String>>,
+    mut new_model: Local<NewModelModal>,
+    mut new_model_status: ApiStatus<CreateModelEvent>,
     query_loaded_glb: Query<(Entity, &UploadedGlbFile)>,
 ) {
-    let ctx = contexts.ctx_mut();
+    let Ok(ctx) = contexts.ctx_mut() else {
+        return;
+    };
     let current_selected_project = query_projects
         .iter()
         .find(|(_, _, selected)| selected.is_some())
@@ -156,22 +170,28 @@ fn ui_model_screen(
             // lorem_ipsum(ui);
             ui.vertical(|ui| {
                 if current_selected_project_dto.is_some() && ui.button("Add new model").clicked() {
-                    *new_model_modal_open = true;
+                    new_model.open = true;
                 }
                 let mut v = 0;
-                for (entity, mut model_data, selected_model) in query_models
-                    .iter_mut()
+                for (entity, model_data, selected_model) in query_models
+                    .iter()
                     .sort_by::<&ModelData>(|value_1, value_2| {
                         compare_by_created_at(&value_1.dto.created_at, &value_2.dto.created_at)
                     })
                 {
+                    // edits go into a draft, ModelData stays what the server sent
+                    let saved_name = &model_data.dto.name;
+                    let mut draft_name = model_name_drafts
+                        .get(&model_data.dto.id)
+                        .cloned()
+                        .unwrap_or_else(|| saved_name.clone());
+
                     egui::Grid::new(Id::new(model_data.dto.id))
                         .num_columns(2)
                         .spacing([40.0, 4.0])
                         .show(ui, |ui| {
-                            // self.gallery_grid_contents(ui);
                             ui.label(format!("Name: "));
-                            ui.text_edit_singleline(&mut model_data.dto.name);
+                            ui.text_edit_singleline(&mut draft_name);
                             ui.end_row();
 
                             ui.label(format!("Version: "));
@@ -198,61 +218,61 @@ fn ui_model_screen(
                                 }
                             }
                         }
-                        if ui.button("Submit").clicked() {
-                            // trigger update project
+                        // only offer saving when the name was edited
+                        if draft_name != *saved_name {
+                            let valid = !draft_name.trim().is_empty();
+                            if ui
+                                .add_enabled(valid, egui::Button::new("Submit"))
+                                .on_disabled_hover_text("Name must not be empty")
+                                .clicked()
+                            {
+                                commands.trigger(UpdateModelEvent {
+                                    dto: UpdateModelDto {
+                                        id: model_data.dto.id,
+                                        name: draft_name.trim().to_string(),
+                                    },
+                                });
+                            }
+                            if ui.button("Revert").clicked() {
+                                draft_name = saved_name.clone();
+                            }
                         }
                     });
+
+                    // a draft equal to the server data (saved or reverted) isn't needed anymore
+                    if draft_name == *saved_name {
+                        model_name_drafts.remove(&model_data.dto.id);
+                    } else {
+                        model_name_drafts.insert(model_data.dto.id, draft_name);
+                    }
 
                     ui.separator();
                 }
             })
         });
     });
-    if *new_model_modal_open {
-        let modal = egui::Modal::new(Id::new("Add new model modal")).show(ctx, |ui| {
-            ui.label("Model name:");
-            ui.text_edit_singleline(&mut new_model_dto.name);
-            match query_loaded_glb.get_single() {
-                Ok((entity, uploaded_glb)) => {
-                    ui.label("Glb file loaded");
-                    ui.label(&uploaded_glb.file_name);
-                    if ui.button("Submit").clicked() {
-                        match current_selected_project_dto {
-                            Some(selected_project) => {
-                                commands.trigger(CreateModelEvent {
-                                    name: new_model_dto.name.clone(),
-                                    project_id: selected_project.dto.id,
-                                    model_bytes: uploaded_glb.contents.clone(),
-                                });
-                                commands.entity(entity).despawn_recursive();
-                            }
-                            None => {
-                                bevy::log::error!("No project selected");
-                            }
-                        }
-                        // commands.trigger(CreateModelEvent {
-                        //     name: new_model_dto.name.clone(),
-                        //     project_id: 0,
-                        //     model_bytes: uploaded_glb.contents.clone(),
-                        // });
-                        // commands.entity(entity).despawn_recursive();
-                    }
-                }
-                Err(_) => {
-                    ui.label("No glb file loaded");
-                    if ui.button("Load glb file").clicked() {
-                        commands
-                            .dialog()
-                            .add_filter("Glb", &["glb"])
-                            .load_file::<GlbFileContents>();
-                    }
-                }
-            }
-        });
-        if modal.should_close() {
-            *new_model_modal_open = false;
-            new_model_dto.name = String::new();
-            new_model_dto.project_id = 0;
+    new_model_modal(
+        ctx,
+        &mut commands,
+        &mut new_model,
+        &mut new_model_status,
+        current_selected_project_dto.map(|project| project.dto.id),
+        query_loaded_glb.single().ok(),
+    );
+}
+
+/// Unsaved edits of a project in the project list.
+#[derive(Clone, PartialEq)]
+struct ProjectDraft {
+    name: String,
+    description: String,
+}
+
+impl ProjectDraft {
+    fn from_dto(dto: &ProjectDto) -> Self {
+        Self {
+            name: dto.name.clone(),
+            description: dto.description.clone(),
         }
     }
 }
@@ -261,10 +281,11 @@ fn ui_project_screen(
     mut commands: Commands,
     mut contexts: EguiContexts,
     window: Single<&Window>,
-    mut query_projects: Query<(Entity, &mut ProjectData, Option<&ThisProjectIsSelected>)>,
-    mut modal_open: Local<bool>,
+    query_projects: Query<(Entity, &ProjectData, Option<&ThisProjectIsSelected>)>,
+    mut project_drafts: Local<HashMap<i32, ProjectDraft>>,
+    mut new_project: Local<NewProjectModal>,
     mut modal_add_user_open: Local<bool>,
-    mut new_project_dto: Local<NewProjectDto>,
+    mut new_project_status: ApiStatus<NewProjectEvent>,
     query_project_users: Option<Single<(Entity, &UsersInProject)>>,
     mut user_email: Local<String>,
     mut open_delete_dialog: Local<bool>,
@@ -272,7 +293,9 @@ fn ui_project_screen(
     other_users: Option<Single<(Entity, &OtherUsers)>>,
     query_logged_user: Option<Single<(Entity, &LoggedUser)>>,
 ) {
-    let ctx = contexts.ctx_mut();
+    let Ok(ctx) = contexts.ctx_mut() else {
+        return;
+    };
     let logged_user = match query_logged_user {
         Some(some) => some.1,
         None => {
@@ -300,9 +323,9 @@ fn ui_project_screen(
         None => &Vec::<ProjectUserDto>::new(),
     };
 
-    egui::TopBottomPanel::top("top_panel")
+    egui::Panel::top("top_panel")
         .resizable(true)
-        .min_height(32.0)
+        .min_size(32.0)
         .show(ctx, |ui| {
             ui.horizontal(|ui| {
                 if project_dto.is_some() && ui.button("Add user").clicked() {
@@ -331,9 +354,9 @@ fn ui_project_screen(
             })
         });
 
-    egui::SidePanel::left("Projects")
+    egui::Panel::left("Projects")
         .resizable(true)
-        .default_width(window.width() / 2.0)
+        .default_size(window.width() / 2.0)
         .show(ctx, |ui| {
             ui.vertical_centered(|ui| {
                 ui.heading("Projects");
@@ -343,7 +366,7 @@ fn ui_project_screen(
             }
             ui.horizontal(|ui| {
                 if ui.button("Add new project").clicked() {
-                    *modal_open = true;
+                    new_project.open = true;
                 }
                 if ui.button("⟲").clicked() {
                     commands.trigger(GetProjectsEvent {});
@@ -354,24 +377,30 @@ fn ui_project_screen(
             egui::ScrollArea::vertical().show(ui, |ui| {
                 // lorem_ipsum(ui);
                 ui.vertical(|ui| {
-                    for (entity, mut project_data, selected_model) in query_projects
-                        .iter_mut()
+                    for (entity, project_data, selected_model) in query_projects
+                        .iter()
                         .sort_by::<&ProjectData>(
                         |value_1, value_2| {
                             compare_by_created_at(&value_1.dto.created_at, &value_2.dto.created_at)
                         },
                     ) {
+                        // edits go into a draft, ProjectData stays what the server sent
+                        let saved = ProjectDraft::from_dto(&project_data.dto);
+                        let mut draft = project_drafts
+                            .get(&project_data.dto.id)
+                            .cloned()
+                            .unwrap_or_else(|| saved.clone());
+
                         egui::Grid::new(Id::new(project_data.dto.id))
                             .num_columns(2)
                             .spacing([40.0, 4.0])
                             .show(ui, |ui| {
-                                // self.gallery_grid_contents(ui);
                                 ui.label(format!("Name: "));
-                                ui.text_edit_singleline(&mut project_data.dto.name);
+                                ui.text_edit_singleline(&mut draft.name);
                                 ui.end_row();
 
                                 ui.label(format!("Description: "));
-                                ui.text_edit_multiline(&mut project_data.dto.description);
+                                ui.text_edit_multiline(&mut draft.description);
                                 ui.end_row();
                             });
                         let checked = selected_model.is_some();
@@ -388,11 +417,20 @@ fn ui_project_screen(
                                     }
                                 }
                             }
-                            if ui.button("Submit").clicked() {
-                                // trigger update project
-                                commands.trigger(UpdateProjectEvent {
-                                    dto: project_data.dto.clone(),
-                                });
+                            // only offer saving when something was edited
+                            if draft != saved {
+                                if ui.button("Submit").clicked() {
+                                    commands.trigger(UpdateProjectEvent {
+                                        dto: ProjectDto {
+                                            name: draft.name.clone(),
+                                            description: draft.description.clone(),
+                                            ..project_data.dto.clone()
+                                        },
+                                    });
+                                }
+                                if ui.button("Revert").clicked() {
+                                    draft = saved.clone();
+                                }
                             }
                             if logged_user.dto.id == project_data.dto.created_by_id
                                 && ui.button("Delete").clicked()
@@ -402,30 +440,20 @@ fn ui_project_screen(
                             }
                         });
 
+                        // a draft equal to the server data (saved or reverted) isn't needed anymore
+                        if draft == saved {
+                            project_drafts.remove(&project_data.dto.id);
+                        } else {
+                            project_drafts.insert(project_data.dto.id, draft);
+                        }
+
                         ui.separator();
                     }
                 })
             });
         });
 
-    egui::Window::new("Add new project")
-        .open(&mut modal_open)
-        .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
-        .show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.label(format!("Name: "));
-                ui.text_edit_singleline(&mut new_project_dto.name);
-            });
-            ui.horizontal(|ui| {
-                ui.label(format!("Description: "));
-                ui.text_edit_multiline(&mut new_project_dto.description);
-            });
-            if ui.button("Submit").clicked() {
-                commands.trigger(NewProjectEvent {
-                    dto: new_project_dto.clone(),
-                });
-            }
-        });
+    new_project_modal(ctx, &mut commands, &mut new_project, &mut new_project_status);
 
     match confirm_modal(ctx, "Delete project?", &open_delete_dialog, 123) {
         ConfirmModalResult::Confirm => {
@@ -496,7 +524,7 @@ pub struct ShowErrorEvent {
     pub message: String,
 }
 
-fn show_error(trigger: Trigger<ShowErrorEvent>, mut ui_contexts: ResMut<UiContexts>) {
+fn show_error(trigger: On<ShowErrorEvent>, mut ui_contexts: ResMut<UiContexts>) {
     let message = &trigger.event().message;
     bevy::log::error!("Error: {}", message);
     ui_contexts.toasts.add(Toast {
@@ -514,7 +542,7 @@ pub struct ShowSuccessEvent {
     pub message: String,
 }
 
-fn show_success(trigger: Trigger<ShowSuccessEvent>, mut ui_contexts: ResMut<UiContexts>) {
+fn show_success(trigger: On<ShowSuccessEvent>, mut ui_contexts: ResMut<UiContexts>) {
     let message = &trigger.event().message;
     ui_contexts.toasts.add(Toast {
         text: message.into(),
@@ -527,30 +555,37 @@ fn show_success(trigger: Trigger<ShowSuccessEvent>, mut ui_contexts: ResMut<UiCo
 }
 
 fn show_toasts(mut contexts: EguiContexts, mut ui_contexts: ResMut<UiContexts>) {
-    let ctx = contexts.ctx_mut();
-    ui_contexts.toasts.show(ctx);
+    let Ok(ctx) = contexts.ctx_mut() else {
+        return;
+    };
+    // toasts anchor themselves to the screen, the area only provides a `Ui` for them
+    egui::Area::new(egui::Id::new("toasts"))
+        .interactable(false)
+        .show(ctx, |ui| ui_contexts.toasts.show(ui));
 }
 
 fn file_loaded(
-    mut ev_loaded: EventReader<DialogFileLoaded<GlbFileContents>>,
+    mut ev_loaded: MessageReader<DialogFileLoaded<GlbFileContents>>,
     mut commands: Commands,
+    query_loaded_glb: Query<Entity, With<UploadedGlbFile>>,
 ) {
     for ev in ev_loaded.read() {
-        bevy::log::info!("Loaded file {} with contents", ev.file_name);
-        commands.spawn(UploadedGlbFile {
-            file_name: ev.file_name.clone(),
-            contents: ev.contents.clone(),
-        });
+        set_uploaded_glb(
+            &mut commands,
+            query_loaded_glb.iter(),
+            ev.file_name.clone(),
+            ev.contents.clone(),
+        );
     }
 }
 
-fn file_load_canceled(mut ev_canceled: EventReader<DialogFileLoadCanceled<GlbFileContents>>) {
+fn file_load_canceled(mut ev_canceled: MessageReader<DialogFileLoadCanceled<GlbFileContents>>) {
     for _ in ev_canceled.read() {
         bevy::log::info!("Text file content load canceled");
     }
 }
 
-fn file_saved(mut ev_saved: EventReader<DialogFileSaved<GlbFileContents>>) {
+fn file_saved(mut ev_saved: MessageReader<DialogFileSaved<GlbFileContents>>) {
     for ev in ev_saved.read() {
         match ev.result {
             Ok(_) => bevy::log::info!("File {} successfully saved", ev.file_name),
@@ -559,7 +594,7 @@ fn file_saved(mut ev_saved: EventReader<DialogFileSaved<GlbFileContents>>) {
     }
 }
 
-fn file_save_canceled(mut ev_canceled: EventReader<DialogFileSaveCanceled<GlbFileContents>>) {
+fn file_save_canceled(mut ev_canceled: MessageReader<DialogFileSaveCanceled<GlbFileContents>>) {
     for _ in ev_canceled.read() {
         bevy::log::info!("Text file content save canceled");
     }

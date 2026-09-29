@@ -6,98 +6,71 @@ authors = ["Oskar Mihalik"]                      # ToDo: you are the author ;)
 edition = "2021"
 exclude = ["dist", "build", "assets", "credits"]
 
-[profile.dev.package."*"]
-opt-level = 3
-
-[profile.dev]
-opt-level = 1
-
-# This is used by trunk as it doesn't support custom profiles: https://github.com/trunk-rs/trunk/issues/605
-# xbuild also uses this profile for building android AABs because I couldn't find a configuration for it
-[profile.release]
-opt-level = "s"
-lto = true
-codegen-units = 1
-strip = true
-
-# Profile for distribution
-[profile.dist]
-inherits = "release"
-opt-level = 3
-lto = true
-codegen-units = 1
-strip = true
-
 [features]
 dev = ["bevy/dynamic_linking"]
 
-# All of Bevy's default features exept for the audio related ones (bevy_audio, vorbis), since they clash with bevy_kira_audio
-#   and android_shared_stdcxx/android-game-activity, since those are covered in `mobile`
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-ureq = { version = "2.12", default-features = true }
-
 [dependencies]
-transform-gizmo = { git = "https://github.com/ethereumdegen/transform-gizmo.git" }
-bevy-inspector-egui = "0.29"
 js-sys = "0.3.66"
 wasm-bindgen-futures = "0.4.39"
-web-sys = { version = "0.3.98", features = ["Request", "Window", "Response"] }
+web-sys = { version = "0.3.98", features = [
+    "Request",
+    "Window",
+    "Response",
+    "Document",
+    "Element",
+    "HtmlInputElement",
+    "FileList",
+    "File",
+    "Blob",
+] }
 serde = "1.0.217"
-base64 = "0.22.0"
 time = { version = "0.3.18", features = ["serde"] }
-egui-toast = "0.16.0"
+egui-toast = "0.20"
 serde_json = "1.0"
-iyes_perf_ui = { git = "https://github.com/IyesGames/iyes_perf_ui.git" }
-bevy_file_dialog = { git = "https://github.com/richardhozak/bevy_file_dialog.git" }
-bevy_panorbit_camera = { version = "0.22", features = ["bevy_egui"] }
+bevy_file_dialog = { git = "https://github.com/superjesse07/bevy_file_dialog.git" }
+bevy_panorbit_camera = { version = "0.35", features = ["bevy_egui"] }
 wasm-bindgen = "=0.2.121"
 dto = { path = "../dto" }
-bevy_egui = { version = "0.32", default-features = false, features = [
+bevy_egui = { version = "0.40", default-features = false, features = [
     "open_url",
     "default_fonts",
     "render",
-    "bevy_picking",
+    "picking",
 ] }
-bevy = { version = "0.15", default-features = false, features = [
-    "animation",
+# The `3d` collection minus `reflect_auto_register` (big wasm size cost, nothing here needs it),
+# gamepad support and native-only platform features
+bevy = { version = "0.19", default-features = false, features = [
+    # default_app
+    "async_executor",
     "bevy_asset",
-    "bevy_color",
-    "bevy_core_pipeline",
-    "bevy_gilrs",
-    "bevy_gizmos",
-    "bevy_gltf",
-    "bevy_mesh_picking_backend",
-    "bevy_pbr",
-    "bevy_picking",
-    "bevy_render",
-    "bevy_scene",
-    "bevy_sprite",
-    "bevy_sprite_picking_backend",
+    "bevy_log",
     "bevy_state",
-    "bevy_text",
-    "bevy_ui",
-    "bevy_ui_picking_backend",
-    "bevy_window",
+    # default_platform
+    "std",
     "bevy_winit",
-    "custom_cursor",
+    "bevy_clipboard",
     "default_font",
-    "hdr",
     "multi_threaded",
-    "jpeg",
-    "png",
-    "smaa_luts",
-    "sysinfo_plugin",
-    "tonemapping_luts",
     "webgl2",
     "x11",
+    "custom_cursor",
+    # rendering
+    "3d_bevy_render",
+    "scene",
+    "picking",
+    "jpeg",
+    "web",
+    # models are loaded from the backend over http(s)
+    "http",
+    "https",
     # "dynamic_linking",
 ] }
-bevy_kira_audio = { version = "0.21" }
-bevy_asset_loader = { version = "0.22" }
-rand = { version = "0.8.3" }
-webbrowser = { version = "1", features = ["hardened"] }
-bevy_flycam = "0.15.0"
-bevy_mod_reqwest = { git = "https://github.com/OskarMihalik/bevy_mod_reqwest.git" }
+bevy_asset_loader = { version = "0.27" }
+bevy_mod_reqwest = "0.22.1"
+# only needed to enable the `multipart` feature used in api.rs
+reqwest = { version = "0.12", default-features = false, features = ["multipart"] }
+# glam pulls in getrandom 0.3, which needs the `wasm_js` backend on the web (see .cargo/config.toml)
+getrandom = { version = "0.3", features = ["wasm_js"] }
 
 # keep the following in sync with Bevy's dependencies
 winit = { version = "0.30", default-features = false }
@@ -107,13 +80,13 @@ log = { version = "0.4", features = [
     "max_level_debug",
     "release_max_level_warn",
 ] }
-egui_extras = { version = "0.30.0", default-features = false }
-egui_commonmark = "0.19"
-bevy_mod_outline = "0.9"
+egui_extras = { version = "0.34", default-features = false }
+egui_commonmark = "0.23"
+bevy_mod_outline = "0.13"
 dotenv = "0.15.0"
 dotenv_codegen = "0.15.0"
-egui_form = { version = "0.4", features = ["validator_garde"] }
-garde = { version = "0.20", features = ["derive", "email"] }
+egui_form = { version = "0.8", features = ["validator_garde"] }
+garde = { version = "0.22", features = ["derive", "email"] }
 
 [build-dependencies]
 wasm-bindgen-cli = "0.2.121"

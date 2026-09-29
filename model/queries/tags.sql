@@ -47,6 +47,13 @@ WHERE model.project_id=(:project_id) AND projectUser.user_id=(:user_id) order by
 LIMIT :limit
 OFFSET :offset;
 
+--! update_model
+UPDATE public."Model" model
+SET "name"=:name, updated_at=now()
+FROM public."ProjectUser" projectUser
+WHERE model.id=:id AND projectUser.project_id=model.project_id AND projectUser.user_id=:user_id
+RETURNING model.project_id;
+
 --! select_project (id)
 SELECT id, "name", description, created_at, updated_at, created_by_id
 FROM public."Project"

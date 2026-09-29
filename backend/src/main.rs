@@ -11,14 +11,14 @@ mod services;
 use axum::{
     extract::DefaultBodyLimit,
     http::{self, HeaderValue, Method},
-    routing::{delete, get, post, put},
+    routing::{delete, get, patch, post, put},
     Router,
 };
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 use dotenv::dotenv;
 use services::{
-    model::{get_model_service, get_models_service, upload_new_model_service},
+    model::{get_model_service, get_models_service, update_model_service, upload_new_model_service},
     project::{
         delete_project_service, get_project_service, get_projects_service, insert_project_service,
         update_project_service,
@@ -75,6 +75,7 @@ async fn main() {
             .route("/tags/{model_id}", get(get_tag_service))
             .route("/tag/{tag_id}", delete(delete_tag_service))
             .route("/model/{model_id}", get(get_model_service))
+            .route("/model", patch(update_model_service))
             .route("/models/{project_id}", get(get_models_service))
             .route(
                 "/project/{project_id}",

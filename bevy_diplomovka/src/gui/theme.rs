@@ -4,7 +4,9 @@ use bevy_egui::{
 };
 
 pub fn theme_picker(mut contexts: EguiContexts) {
-    let ctx = contexts.ctx_mut();
+    let Ok(ctx) = contexts.ctx_mut() else {
+        return;
+    };
     egui::Window::new("Theme picker")
         .resizable(false)
         .title_bar(false)

@@ -3,11 +3,12 @@ use bevy_egui::{
     egui::{
         self,
         text::{LayoutJob, TextWrapping},
-        Id, Rounding, ScrollArea, TextFormat, TextStyle,
+        CornerRadius, Id, ScrollArea, TextFormat, TextStyle,
     },
     EguiContexts,
 };
-use dto::default::{NewTagMessageDto, StatusDto};
+use dto::default::{NewTagMessageDto, StatusDto, TagDto};
+use std::collections::HashMap;
 
 use crate::{
     api::{
@@ -29,7 +30,7 @@ pub struct FilterChangeEvent {
     pub new_filter: TagFilter,
 }
 pub fn update_filter_change(
-    trigger: Trigger<FilterChangeEvent>,
+    trigger: On<FilterChangeEvent>,
     mut tag_filter: Single<&mut TagFilter>,
 ) {
     **tag_filter = trigger.new_filter.clone();
@@ -53,13 +54,15 @@ pub fn ui_left_panel(
     q_light_controls: Query<(Entity, &LightControlsOpen)>,
     q_projects: Query<&ProjectData, With<ThisProjectIsSelected>>,
 ) {
-    let ctx = contexts.ctx_mut();
+    let Ok(ctx) = contexts.ctx_mut() else {
+        return;
+    };
     let kanban = q_kanban_open.iter().next();
     let light_controls = q_light_controls.iter().next();
     let Some(project_data) = q_projects.iter().next() else {
         return;
     };
-    egui::SidePanel::left("left_panel")
+    egui::Panel::left("left_panel")
         .resizable(true)
         .show(ctx, |ui| {
             if ui.button("⬅").clicked() {
@@ -73,7 +76,7 @@ pub fn ui_left_panel(
                     if ui.selectable_label(kanban.is_some(), "Kanban").clicked() {
                         match kanban {
                             Some((entity, _)) => {
-                                commands.entity(entity).despawn_recursive();
+                                commands.entity(entity).despawn();
                             }
                             None => {
                                 commands.spawn(KanbanOpen {});
@@ -90,7 +93,7 @@ pub fn ui_left_panel(
                     {
                         match light_controls {
                             Some((entity, _)) => {
-                                commands.entity(entity).despawn_recursive();
+                                commands.entity(entity).despawn();
                             }
                             None => {
                                 commands.spawn(LightControlsOpen {});
@@ -222,7 +225,7 @@ pub fn ui_tag_windows(
     mut query_tags: Query<
         (
             Entity,
-            &mut TagData,
+            &TagData,
             &mut Transform,
             &GlobalTransform,
             &SelectedTag,
@@ -232,28 +235,43 @@ pub fn ui_tag_windows(
     >,
     query_models: Query<(Entity, &ModelData)>,
     query_projects: Query<(Entity, &ProjectData, Option<&ThisProjectIsSelected>)>,
-    mut new_message_text: Local<String>,
-    mut confirm_delete_tag_modal_open: Local<bool>,
+    mut tag_drafts: Local<HashMap<i32, TagDraft>>,
+    // tag whose Delete was clicked, waiting for confirmation: (id, title)
+    mut tag_to_delete: Local<Option<(i32, String)>>,
 ) {
-    let ctx = contexts.ctx_mut();
+    let Ok(ctx) = contexts.ctx_mut() else {
+        return;
+    };
 
     let current_selected_project = query_projects
         .iter()
         .find(|(_, _, selected)| selected.is_some())
         .map(|(entity, project_data, _)| (entity, project_data));
 
-    for (entity, mut tag_data, mut transform, g_transform, _selected_tag, tag_messages) in
+    for (entity, tag_data, mut transform, g_transform, _selected_tag, tag_messages) in
         &mut query_tags
     {
+        // title and comment edits go into a draft, TagData stays what the server sent;
+        // position is edited live on the Transform and compared with the saved one
+        let saved = &tag_data.dto;
+        let saved_position = Vec3::new(saved.position_x, saved.position_y, saved.position_z);
+        let mut draft = tag_drafts
+            .get(&saved.id)
+            .cloned()
+            .unwrap_or_else(|| TagDraft::from_dto(saved));
+
+        // the window is shown while the tag has SelectedTag, X closes it like the Close button
+        let mut window_open = true;
         egui::Window::new(tag_data.dto.title.clone())
             .id(Id::new(tag_data.dto.id))
+            .open(&mut window_open)
             .show(ctx, |ui| {
                 egui::Grid::new(Id::new("Tag grid 1"))
                     .num_columns(2)
                     .spacing([40.0, 8.0])
                     .show(ui, |ui| {
                         ui.label(format!("Title: "));
-                        ui.text_edit_singleline(&mut tag_data.dto.title);
+                        ui.text_edit_singleline(&mut draft.title);
                         ui.end_row();
 
                         ui.label("Created by: ");
@@ -308,33 +326,53 @@ pub fn ui_tag_windows(
                         ui.end_row();
 
                         ui.label("New comment:");
-                        ui.text_edit_multiline(&mut *new_message_text);
+                        ui.text_edit_multiline(&mut draft.comment);
                         ui.end_row();
 
-                        if ui.button("Submit").clicked() {
-                            if let Some((_, _model_data)) = current_selected_project {
-                                let mut tag_dto = tag_data.dto.clone();
-                                tag_dto.position_x = g_transform.translation().x;
-                                tag_dto.position_y = g_transform.translation().y;
-                                tag_dto.position_z = g_transform.translation().z;
-                                commands.trigger(UpdateTagEvent { tag_dto });
-                                if !new_message_text.is_empty() {
-                                    commands.trigger(CreateTagMessageEvent {
-                                        dto: NewTagMessageDto {
-                                            text: new_message_text.clone(),
-                                            tag_id: tag_data.dto.id,
-                                        },
-                                    });
-                                    *new_message_text = String::new();
+                        let tag_changed = draft.title != saved.title
+                            || transform.translation.distance(saved_position) > POSITION_EPSILON;
+                        let has_comment = !draft.comment.trim().is_empty();
+
+                        ui.horizontal(|ui| {
+                            // only offer saving when something was edited
+                            if tag_changed || has_comment {
+                                let valid = !draft.title.trim().is_empty();
+                                if ui
+                                    .add_enabled(valid, egui::Button::new("Submit"))
+                                    .on_disabled_hover_text("Title must not be empty")
+                                    .clicked()
+                                    && current_selected_project.is_some()
+                                {
+                                    if tag_changed {
+                                        let mut tag_dto = saved.clone();
+                                        tag_dto.title = draft.title.trim().to_string();
+                                        tag_dto.position_x = g_transform.translation().x;
+                                        tag_dto.position_y = g_transform.translation().y;
+                                        tag_dto.position_z = g_transform.translation().z;
+                                        commands.trigger(UpdateTagEvent { tag_dto });
+                                    }
+                                    if has_comment {
+                                        commands.trigger(CreateTagMessageEvent {
+                                            dto: NewTagMessageDto {
+                                                text: draft.comment.clone(),
+                                                tag_id: saved.id,
+                                            },
+                                        });
+                                        draft.comment.clear();
+                                    }
                                 }
                             }
-                        }
-                        ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
-                            if ui.button("Close").clicked() {
-                                commands.entity(entity).remove::<SelectedTag>();
+                            if tag_changed && ui.button("Revert").clicked() {
+                                draft.title = saved.title.clone();
+                                transform.translation = saved_position;
                             }
+                        });
+                        ui.end_row();
+
+                        ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
                             if ui.button("Delete").clicked() {
-                                *confirm_delete_tag_modal_open = true;
+                                *tag_to_delete =
+                                    Some((tag_data.dto.id, tag_data.dto.title.clone()));
                             }
                         });
                     });
@@ -347,6 +385,7 @@ pub fn ui_tag_windows(
                         });
                     };
                 });
+                // jhghg  asdfasfds
                 ui.vertical(|ui| {
                     ui.set_max_height(400.0);
                     egui::ScrollArea::vertical().show(ui, |ui| {
@@ -369,25 +408,48 @@ pub fn ui_tag_windows(
                     });
                 })
             });
+        if !window_open {
+            commands.entity(entity).remove::<SelectedTag>();
+        }
 
-        if *confirm_delete_tag_modal_open {
-            match confirm_modal(
-                ctx,
-                "Delete?",
-                &confirm_delete_tag_modal_open,
-                tag_data.dto.id,
-            ) {
-                ConfirmModalResult::Confirm => {
-                    *confirm_delete_tag_modal_open = false;
-                    commands.trigger(DeleteTagEvent {
-                        tag_id: tag_data.dto.id,
-                    });
-                }
-                ConfirmModalResult::Cancel => {
-                    *confirm_delete_tag_modal_open = false;
-                }
-                ConfirmModalResult::Nothing => (),
+        // a draft equal to the server data (saved or reverted) isn't needed anymore
+        if draft.title == saved.title && draft.comment.is_empty() {
+            tag_drafts.remove(&saved.id);
+        } else {
+            tag_drafts.insert(saved.id, draft);
+        }
+    }
+
+    // one confirmation for all tag windows, for the tag whose Delete was clicked
+    if let Some((tag_id, title)) = tag_to_delete.clone() {
+        match confirm_modal(ctx, &format!("Delete tag \"{title}\"?"), &true, tag_id) {
+            ConfirmModalResult::Confirm => {
+                *tag_to_delete = None;
+                commands.trigger(DeleteTagEvent { tag_id });
             }
+            ConfirmModalResult::Cancel => {
+                *tag_to_delete = None;
+            }
+            ConfirmModalResult::Nothing => (),
+        }
+    }
+}
+
+/// Tag position differences below this are treated as unchanged.
+const POSITION_EPSILON: f32 = 1e-4;
+
+/// Unsaved edits in a tag window.
+#[derive(Clone)]
+pub struct TagDraft {
+    title: String,
+    comment: String,
+}
+
+impl TagDraft {
+    fn from_dto(dto: &TagDto) -> Self {
+        Self {
+            title: dto.title.clone(),
+            comment: String::new(),
         }
     }
 }
@@ -407,12 +469,7 @@ pub fn status_widget(ui: &mut egui::Ui, status_dto: &StatusDto) {
         .outer_margin(0.)
         .fill(egui_color_bg.clone())
         .stroke(egui::Stroke::new(1.0, egui_color.clone()))
-        .rounding(Rounding {
-            nw: 14.,
-            ne: 14.,
-            sw: 14.,
-            se: 14.,
-        })
+        .corner_radius(CornerRadius::same(14))
         .show(ui, |ui| {
             ui.add(
                 egui::Label::new(egui::RichText::new(&status_dto.title).color(egui_color.clone()))

@@ -59,7 +59,9 @@ pub fn light_controls_window(
         return;
     };
 
-    let ctx = contexts.ctx_mut();
+    let Ok(ctx) = contexts.ctx_mut() else {
+        return;
+    };
     let mut open = true;
     egui::Window::new("Light controls")
         .open(&mut open)
@@ -155,7 +157,7 @@ pub fn light_controls_window(
                                     .range(f32::MIN..=f32::MAX),
                             );
                             if ui.button("🗙").clicked() {
-                                commands.entity(entity).despawn_recursive();
+                                commands.entity(entity).despawn();
                             }
                         });
                         ui.separator();
@@ -238,7 +240,7 @@ pub fn light_controls_window(
                                     .range(f32::MIN..=f32::MAX),
                             );
                             if ui.button("🗙").clicked() {
-                                commands.entity(entity).despawn_recursive();
+                                commands.entity(entity).despawn();
                             }
                         });
                         ui.separator();
@@ -248,6 +250,6 @@ pub fn light_controls_window(
         });
 
     if open == false {
-        commands.entity(light_controls_open.0).despawn_recursive();
+        commands.entity(light_controls_open.0).despawn();
     }
 }

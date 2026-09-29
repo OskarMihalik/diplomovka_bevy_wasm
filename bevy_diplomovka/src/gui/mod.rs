@@ -1,9 +1,12 @@
 pub mod auth_screen;
+pub mod form;
+pub mod glb_picker;
+pub mod new_model_modal;
+pub mod new_project_modal;
 pub mod confirm_modal;
 pub mod gui;
 pub mod kanban;
 pub mod light_controls;
-pub mod perf_ui;
 pub mod status_modal;
 pub mod theme;
 pub mod viewing_model;

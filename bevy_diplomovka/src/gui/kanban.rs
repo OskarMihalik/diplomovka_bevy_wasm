@@ -35,7 +35,9 @@ pub fn kanban_window(
 
     let statuses = &statuses.dtos;
 
-    let ctx = contexts.ctx_mut();
+    let Ok(ctx) = contexts.ctx_mut() else {
+        return;
+    };
     let mut open = true;
     egui::Window::new("Kanban").open(&mut open).show(ctx, |ui| {
         ui.heading("Kanban");
@@ -159,6 +161,6 @@ pub fn kanban_window(
     });
 
     if open == false {
-        commands.entity(kanban.0).despawn_recursive();
+        commands.entity(kanban.0).despawn();
     }
 }

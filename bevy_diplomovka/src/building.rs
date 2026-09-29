@@ -3,7 +3,7 @@ use crate::{
     gui::gui::ShowSuccessEvent,
     utils::filter_tags,
 };
-use bevy::{prelude::*, scene::SceneInstanceReady, time::Stopwatch};
+use bevy::{prelude::*, world_serialization::WorldInstanceReady};
 use bevy_mod_outline::*;
 use bevy_panorbit_camera::PanOrbitCamera;
 use dto::{
@@ -135,10 +135,10 @@ fn on_tag_filter_change(
 
 fn on_exit_viewing_model(
     mut commands: Commands,
-    query: Query<Entity, (With<ModelData>, With<Transform>, With<SceneRoot>)>,
+    query: Query<Entity, (With<ModelData>, With<Transform>, With<WorldAssetRoot>)>,
 ) {
     for entity in query.iter() {
-        commands.entity(entity).despawn_recursive();
+        commands.entity(entity).despawn();
     }
 }
 
@@ -160,10 +160,10 @@ fn set_outline_on_selected(mut q_tags: Query<(Entity, &mut OutlineVolume), Added
 }
 
 fn set_outline_on_deselected(
-    trigger: Trigger<OnRemove, SelectedTag>,
+    trigger: On<Remove, SelectedTag>,
     mut q_tags: Query<(Entity, &mut OutlineVolume)>,
 ) {
-    let entity = trigger.entity();
+    let entity = trigger.entity;
     if let Ok(mut tag) = q_tags.get_mut(entity) {
         tag.1.visible = false;
     }
@@ -172,7 +172,7 @@ fn set_outline_on_deselected(
 fn setup_scene(mut commands: Commands) {
     commands.spawn((
         PointLight {
-            shadows_enabled: true,
+            shadow_maps_enabled: true,
             ..default()
         },
         Transform::from_xyz(4.0, 8.0, 4.0),
@@ -234,17 +234,17 @@ fn react_to_model_change(
     commands
         .entity(selected_model.0)
         .insert((
-            SceneRoot(gltf),
+            WorldAssetRoot(gltf),
             Transform::from_translation(Vec3::ZERO).with_scale(Vec3::splat(0.25)),
         ))
         .observe(add_tag)
         .observe(
-            |trigger: Trigger<SceneInstanceReady>,
+            |trigger: On<WorldInstanceReady>,
              mut commands: Commands,
              q_model: Query<(Entity, &ModelData, &ThisModelIsSelected)>,
              time: Res<Time>| {
-                bevy::log::info!("scene instance ready, {:?}", trigger.entity());
-                let Ok(model) = q_model.get(trigger.entity()) else {
+                bevy::log::info!("scene instance ready, {:?}", trigger.entity);
+                let Ok(model) = q_model.get(trigger.entity) else {
                     return;
                 };
                 bevy::log::info!(
@@ -259,12 +259,12 @@ fn react_to_model_change(
 }
 
 fn add_tag(
-    pick_hit: Trigger<Pointer<Click>>,
+    pick_hit: On<Pointer<Click>>,
     mut commands: Commands,
     query_tags: Query<(Entity, &TagData, Option<&SelectedTag>)>,
     query_selected_project: Query<(Entity, &ProjectData, &ThisProjectIsSelected)>,
 ) {
-    let target_entity = pick_hit.entity();
+    let target_entity = pick_hit.entity;
     if pick_hit.duration.as_millis() >= 100 {
         return;
     }
@@ -282,14 +282,14 @@ fn add_tag(
         None => return,
     };
 
-    match query_tags.get(pick_hit.target) {
+    match query_tags.get(pick_hit.original_event_target()) {
         Ok(components) => {
             bevy::log::info!("tag already exists");
             if let Some(_selected) = components.2 {
-                commands.entity(pick_hit.target).remove::<SelectedTag>();
+                commands.entity(pick_hit.original_event_target()).remove::<SelectedTag>();
                 return;
             }
-            commands.entity(pick_hit.target).insert(SelectedTag {});
+            commands.entity(pick_hit.original_event_target()).insert(SelectedTag {});
             commands.trigger(GetTagMessagesEvent {
                 tag_id: components.1.dto.id,
             });
@@ -315,7 +315,7 @@ pub struct RebuildTagsEvent {
 }
 
 fn rebuild_tags(
-    trigger: Trigger<RebuildTagsEvent>,
+    trigger: On<RebuildTagsEvent>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -324,7 +324,7 @@ fn rebuild_tags(
     let tags = &trigger.new_tag_dtos;
     let mut selected_tags_id: Vec<i32> = vec![];
     for old_tag in query_tags.iter() {
-        commands.entity(old_tag.0).despawn_recursive();
+        commands.entity(old_tag.0).despawn();
         if old_tag.2.is_some() {
             selected_tags_id.push(old_tag.1.dto.id);
         }
@@ -386,7 +386,7 @@ fn rebuild_tags(
 
         if selected_tags_id.contains(&tag_dto.id) {
             builder.insert(SelectedTag {});
-            builder.trigger(GetTagMessagesEvent { tag_id: tag_dto.id });
+            commands.trigger(GetTagMessagesEvent { tag_id: tag_dto.id });
         }
     }
 }

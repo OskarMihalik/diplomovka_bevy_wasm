@@ -19,7 +19,7 @@ pub struct UpdateModelsEvent {
 }
 
 fn update_models(
-    trigger: Trigger<UpdateModelsEvent>,
+    trigger: On<UpdateModelsEvent>,
     mut commands: Commands,
     query_models: Query<(Entity, &ModelData)>,
     time: Res<Time>,
@@ -33,7 +33,7 @@ fn update_models(
         let new_data = match dto_map.get(&model_data.dto.id) {
             Some(ok) => ok.clone(),
             None => {
-                commands.entity(entity).despawn_recursive();
+                commands.entity(entity).despawn();
                 dto_map.remove(&model_data.dto.id);
                 continue;
             }
