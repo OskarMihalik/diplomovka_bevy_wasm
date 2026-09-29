@@ -8,6 +8,13 @@ exclude = ["dist", "build", "assets", "credits"]
 
 [features]
 dev = ["bevy/dynamic_linking"]
+# bevy_dev_tools overlays for inspecting loaded glb models (see src/debug_tools.rs)
+debug_tools = [
+    "bevy/bevy_dev_tools",
+    "bevy/bevy_ui",
+    "bevy/bevy_ui_render",
+    "bevy/bevy_text",
+]
 
 [dependencies]
 js-sys = "0.3.66"
@@ -37,14 +44,16 @@ bevy_egui = { version = "0.40", default-features = false, features = [
     "render",
     "picking",
 ] }
-# The `3d` collection minus `reflect_auto_register` (big wasm size cost, nothing here needs it),
-# gamepad support and native-only platform features
+# The `3d` collection minus gamepad support and native-only platform features
 bevy = { version = "0.19", default-features = false, features = [
     # default_app
     "async_executor",
     "bevy_asset",
     "bevy_log",
     "bevy_state",
+    # glTF scenes are spawned through reflection, every component in them (Transform, Mesh3d, ...)
+    # has to be in the type registry or opening a model panics
+    "reflect_auto_register",
     # default_platform
     "std",
     "bevy_winit",

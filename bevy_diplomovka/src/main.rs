@@ -3,9 +3,9 @@
 use bevy::asset::io::web::WebAssetPlugin;
 use bevy::asset::AssetMetaCheck;
 use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
+use bevy::ecs::system::NonSendMarker;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
-use bevy::ecs::system::NonSendMarker;
 use bevy::winit::{UpdateMode, WinitSettings, WINIT_WINDOWS};
 use bevy::DefaultPlugins;
 use bevy_diplomovka::GamePlugin;
@@ -45,7 +45,11 @@ fn main() {
         )
         .add_systems(Startup, init_refresh_rate)
         .add_plugins(FrameTimeDiagnosticsPlugin::default())
-        // .add_plugins(LogDiagnosticsPlugin::default())
+        .add_plugins(LogDiagnosticsPlugin {
+            debug: true,
+            wait_duration: Duration::new(1, 1),
+            filter: None,
+        })
         .add_plugins(ReqwestPlugin::default())
         .add_plugins(GamePlugin)
         .add_systems(Startup, set_window_icon)

@@ -3,6 +3,8 @@
 mod api;
 mod api_tracking;
 mod building;
+#[cfg(feature = "debug_tools")]
+mod debug_tools;
 mod gui;
 mod loading;
 mod models;
@@ -52,6 +54,9 @@ impl Plugin for GamePlugin {
                 OutlinePlugin::JUMP_FLOOD,
             ))
             .add_observer(log_entity_components);
+
+        #[cfg(feature = "debug_tools")]
+        app.add_plugins(debug_tools::DebugToolsPlugin);
 
         // #[cfg(debug_assertions)]
         // {
