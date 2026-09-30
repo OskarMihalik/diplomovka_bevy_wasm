@@ -33,10 +33,14 @@ use bevy::mesh::PrimitiveTopology;
 use bevy::pbr::diagnostic::MaterialAllocatorDiagnosticPlugin;
 use bevy::prelude::*;
 use bevy::render::diagnostic::MeshAllocatorDiagnosticPlugin;
+use bevy::render::renderer::RenderAdapterInfo;
 use bevy::time::common_conditions::on_timer;
 use bevy::window::{PresentMode, PrimaryWindow};
 use bevy::winit::WinitSettings;
 use bevy_panorbit_camera::PanOrbitCamera;
+
+use crate::building::{ModelData, ThisModelIsSelected};
+use crate::system_info;
 use std::collections::HashSet;
 use std::f32::consts::TAU;
 use std::time::Duration;
@@ -415,10 +419,14 @@ fn orbit_camera(
     }
 }
 
+const BENCHMARK_CSV_HEADER: &str = "date,pc,os,cpu_cores,gpu,graphics_backend,browser,browser_version,build,resolution,model_id,model_name,model_version,duration_s,frames,avg_fps,low_1_fps,low_01_fps,frame_avg_ms,frame_min_ms,frame_p50_ms,frame_p95_ms,frame_p99_ms,frame_max_ms,frame_stddev_ms,mesh_instances,unique_meshes,vertices,triangles,materials,textures,texture_mib,entities";
+
 fn finish_benchmark(
     mut frame_times: ResMut<FrameTimes>,
     diagnostics: Res<DiagnosticsStore>,
     q_window: Query<&Window, With<PrimaryWindow>>,
+    q_model: Query<&ModelData, With<ThisModelIsSelected>>,
+    adapter: Res<RenderAdapterInfo>,
 ) {
     if !frame_times
         .benchmark
@@ -445,6 +453,50 @@ fn finish_benchmark(
         .map(|window| format!("{}x{}", window.physical_width(), window.physical_height()))
         .unwrap_or_default();
 
+    let model = q_model.iter().next();
+    let (browser, browser_version) = system_info::browser();
+    let csv = system_info::csv_row(&[
+        system_info::date(),
+        system_info::PC_NAME.to_string(),
+        system_info::os(),
+        system_info::cpu_cores().to_string(),
+        adapter.name.clone(),
+        format!("{:?}", adapter.backend),
+        browser,
+        browser_version,
+        system_info::BUILD.to_string(),
+        resolution.clone(),
+        model
+            .map(|model| model.dto.id.to_string())
+            .unwrap_or_default(),
+        model
+            .map(|model| model.dto.name.clone())
+            .unwrap_or_default(),
+        model
+            .map(|model| model.dto.version.to_string())
+            .unwrap_or_default(),
+        format!("{:.1}", run.elapsed),
+        stats.frames.to_string(),
+        format!("{:.1}", stats.average_fps),
+        format!("{:.1}", stats.low_1_fps),
+        format!("{:.1}", stats.low_01_fps),
+        format!("{:.2}", stats.average_ms),
+        format!("{:.2}", stats.min_ms),
+        format!("{:.2}", stats.p50_ms),
+        format!("{:.2}", stats.p95_ms),
+        format!("{:.2}", stats.p99_ms),
+        format!("{:.2}", stats.max_ms),
+        format!("{:.2}", stats.stddev_ms),
+        format!("{:.0}", value(&MESH_INSTANCES)),
+        format!("{:.0}", value(&UNIQUE_MESHES)),
+        format!("{:.0}", value(&VERTICES)),
+        format!("{:.0}", value(&TRIANGLES)),
+        format!("{:.0}", value(&MATERIALS)),
+        format!("{:.0}", value(&TEXTURES)),
+        format!("{:.2}", value(&TEXTURE_MEMORY)),
+        format!("{:.0}", value(&EntityCountDiagnosticsPlugin::ENTITY_COUNT)),
+    ]);
+
     info!(
         "\n===== Benchmark ({:.1} s, one camera orbit) =====\n\
          resolution        {resolution}\n\
@@ -466,7 +518,9 @@ fn finish_benchmark(
          materials         {:.0}\n\
          textures          {:.0} ({:.2} MiB)\n\
          entities          {:.0}\n\
-         ==============================================",
+         ==============================================\n\
+         ----- csv: {BENCHMARK_CSV_HEADER}\n
+         {csv}",
         run.elapsed,
         stats.frames,
         stats.average_fps,

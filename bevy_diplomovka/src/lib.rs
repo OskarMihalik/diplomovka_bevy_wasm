@@ -8,6 +8,7 @@ mod debug_tools;
 mod gui;
 mod loading;
 mod models;
+mod system_info;
 mod users;
 mod utils;
 

@@ -1,10 +1,12 @@
 use crate::{
     api::{GetModelsEvent, GetTagMessagesEvent, GetUsersInProjectEvent, BACKEND_URL},
     gui::gui::ShowSuccessEvent,
+    system_info,
     utils::filter_tags,
 };
 use bevy::{
     diagnostic::FrameCount, platform::time::Instant, prelude::*,
+    render::renderer::RenderAdapterInfo, window::PrimaryWindow,
     world_serialization::WorldInstanceReady,
 };
 use bevy_mod_outline::*;
@@ -310,6 +312,8 @@ fn react_to_model_change(
         );
 }
 
+const LOAD_CSV_HEADER: &str = "date,pc,os,cpu_cores,gpu,graphics_backend,browser,browser_version,build,resolution,model_id,model_name,model_version,meshes,vertices,triangles,download_parse_ms,mesh_creation_ms,first_frame_ms,total_ms,frames";
+
 /// Logs how long downloading + parsing and rendering the first frame took, and a summary of
 /// all steps at the end. Steps are noticed once per frame, so they are precise to one frame time.
 fn log_model_load_timing(
@@ -320,17 +324,21 @@ fn log_model_load_timing(
     q_children: Query<&Children>,
     q_meshes: Query<&Mesh3d>,
     meshes: Res<Assets<Mesh>>,
+    adapter: Res<RenderAdapterInfo>,
+    q_window: Query<&Window, With<PrimaryWindow>>,
 ) {
     for (entity, model, root, mut timing) in &mut q_models {
         let id = model.dto.id;
-        if timing.download_parse_ms.is_none() && asset_server.is_loaded_with_dependencies(&root.0)
-        {
+        if timing.download_parse_ms.is_none() && asset_server.is_loaded_with_dependencies(&root.0) {
             let download_parse_ms = timing.step_ms();
             timing.download_parse_ms = Some(download_parse_ms);
             bevy::log::info!("model {id} load: download + parsing took {download_parse_ms:.1} ms");
         }
         // the frame the scene was spawned in has been rendered once the next frame starts
-        if !timing.spawned_frame.is_some_and(|spawned| frame.0 > spawned) {
+        if !timing
+            .spawned_frame
+            .is_some_and(|spawned| frame.0 > spawned)
+        {
             continue;
         }
         let first_frame_ms = timing.step_ms();
@@ -353,23 +361,53 @@ fn log_model_load_timing(
             } / 3;
         }
 
+        let download_parse_ms = timing.download_parse_ms.unwrap_or_default();
+        let spawn_ms = timing.spawn_ms.unwrap_or_default();
+        let total_ms = timing.total_ms();
+        let frames = frame.0.saturating_sub(timing.started_frame);
+        let (browser, browser_version) = system_info::browser();
+        let resolution = q_window
+            .single()
+            .map(|window| format!("{}x{}", window.physical_width(), window.physical_height()))
+            .unwrap_or_default();
+        let csv = system_info::csv_row(&[
+            system_info::date(),
+            system_info::PC_NAME.to_string(),
+            system_info::os(),
+            system_info::cpu_cores().to_string(),
+            adapter.name.clone(),
+            format!("{:?}", adapter.backend),
+            browser,
+            browser_version,
+            system_info::BUILD.to_string(),
+            resolution,
+            id.to_string(),
+            model.dto.name.clone(),
+            model.dto.version.to_string(),
+            mesh_count.to_string(),
+            vertices.to_string(),
+            triangles.to_string(),
+            format!("{download_parse_ms:.1}"),
+            format!("{spawn_ms:.1}"),
+            format!("{first_frame_ms:.1}"),
+            format!("{total_ms:.1}"),
+            frames.to_string(),
+        ]);
+
         bevy::log::info!(
             "\n===== model {id} load: {} (version {}) =====\n\
-             download + parsing  {:>9.1} ms\n\
-             mesh creation       {:>9.1} ms\n\
-             first frame render  {:>9.1} ms\n\
-             total               {:>9.1} ms\n\
+             download + parsing  {download_parse_ms:>9.1} ms\n\
+             mesh creation       {spawn_ms:>9.1} ms\n\
+             first frame render  {first_frame_ms:>9.1} ms\n\
+             total               {total_ms:>9.1} ms\n\
              meshes              {mesh_count:>9}\n\
              vertices            {vertices:>9}\n\
              triangles           {triangles:>9}\n\
-             frames until shown  {:>9}",
+             frames until shown  {frames:>9}\n\
+             ----- csv: {LOAD_CSV_HEADER}\n
+             {csv}",
             model.dto.name,
             model.dto.version,
-            timing.download_parse_ms.unwrap_or_default(),
-            timing.spawn_ms.unwrap_or_default(),
-            first_frame_ms,
-            timing.total_ms(),
-            frame.0.saturating_sub(timing.started_frame),
         );
         commands.entity(entity).remove::<ModelLoadTiming>();
     }
@@ -403,10 +441,14 @@ fn add_tag(
         Ok(components) => {
             bevy::log::info!("tag already exists");
             if let Some(_selected) = components.2 {
-                commands.entity(pick_hit.original_event_target()).remove::<SelectedTag>();
+                commands
+                    .entity(pick_hit.original_event_target())
+                    .remove::<SelectedTag>();
                 return;
             }
-            commands.entity(pick_hit.original_event_target()).insert(SelectedTag {});
+            commands
+                .entity(pick_hit.original_event_target())
+                .insert(SelectedTag {});
             commands.trigger(GetTagMessagesEvent {
                 tag_id: components.1.dto.id,
             });

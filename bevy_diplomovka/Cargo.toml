@@ -29,6 +29,7 @@ web-sys = { version = "0.3.98", features = [
     "FileList",
     "File",
     "Blob",
+    "Navigator",
 ] }
 serde = "1.0.217"
 time = { version = "0.3.18", features = ["serde"] }

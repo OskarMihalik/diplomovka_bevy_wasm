@@ -6,11 +6,14 @@ use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::ecs::system::NonSendMarker;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
-use bevy::winit::{UpdateMode, WinitSettings, WINIT_WINDOWS};
+#[cfg(not(feature = "debug_tools"))]
+use bevy::winit::{UpdateMode, WinitSettings};
+use bevy::winit::WINIT_WINDOWS;
 use bevy::DefaultPlugins;
 use bevy_diplomovka::GamePlugin;
 use bevy_mod_reqwest::*;
 use std::io::Cursor;
+#[cfg(not(feature = "debug_tools"))]
 use std::time::Duration;
 use winit::window::Icon; // ToDo: Replace bevy_game with your new crate name.
 #[macro_use]
@@ -19,8 +22,8 @@ extern crate dotenv_codegen;
 fn main() {
     // this breaks the wasm build
     // env::set_var("RUST_BACKTRACE", "1");
-    App::new()
-        .add_plugins(
+    let mut app = App::new();
+    app.add_plugins(
             DefaultPlugins
                 .set(WindowPlugin {
                     primary_window: Some(Window {
@@ -43,14 +46,17 @@ fn main() {
                     silence_startup_warning: true,
                 }),
         )
-        .add_systems(Startup, init_refresh_rate)
         .add_plugins(FrameTimeDiagnosticsPlugin::default())
         .add_plugins(ReqwestPlugin::default())
         .add_plugins(GamePlugin)
-        .add_systems(Startup, set_window_icon)
-        .run();
+        .add_systems(Startup, set_window_icon);
+    // uncapped with debug_tools, so benchmarks measure the model and not the frame limiter
+    #[cfg(not(feature = "debug_tools"))]
+    app.add_systems(Startup, init_refresh_rate);
+    app.run();
 }
 
+#[cfg(not(feature = "debug_tools"))]
 fn init_refresh_rate(mut winit: ResMut<WinitSettings>) {
     winit.focused_mode = UpdateMode::reactive(Duration::from_secs_f32(1.0 / 30.0));
     winit.unfocused_mode = UpdateMode::reactive_low_power(Duration::from_secs(1));
