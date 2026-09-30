@@ -44,3 +44,5 @@ resolution and frame count
 average fps, 1% low and 0.1% low fps
 frame time average, min, p50, p95, p99, max and standard deviation
 the model numbers: mesh instances, unique meshes, vertices, triangles, materials, textures with memory, entities
+run:
+`trunk serve --release --cargo-profile wasm-release --features debug_tools`

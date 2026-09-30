@@ -1,0 +1,36 @@
+date,pc,os,cpu_cores,gpu,graphics_backend,browser,browser_version,build,resolution,model_id,model_name,model_version,meshes,vertices,triangles,download_parse_ms,mesh_creation_ms,first_frame_ms,total_ms,frames
+2026-09-29 15:59:03,unknown,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,155.0,release,1724x1550,12,Barling Wrecks,1,12,652437,776478,1600.0,1.0,540.0,2141.0,55
+2026-09-29 16:02:35,unknown,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,155.0,release,2088x1550,12,Barling Wrecks,1,12,652437,776478,1297.0,1.0,279.0,1577.0,29
+2026-09-29 16:03:19,unknown,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,155.0,release,2088x1550,12,Barling Wrecks,1,12,652437,776478,1476.0,1.0,554.0,2031.0,32
+2026-09-29 16:03:39,unknown,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,155.0,release,2088x1550,12,Barling Wrecks,1,12,652437,776478,1263.0,1.0,251.0,1515.0,42
+2026-09-29 16:03:52,unknown,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,155.0,release,2088x1550,12,Barling Wrecks,1,12,652437,776478,1211.0,1.0,250.0,1462.0,23
+2026-09-30 10:13:31,unknown,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,157.0,release,2092x1549,13,King's hall,1,15,980382,999995,1133.0,1.0,296.0,1430.0,33
+2026-09-30 10:14:17,unknown,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,157.0,release,2092x1549,13,King's hall,1,15,980382,999995,1090.0,0.0,278.0,1368.0,20
+2026-09-30 10:14:51,unknown,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,157.0,release,2092x1549,13,King's hall,1,15,980382,999995,1125.0,1.0,316.0,1442.0,30
+2026-09-30 10:15:04,unknown,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,157.0,release,2092x1549,13,King's hall,1,15,980382,999995,1543.0,1.0,278.0,1822.0,62
+2026-09-30 10:15:18,unknown,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,157.0,release,2092x1549,13,King's hall,1,15,980382,999995,1133.0,1.0,288.0,1422.0,30
+2026-09-30 10:23:16,unknown,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,157.0,release,2092x1549,14,Cathedral,1,22,1406938,1999999,738.0,1.0,174.0,913.0,46
+2026-09-30 10:23:43,unknown,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,157.0,release,2092x1549,14,Cathedral,1,22,1406938,1999999,654.0,2.0,170.0,826.0,26
+2026-09-30 10:23:51,unknown,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,157.0,release,2092x1549,14,Cathedral,1,22,1406938,1999999,659.0,1.0,168.0,828.0,21
+2026-09-30 10:24:04,unknown,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,157.0,release,2092x1549,14,Cathedral,1,22,1406938,1999999,716.0,1.0,180.0,897.0,35
+2026-09-30 10:24:14,unknown,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,157.0,release,2092x1549,14,Cathedral,1,22,1406938,1999999,696.0,1.0,166.0,863.0,23
+2026-09-30 10:32:23,unknown,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,157.0,release,2092x1549,15,Hong Kong City Buiildings,1,488,569375,368217,1377.0,14.0,1503.0,2894.0,29
+2026-09-30 10:32:49,unknown,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,157.0,release,2092x1549,15,Hong Kong City Buiildings,1,488,569375,368217,1435.0,12.0,275.0,1722.0,46
+2026-09-30 10:32:53,unknown,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,157.0,release,2092x1549,15,Hong Kong City Buiildings,1,488,569375,368217,1502.0,12.0,276.0,1790.0,45
+2026-09-30 10:32:57,unknown,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,157.0,release,2092x1549,15,Hong Kong City Buiildings,1,488,569375,368217,1430.0,13.0,271.0,1714.0,47
+2026-09-30 10:33:02,unknown,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,157.0,release,2092x1549,15,Hong Kong City Buiildings,1,488,569375,368217,1541.0,12.0,269.0,1822.0,61
+2026-09-30 10:56:09,unknown,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,157.0,release,2092x1549,16,Acrisure Stadium,1,25,1578374,1999999,1655.0,2.0,393.0,2050.0,36
+2026-09-30 10:56:24,unknown,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,157.0,release,2092x1549,16,Acrisure Stadium,1,25,1578374,1999999,1589.0,1.0,347.0,1937.0,32
+2026-09-30 10:56:34,unknown,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,157.0,release,2092x1549,16,Acrisure Stadium,1,25,1578374,1999999,1877.0,2.0,369.0,2248.0,68
+2026-09-30 10:56:45,unknown,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,157.0,release,2092x1549,16,Acrisure Stadium,1,25,1578374,1999999,1542.0,1.0,346.0,1889.0,35
+2026-09-30 10:56:56,unknown,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,157.0,release,2092x1549,16,Acrisure Stadium,1,25,1578374,1999999,1630.0,1.0,383.0,2015.0,36
+2026-09-30 12:16:31,unknown,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,157.0,release,2092x1549,17,Cei Mep Port,1,56,3598511,3500543,4153.0,2.0,809.0,4964.0,78
+2026-09-30 12:16:46,unknown,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,157.0,release,2092x1549,17,Cei Mep Port,1,56,3598511,3500543,4110.0,2.0,811.0,4923.0,60
+2026-09-30 12:17:14,unknown,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,157.0,release,2092x1549,17,Cei Mep Port,1,56,3598511,3500543,4435.0,2.0,846.0,5283.0,128
+2026-09-30 12:17:28,unknown,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,157.0,release,2092x1549,17,Cei Mep Port,1,56,3598511,3500543,4153.0,2.0,820.0,4975.0,83
+2026-09-30 12:17:43,unknown,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,157.0,release,2092x1549,17,Cei Mep Port,1,56,3598511,3500543,3945.0,2.0,824.0,4771.0,56
+2026-09-30 12:18:38,unknown,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,157.0,release,2092x1549,18,Administrative and Warehouse Comples,1,114,6978312,6147933,1331.0,4.0,900.0,2235.0,125
+2026-09-30 12:19:03,unknown,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,157.0,release,2092x1549,18,Administrative and Warehouse Comples,1,114,6978312,6147933,1257.0,3.0,529.0,1789.0,84
+2026-09-30 12:19:14,unknown,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,157.0,release,2092x1549,18,Administrative and Warehouse Comples,1,114,6978312,6147933,1154.0,4.0,540.0,1698.0,68
+2026-09-30 12:19:32,unknown,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,157.0,release,2092x1549,18,Administrative and Warehouse Comples,1,114,6978312,6147933,1215.0,2.0,514.0,1731.0,79
+"2026-09-30 12:19:44",unknown,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,157.0,release,2092x1549,18,Administrative and Warehouse Comples,1,114,6978312,6147933,1567.0,3.0,546.0,2116.0,168

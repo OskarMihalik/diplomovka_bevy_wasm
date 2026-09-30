@@ -29,6 +29,7 @@ use bevy::diagnostic::{
     RegisterDiagnostic,
 };
 use bevy::gizmos::aabb::AabbGizmoConfigGroup;
+use bevy::platform::time::Instant;
 use bevy::mesh::PrimitiveTopology;
 use bevy::pbr::diagnostic::MaterialAllocatorDiagnosticPlugin;
 use bevy::prelude::*;
@@ -61,6 +62,8 @@ const SIZE_Z: DiagnosticPath = DiagnosticPath::const_new("model/size_z");
 const SUMMARY_INTERVAL: Duration = Duration::from_secs(5);
 /// How long the F9 benchmark takes, the camera does one full orbit in this time
 const BENCHMARK_DURATION: f32 = 60.;
+/// How many times F9 repeats the benchmark, each run is printed separately
+const BENCHMARK_RUNS: usize = 5;
 /// Auto orbit speed in radians per second
 const ORBIT_SPEED: f32 = TAU / BENCHMARK_DURATION;
 
@@ -355,12 +358,8 @@ fn handle_input(
             .next()
             .map(|camera| camera.target_yaw)
             .unwrap_or_default();
-        info!("Benchmark started, {BENCHMARK_DURATION} s");
-        frame_times.benchmark = Some(BenchmarkRun {
-            elapsed: 0.,
-            start_yaw,
-            frames: Vec::new(),
-        });
+        info!("Benchmark started, {BENCHMARK_RUNS} runs of {BENCHMARK_DURATION} s");
+        frame_times.benchmark = Some(BenchmarkRun::new(1, start_yaw));
     }
 }
 
@@ -386,12 +385,33 @@ struct FrameTimes {
 }
 
 struct BenchmarkRun {
+    /// 1-based index of this run out of BENCHMARK_RUNS
+    index: usize,
     elapsed: f32,
     start_yaw: f32,
     frames: Vec<f32>,
+    /// sanity check independent of the per-frame deltas: every update, including zero-length ones
+    updates: usize,
+    started: Instant,
+}
+
+impl BenchmarkRun {
+    fn new(index: usize, start_yaw: f32) -> Self {
+        Self {
+            index,
+            elapsed: 0.,
+            start_yaw,
+            frames: Vec::new(),
+            updates: 0,
+            started: Instant::now(),
+        }
+    }
 }
 
 fn record_frame_time(time: Res<Time<Real>>, mut frame_times: ResMut<FrameTimes>) {
+    if let Some(run) = &mut frame_times.benchmark {
+        run.updates += 1;
+    }
     let frame_ms = time.delta_secs() * 1000.;
     if frame_ms <= 0. {
         return;
@@ -419,7 +439,7 @@ fn orbit_camera(
     }
 }
 
-const BENCHMARK_CSV_HEADER: &str = "date,pc,os,cpu_cores,gpu,graphics_backend,browser,browser_version,build,resolution,model_id,model_name,model_version,duration_s,frames,avg_fps,low_1_fps,low_01_fps,frame_avg_ms,frame_min_ms,frame_p50_ms,frame_p95_ms,frame_p99_ms,frame_max_ms,frame_stddev_ms,mesh_instances,unique_meshes,vertices,triangles,materials,textures,texture_mib,entities";
+const BENCHMARK_CSV_HEADER: &str = "date,pc,os,cpu_cores,gpu,graphics_backend,browser,browser_version,build,resolution,model_id,model_name,model_version,duration_s,frames,avg_fps,median_fps,low_1_fps,low_01_fps,frame_avg_ms,frame_min_ms,frame_p50_ms,frame_p95_ms,frame_p99_ms,frame_max_ms,frame_stddev_ms,mesh_instances,unique_meshes,vertices,triangles,materials,textures,texture_mib,entities";
 
 fn finish_benchmark(
     mut frame_times: ResMut<FrameTimes>,
@@ -438,8 +458,15 @@ fn finish_benchmark(
     let Some(run) = frame_times.benchmark.take() else {
         return;
     };
+    if run.index < BENCHMARK_RUNS {
+        // continue from where the orbit ended, so the camera doesn't spin back a full turn
+        frame_times.benchmark = Some(BenchmarkRun::new(run.index + 1, run.start_yaw + TAU));
+        info!("Benchmark run {}/{BENCHMARK_RUNS} started", run.index + 1);
+    } else {
+        info!("Benchmark finished, {BENCHMARK_RUNS} runs");
+    }
     let Some(stats) = FrameStats::new(&run.frames) else {
-        warn!("Benchmark recorded no frames");
+        warn!("Benchmark run {}/{BENCHMARK_RUNS} recorded no frames", run.index);
         return;
     };
     let value = |path: &DiagnosticPath| {
@@ -478,6 +505,7 @@ fn finish_benchmark(
         format!("{:.1}", run.elapsed),
         stats.frames.to_string(),
         format!("{:.1}", stats.average_fps),
+        format!("{:.1}", stats.median_fps()),
         format!("{:.1}", stats.low_1_fps),
         format!("{:.1}", stats.low_01_fps),
         format!("{:.2}", stats.average_ms),
@@ -498,10 +526,11 @@ fn finish_benchmark(
     ]);
 
     info!(
-        "\n===== Benchmark ({:.1} s, one camera orbit) =====\n\
+        "\n===== Benchmark run {}/{BENCHMARK_RUNS} ({:.1} s, one camera orbit) =====\n\
          resolution        {resolution}\n\
          frames            {}\n\
          average fps       {:.1}\n\
+         median fps        {:.1}\n\
          1% low fps        {:.1}\n\
          0.1% low fps      {:.1}\n\
          frame time avg    {:.2} ms\n\
@@ -511,6 +540,7 @@ fn finish_benchmark(
          frame time p99    {:.2} ms\n\
          frame time max    {:.2} ms\n\
          frame time stddev {:.2} ms\n\
+         wall-clock fps    {:.1} ({} updates, {} zero-length)\n\
          mesh instances    {:.0}\n\
          unique meshes     {:.0}\n\
          vertices          {:.0}\n\
@@ -521,9 +551,11 @@ fn finish_benchmark(
          ==============================================\n\
          ----- csv: {BENCHMARK_CSV_HEADER}\n
          {csv}",
+        run.index,
         run.elapsed,
         stats.frames,
         stats.average_fps,
+        stats.median_fps(),
         stats.low_1_fps,
         stats.low_01_fps,
         stats.average_ms,
@@ -533,6 +565,9 @@ fn finish_benchmark(
         stats.p99_ms,
         stats.max_ms,
         stats.stddev_ms,
+        run.updates as f32 / run.started.elapsed().as_secs_f32(),
+        run.updates,
+        run.updates - stats.frames,
         value(&MESH_INSTANCES),
         value(&UNIQUE_MESHES),
         value(&VERTICES),
@@ -578,6 +613,11 @@ struct FrameStats {
 }
 
 impl FrameStats {
+    /// fps of the typical frame, closer to what the fps overlay shows than `average_fps`
+    fn median_fps(&self) -> f32 {
+        1000. / self.p50_ms
+    }
+
     fn new(frame_times_ms: &[f32]) -> Option<Self> {
         if frame_times_ms.is_empty() {
             return None;
