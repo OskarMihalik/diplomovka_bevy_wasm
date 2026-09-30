@@ -1886,6 +1886,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_rendering_benchmark"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "getrandom 0.3.4",
+ "js-sys",
+ "log",
+ "time",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
 name = "bevy_scene"
 version = "0.19.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

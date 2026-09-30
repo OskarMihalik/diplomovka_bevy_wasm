@@ -1,0 +1,7 @@
+[build]
+public_url = "./"
+# Benchmark with the same bundle as bevy_diplomovka's measurements:
+#   trunk serve --release --cargo-profile wasm-release
+
+[serve]
+port = 8082

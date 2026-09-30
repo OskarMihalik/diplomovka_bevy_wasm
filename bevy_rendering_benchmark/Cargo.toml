@@ -1,0 +1,43 @@
+[package]
+name = "bevy_rendering_benchmark"
+version = "0.1.0"
+publish = false
+authors = ["Oskar Mihalik"]
+edition = "2024"
+
+# Renders a single glb model the same way bevy_diplomovka does, without egui, the backend api,
+# picking and outlines, and measures load time and frame times. See README.md.
+
+[dependencies]
+# Same rendering features as bevy_diplomovka, minus picking and the ui
+bevy = { version = "0.19", default-features = false, features = [
+    # default_app
+    "async_executor",
+    "bevy_asset",
+    "bevy_log",
+    # glTF scenes are spawned through reflection, every component in them has to be registered
+    "reflect_auto_register",
+    # default_platform
+    "std",
+    "bevy_winit",
+    "multi_threaded",
+    "webgl2",
+    "x11",
+    # rendering
+    "3d_bevy_render",
+    "scene",
+    "jpeg",
+    "web",
+    # models can be loaded over http(s)
+    "http",
+    "https",
+] }
+time = "0.3"
+# keep in sync with bevy_diplomovka, trunk needs the matching wasm-bindgen-cli
+wasm-bindgen = "=0.2.121"
+js-sys = "0.3.66"
+web-sys = { version = "0.3.98", features = ["Window", "Location", "Navigator", "Url"] }
+# glam pulls in getrandom 0.3, which needs the `wasm_js` backend on the web (see .cargo/config.toml)
+getrandom = { version = "0.3", features = ["wasm_js"] }
+## This greatly improves WGPU's performance due to its heavy use of trace! calls
+log = { version = "0.4", features = ["max_level_debug", "release_max_level_warn"] }

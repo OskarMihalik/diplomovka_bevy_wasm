@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Bevy rendering benchmark</title>
+    <!-- wasm-opt only runs for `trunk build --release`; the flags match the features rustc emits -->
+    <link
+      data-trunk
+      rel="rust"
+      data-bin="bevy_rendering_benchmark"
+      data-wasm-opt="z"
+      data-wasm-opt-params="--enable-bulk-memory --enable-nontrapping-float-to-int --enable-sign-ext --enable-mutable-globals --enable-reference-types --enable-multivalue"
+    />
+    <style>
+      html, body { margin: 0; background: #000; overflow: hidden; }
+      /* the canvas has a fixed size in physical pixels (see `resolution`), no layout scaling */
+      canvas { display: block; }
+    </style>
+  </head>
+  <body>
+    <canvas id="bevy"></canvas>
+  </body>
+</html>

@@ -13,7 +13,7 @@ members = [
     "loadtest",
     "model",
     "run-wasm",
-    "backend-wake-up",
+    "backend-wake-up", "bevy_rendering_benchmark",
 ]
 
 # Profiles only take effect in the workspace root; they apply to every member
