@@ -15,9 +15,61 @@
       html, body { margin: 0; background: #000; overflow: hidden; }
       /* the canvas has a fixed size in physical pixels (see `resolution`), no layout scaling */
       canvas { display: block; }
+      /* model picker, shown when the url has no `model`, see src/file_picker.rs */
+      #picker {
+        position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+        font: 16px sans-serif; color: #ddd; background: rgba(0, 0, 0, 0.85);
+      }
+      #picker.open { display: flex; }
+      #picker.drag label { border-color: #fff; }
+      #picker label {
+        padding: 48px 64px; border: 2px dashed #777; border-radius: 12px; cursor: pointer;
+        text-align: center;
+      }
+      #picker input { display: none; }
     </style>
   </head>
   <body>
     <canvas id="bevy"></canvas>
+    <div id="picker">
+      <label>
+        <span id="picker-text">Choose a .glb model or drop it here</span>
+        <input type="file" accept=".glb,.gltf" />
+      </label>
+    </div>
+    <script>
+      // Reads the picked model into memory, the wasm app takes it from window.benchModelFile
+      (() => {
+        if (new URLSearchParams(location.search).get("model")) return;
+        const picker = document.getElementById("picker");
+        const text = document.getElementById("picker-text");
+        picker.classList.add("open");
+        let picked = false;
+        const pick = async (file) => {
+          if (!file || picked) return;
+          picked = true;
+          text.textContent = `Reading ${file.name} (${(file.size / 1048576).toFixed(1)} MiB)…`;
+          try {
+            const bytes = new Uint8Array(await file.arrayBuffer());
+            window.benchModelFile = { name: file.name, bytes };
+            picker.classList.remove("open");
+          } catch (error) {
+            picked = false;
+            text.textContent = `Can't read ${file.name}: ${error}`;
+          }
+        };
+        picker.querySelector("input").addEventListener("change", (e) => pick(e.target.files[0]));
+        addEventListener("dragover", (e) => {
+          e.preventDefault();
+          picker.classList.add("drag");
+        });
+        addEventListener("dragleave", () => picker.classList.remove("drag"));
+        addEventListener("drop", (e) => {
+          e.preventDefault();
+          picker.classList.remove("drag");
+          pick(e.dataTransfer.files[0]);
+        });
+      })();
+    </script>
   </body>
 </html>

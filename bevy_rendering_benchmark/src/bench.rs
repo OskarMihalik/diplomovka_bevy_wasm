@@ -80,9 +80,11 @@ impl BenchmarkRun {
 fn start_warmup(
     mut bench: ResMut<Bench>,
     config: Res<BenchConfig>,
-    q_loading: Query<(), (With<BenchModel>, With<ModelLoadTiming>)>,
+    q_models: Query<Has<ModelLoadTiming>, With<BenchModel>>,
 ) {
-    if matches!(bench.phase, Phase::Loading) && q_loading.is_empty() {
+    // no model yet while it is being picked on the page
+    let shown = !q_models.is_empty() && q_models.iter().all(|loading| !loading);
+    if matches!(bench.phase, Phase::Loading) && shown {
         info!(
             "Benchmark: {:.0} s warmup, then {} runs of {:.0} s",
             config.warmup, config.runs, config.duration

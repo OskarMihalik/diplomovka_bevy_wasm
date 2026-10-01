@@ -3,6 +3,7 @@
 //! orbiting the origin. PanOrbitCamera is replaced by setting the transform directly, its
 //! smoothing would make the camera lag behind the benchmark's yaw.
 
+use bevy::diagnostic::FrameCount;
 use bevy::prelude::*;
 use bevy::world_serialization::WorldAssetRoot;
 
@@ -20,7 +21,10 @@ pub struct ScenePlugin;
 
 impl Plugin for ScenePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, setup_scene);
+        app.add_systems(Startup, setup_scene).add_systems(
+            Update,
+            spawn_model.run_if(resource_added::<ModelAssetPath>),
+        );
     }
 }
 
@@ -31,12 +35,7 @@ pub struct BenchModel;
 #[derive(Component)]
 pub struct BenchCamera;
 
-fn setup_scene(
-    mut commands: Commands,
-    config: Res<BenchConfig>,
-    model_path: Res<ModelAssetPath>,
-    asset_server: Res<AssetServer>,
-) {
+fn setup_scene(mut commands: Commands, config: Res<BenchConfig>) {
     commands.spawn((
         PointLight {
             shadow_maps_enabled: config.shadows,
@@ -51,14 +50,22 @@ fn setup_scene(
         config.msaa(),
         orbit_transform(0., config.distance),
     ));
+}
 
+/// At startup, or once a model was picked on the page
+fn spawn_model(
+    mut commands: Commands,
+    model_path: Res<ModelAssetPath>,
+    asset_server: Res<AssetServer>,
+    frame: Res<FrameCount>,
+) {
     info!("model load: request started, {}", model_path.0);
     let scene = asset_server.load(format!("{}#Scene0", model_path.0));
     commands.spawn((
         BenchModel,
         WorldAssetRoot(scene),
         Transform::from_translation(Vec3::ZERO).with_scale(Vec3::splat(MODEL_SCALE)),
-        ModelLoadTiming::start(),
+        ModelLoadTiming::start(frame.0),
     ));
 }
 

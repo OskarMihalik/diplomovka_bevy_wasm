@@ -3,6 +3,8 @@
 
 mod bench;
 mod config;
+#[cfg(target_arch = "wasm32")]
+mod file_picker;
 mod load_timing;
 mod measure;
 mod scene;
@@ -38,10 +40,13 @@ fn main() {
     };
 
     // a local file is loaded from its own folder, which becomes the asset root
-    let (asset_root, model_path) = if config.is_url() {
-        ("assets".to_string(), config.model.clone())
+    let (asset_root, model_path) = if config.picks_file() {
+        ("assets".to_string(), None)
+    } else if config.is_url() {
+        ("assets".to_string(), Some(config.model.clone()))
     } else {
-        local_model_path(&config.model)
+        let (folder, file) = local_model_path(&config.model);
+        (folder, Some(file))
     };
 
     let mut wgpu = WgpuSettings::default();
@@ -50,6 +55,9 @@ fn main() {
     }
 
     let mut app = App::new();
+    // registers the `memory://` asset source, so it has to come before DefaultPlugins
+    #[cfg(target_arch = "wasm32")]
+    app.add_plugins(file_picker::FilePickerPlugin);
     app.add_plugins(
         DefaultPlugins
             .set(WindowPlugin {
@@ -81,13 +89,16 @@ fn main() {
             }),
     )
     .insert_resource(WinitSettings::continuous())
-    .insert_resource(ModelAssetPath(model_path))
     .insert_resource(config)
     .add_plugins((
         scene::ScenePlugin,
         load_timing::LoadTimingPlugin,
         bench::BenchPlugin,
     ));
+    // a picked file inserts it later
+    if let Some(model_path) = model_path {
+        app.insert_resource(ModelAssetPath(model_path));
+    }
     app.run();
 }
 

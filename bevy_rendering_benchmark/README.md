@@ -24,14 +24,21 @@ Set `WGPU_BACKEND=gl` to use OpenGL like the browser does instead of Vulkan.
 
 ## Web
 
-Serve the models with CORS, then the benchmark:
-
 ```sh
-npx http-server backend/assets/models --cors -p 8090
 cd bevy_rendering_benchmark && trunk serve --release --cargo-profile wasm-release
 ```
 
-Open `http://localhost:8082/?model=http://localhost:8090/14.glb`. The results appear in the
+Open `http://localhost:8082/` and choose a .glb, or drop it on the page. It is read into memory,
+so `download_parse_ms` is only parsing. The id and name in the CSV come from the file name
+(`14.glb` → 14), or `?id=…&name=…`. Other options go in the url as usual, e.g. `?gpu=low&msaa=1`.
+
+To measure the download as well, serve the models with CORS and pass the url:
+
+```sh
+npx http-server backend/assets/models --cors -p 8090
+```
+
+`http://localhost:8082/?model=http://localhost:8090/14.glb`. The results appear in the
 browser console. Uncap the browser frame rate first: in Firefox, set `layout.frame_rate` to `0` in about:config.
 In Chrome, start it with `--disable-frame-rate-limit --disable-gpu-vsync`.
 
@@ -41,7 +48,7 @@ Native `--key value`, web `?key=value&...`:
 
 | option       | default       |                                                            |
 | ------------ | ------------- | ---------------------------------------------------------- |
-| `model`      | required      | path to a .glb, or http(s) url (relative to the page on web) |
+| `model`      | required      | path to a .glb, or http(s) url (relative to the page on web); web: leave out to pick the file |
 | `id`         | file name     | model id in the CSV, `14.glb` → 14                         |
 | `name`       | known ids     | model name in the CSV, ids 12–18 are known                 |
 | `version`    | 1             |                                                            |

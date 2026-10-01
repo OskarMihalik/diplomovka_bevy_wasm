@@ -35,11 +35,11 @@ pub struct ModelLoadTiming {
 }
 
 impl ModelLoadTiming {
-    /// Started at app startup, frame 0
-    pub fn start() -> Self {
+    /// Started when the model is requested, at startup or once it was picked on the page
+    pub fn start(frame: u32) -> Self {
         Self {
             started: Instant::now(),
-            started_frame: 0,
+            started_frame: frame,
             last_step: Instant::now(),
             download_parse_ms: None,
             spawn_ms: None,

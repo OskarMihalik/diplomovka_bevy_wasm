@@ -1,10 +1,12 @@
 //! Benchmark settings, from command line arguments natively and from the url query on the web.
 //!
 //! Native: `bevy_rendering_benchmark --model ../backend/assets/models/14.glb --gpu low`
-//! Web:    `http://localhost:8082/?model=http://localhost:8090/14.glb&gpu=low`
+//! Web:    `http://localhost:8082/?gpu=low`, then pick or drop the model on the page, or
+//!         `http://localhost:8082/?model=http://localhost:8090/14.glb&gpu=low`
 //!
 //! Options (the same names are used as query parameters):
-//! - `model`      path to a .glb file, or an http(s) url (required)
+//! - `model`      path to a .glb file, or an http(s) url (required natively, on the web the
+//!                model is picked on the page without it)
 //! - `id`         model id for the CSV, defaults to the file name if it is a number (`14.glb`)
 //! - `name`       model name for the CSV, defaults to the name of a known id, else the file name
 //! - `version`    model version for the CSV, defaults to 1
@@ -58,7 +60,21 @@ pub struct BenchConfig {
 
 impl BenchConfig {
     pub fn from_env() -> Result<Self, String> {
-        Self::parse(&args()?)
+        let args = args()?;
+        // on the web an empty model means it is picked on the page, see file_picker.rs
+        #[cfg(target_arch = "wasm32")]
+        let args = if args.iter().any(|(key, _)| key == "model") {
+            args
+        } else {
+            with_model(args, "")
+        };
+        Self::parse(&args)
+    }
+
+    /// The url settings for a model picked on the page, the file name gives the default id and name
+    #[cfg(target_arch = "wasm32")]
+    pub fn with_picked_file(file_name: &str) -> Result<Self, String> {
+        Self::parse(&with_model(args()?, file_name))
     }
 
     fn parse(args: &[(String, String)]) -> Result<Self, String> {
@@ -150,6 +166,11 @@ impl BenchConfig {
         })
     }
 
+    /// Web only, the model is picked on the page once it is open
+    pub fn picks_file(&self) -> bool {
+        self.model.is_empty()
+    }
+
     pub fn is_url(&self) -> bool {
         self.model.starts_with("http://") || self.model.starts_with("https://")
     }
@@ -213,7 +234,7 @@ fn args() -> Result<Vec<(String, String)>, String> {
                 .unwrap_or_else(|_| s.to_string())
         };
         let (key, mut value) = (decode(key), decode(value));
-        if key == "model" {
+        if key == "model" && !value.is_empty() {
             if let Ok(url) = web_sys::Url::new_with_base(&value, &href) {
                 value = url.href();
             }
@@ -221,4 +242,11 @@ fn args() -> Result<Vec<(String, String)>, String> {
         pairs.push((key, value));
     }
     Ok(pairs)
+}
+
+#[cfg(target_arch = "wasm32")]
+fn with_model(mut args: Vec<(String, String)>, model: &str) -> Vec<(String, String)> {
+    args.retain(|(key, _)| key != "model");
+    args.push(("model".to_string(), model.to_string()));
+    args
 }
