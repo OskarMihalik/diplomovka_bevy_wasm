@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Babylon.js rendering benchmark</title>
+    <style>
+      html, body { margin: 0; background: #000; overflow: hidden; }
+      /* the canvas has a fixed size in physical pixels (see `resolution`), no layout scaling */
+      canvas { display: block; outline: none; }
+      /* model picker, shown when the url has no `model` */
+      #picker {
+        position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+        font: 16px sans-serif; color: #ddd; background: rgba(0, 0, 0, 0.85);
+      }
+      #picker.open { display: flex; }
+      #picker.drag label { border-color: #fff; }
+      #picker label {
+        padding: 48px 64px; border: 2px dashed #777; border-radius: 12px; cursor: pointer;
+        text-align: center;
+      }
+      #picker input { display: none; }
+    </style>
+  </head>
+  <body>
+    <canvas id="babylon"></canvas>
+    <div id="picker">
+      <label>
+        <span id="picker-text">Choose a .glb model or drop it here</span>
+        <input type="file" accept=".glb,.gltf" />
+      </label>
+    </div>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>

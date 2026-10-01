@@ -46,19 +46,19 @@ In Chrome, start it with `--disable-frame-rate-limit --disable-gpu-vsync`.
 
 Native `--key value`, web `?key=value&...`:
 
-| option       | default       |                                                            |
-| ------------ | ------------- | ---------------------------------------------------------- |
-| `model`      | required      | path to a .glb, or http(s) url (relative to the page on web); web: leave out to pick the file |
-| `id`         | file name     | model id in the CSV, `14.glb` → 14                         |
-| `name`       | known ids     | model name in the CSV, ids 12–18 are known                 |
-| `version`    | 1             |                                                            |
-| `runs`       | 5             |                                                            |
-| `duration`   | 60            | seconds per run = one orbit                                |
-| `warmup`     | 5             | seconds, not measured                                      |
-| `gpu`        | high          | `low` / `high` wgpu power preference                       |
-| `resolution` | 1920x1080     | physical pixels                                            |
-| `msaa`       | 4             | 1, 2, 4, 8                                                 |
-| `shadows`    | on            | point light shadows                                        |
-| `distance`   | 5.22          | camera distance from the center in m (model is scaled 0.25) |
-| `out`        | –             | native: directory to append the CSVs to                    |
-| `exit`       | on            | native: close the window when done                         |
+| option       | default   |                                                                                               |
+| ------------ | --------- | --------------------------------------------------------------------------------------------- |
+| `model`      | required  | path to a .glb, or http(s) url (relative to the page on web); web: leave out to pick the file |
+| `id`         | file name | model id in the CSV, `14.glb` → 14                                                            |
+| `name`       | known ids | model name in the CSV, ids 12–18 are known                                                    |
+| `version`    | 1         |                                                                                               |
+| `runs`       | 5         |                                                                                               |
+| `duration`   | 60        | seconds per run = one orbit                                                                   |
+| `warmup`     | 5         | seconds, not measured                                                                         |
+| `gpu`        | high      | `low` / `high` wgpu power preference                                                          |
+| `resolution` | 2088x1550 | physical pixels                                                                               |
+| `msaa`       | 4         | 1, 2, 4, 8                                                                                    |
+| `shadows`    | on        | point light shadows                                                                           |
+| `distance`   | 5.22      | camera distance from the center in m (model is scaled 0.25)                                   |
+| `out`        | –         | native: directory to append the CSVs to                                                       |
+| `exit`       | on        | native: close the window when done                                                            |
