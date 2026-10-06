@@ -76,6 +76,7 @@ impl Plugin for GuiPlugin {
                 EguiPrimaryContextPass,
                 login_screen.run_if(in_state(GameState::Auth)),
             )
+            .add_systems(OnEnter(GameState::Auth), clear_user_session)
             .add_systems(OnExit(GameState::Auth), reset_auth_forms)
             .add_systems(
                 EguiPrimaryContextPass,
@@ -112,6 +113,26 @@ impl Plugin for GuiPlugin {
             .add_observer(update_filter_change)
             .add_observer(show_success)
             .add_observer(show_error);
+    }
+}
+
+/// On logout drop everything loaded for the previous user,
+/// otherwise the next user would see their projects, models and users.
+fn clear_user_session(
+    mut commands: Commands,
+    query: Query<
+        Entity,
+        Or<(
+            With<LoggedUser>,
+            With<ProjectData>,
+            With<ModelData>,
+            With<UsersInProject>,
+            With<OtherUsers>,
+        )>,
+    >,
+) {
+    for entity in query.iter() {
+        commands.entity(entity).despawn();
     }
 }
 
