@@ -53,14 +53,21 @@ pub fn send_tracked<'a, E: Event>(
     commands: &mut Commands,
     request: reqwest::Request,
 ) -> BevyReqwestBuilder<'a> {
-    let entity = commands
-        .spawn((ApiRequest::<E>::default(), DespawnReqwestEntity))
-        .id();
+    // `send_using_entity` only inserts `ReqwestInflight` in PostUpdate, but bevy_mod_reqwest
+    // despawns entities with `DespawnReqwestEntity` and no `ReqwestInflight` in PreUpdate.
+    // Marking it for despawn right away would kill the request (and its handlers) before
+    // it even starts, so the marker is added only once the request finished.
+    let entity = commands.spawn(ApiRequest::<E>::default()).id();
 
     client
         .send_using_entity(entity, request)
         .expect("request entity was just spawned")
         .on_response(report_response::<E>)
+        .on_error(despawn_when_done)
+}
+
+fn despawn_when_done(trigger: On<ReqwestErrorEvent>, mut commands: Commands) {
+    commands.entity(trigger.event_target()).insert(DespawnReqwestEntity);
 }
 
 /// Every backend response is `Result<T, ErrorDto>`, so the outcome can be read
@@ -71,6 +78,9 @@ fn report_response<E: Event>(
     mut commands: Commands,
     mut succeeded: MessageWriter<ApiSucceeded<E>>,
 ) {
+    commands
+        .entity(trigger.event_target())
+        .insert(DespawnReqwestEntity);
     match trigger
         .event()
         .deserialize_json::<Result<IgnoredAny, ErrorDto>>()
