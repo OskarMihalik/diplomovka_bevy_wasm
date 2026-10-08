@@ -1,0 +1,73 @@
+% Preview of the generated tables and figures at IEEE two-column size.
+%   cargo run -p bencmark_results && cd bencmark_results/paper && latexmk -pdf preview.tex
+% In the paper: copy figures/ and ../out/, \input{figures/style.tex} in the preamble, set
+% \benchdata and \input the figure and table files the same way as below.
+\documentclass[journal]{IEEEtran}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{pgfplots}
+\newcommand{\benchdata}{../out/data}
+\input{figures/style.tex}
+
+\begin{document}
+\title{Benchmark figures preview}
+\maketitle
+
+\begin{table*}[!t]
+\centering
+\caption{Test models, as rendered by Bevy}
+\label{tab:models}
+\input{../out/tables/models.tex}
+\end{table*}
+
+\begin{table*}[!t]
+\centering
+\caption{Average and 1\% low fps on the integrated GPU (Intel UHD, 2088$\times$1550, MSAA 4$\times$, shadows), mean $\pm$ standard deviation over five 60-second runs}
+\label{tab:fps}
+\resizebox{\textwidth}{!}{\input{../out/tables/fps.tex}}
+\end{table*}
+
+\begin{figure}[!t]
+\centering
+\input{figures/fps_bars.tex}
+\caption{Average fps per model on the integrated GPU, error bars show the standard deviation over the runs. OOM: the model exceeds the 4\,GB wasm32 memory.}
+\label{fig:fps}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\input{figures/scalability.tex}
+\caption{Average fps over the number of triangles in the scene.}
+\label{fig:scalability}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\input{figures/frametimes.tex}
+\caption{Median frame time; whiskers reach the 99th percentile.}
+\label{fig:frametimes}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\input{figures/load.tex}
+\caption{Model load time of Bevy (native) split into its phases.}
+\label{fig:load}
+\end{figure}
+
+\begin{table}[!t]
+\centering
+\caption{Welch's $t$-test on average fps per run}
+\label{tab:ttest}
+\resizebox{\columnwidth}{!}{\input{../out/tables/ttest.tex}}
+\end{table}
+
+\begin{table}[!t]
+\centering
+\caption{Total model load time in seconds}
+\label{tab:load}
+\resizebox{\columnwidth}{!}{\input{../out/tables/load.tex}}
+\end{table}
+
+\end{document}

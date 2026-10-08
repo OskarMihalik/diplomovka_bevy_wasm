@@ -1,0 +1,17 @@
+% Load time split into its phases, Bevy native on the integrated GPU.
+% For another platform change the file, e.g. load_bevy_wasm.csv once it is measured.
+\begin{tikzpicture}
+\begin{axis}[
+  bench/axis,
+  height=5cm,
+  ybar stacked, bar width=14pt,
+  ymin=0, enlarge x limits=0.12,
+  ylabel={Load time (s)},
+  bench/models={\benchdata/load_bevy_native.csv},
+]
+\addplot+[bench/phase1] table[x=x, y=download_parse] {\benchdata/load_bevy_native.csv};
+\addplot+[bench/phase2] table[x=x, y=mesh_creation] {\benchdata/load_bevy_native.csv};
+\addplot+[bench/phase3] table[x=x, y=first_frame] {\benchdata/load_bevy_native.csv};
+\legend{Download + parsing, Mesh creation, First frame}
+\end{axis}
+\end{tikzpicture}

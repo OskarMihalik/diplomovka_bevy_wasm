@@ -1,0 +1,6 @@
+out/
+paper/*.aux
+paper/*.log
+paper/*.fls
+paper/*.fdb_latexmk
+paper/preview.pdf

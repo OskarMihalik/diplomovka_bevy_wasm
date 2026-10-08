@@ -1,0 +1,16 @@
+[package]
+name = "bencmark_results"
+version = "0.1.0"
+publish = false
+authors = ["Oskar Mihalik"]
+edition = "2024"
+
+# Turns rendering_fps.csv and rendering_load.csv into LaTeX tables and pgfplots data for the paper.
+#   cargo run -p bencmark_results
+# writes out/tables/*.tex and out/data/*.csv, the figures in paper/figures read them.
+
+[dependencies]
+csv = "1.3"
+serde = { version = "1", features = ["derive"] }
+# Student's t distribution for Welch's t-test
+statrs = "0.18"

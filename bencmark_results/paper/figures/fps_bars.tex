@@ -1,0 +1,24 @@
+% Average fps per model on the integrated GPU, mean and sd over the runs.
+% Bevy can't load the two largest models in the browser (wasm32 4 GB limit), marked OOM.
+\begin{tikzpicture}
+\begin{axis}[
+  bench/axis,
+  height=5cm,
+  ybar, bar width=7pt,
+  ymin=0, enlarge x limits=0.1,
+  ylabel={Average frames per second},
+  bench/models={\benchdata/fps.csv},
+]
+\addplot+[bench/bevywasm, bar shift=-8pt, bench/errorbars]
+  table[x=x, y=bevy_wasm_mean, y error=bevy_wasm_sd] {\benchdata/fps.csv};
+\addplot+[bench/babylonwasm, bar shift=0pt, bench/errorbars]
+  table[x=x, y=babylon_wasm_mean, y error=babylon_wasm_sd] {\benchdata/fps.csv};
+\addplot+[bench/bevynative, bar shift=8pt, bench/errorbars]
+  table[x=x, y=bevy_native_mean, y error=bevy_native_sd] {\benchdata/fps.csv};
+% OOM labels above the empty Bevy (WASM) slot
+\addplot[forget plot, draw=none, fill=none, bar shift=-8pt,
+  nodes near coords={OOM}, every node near coord/.style={font=\scriptsize, rotate=90, anchor=west}]
+  table[x=x, y=bevy_wasm_oom] {\benchdata/fps.csv};
+\legend{Bevy (WASM), Babylon.js (WASM), Bevy (native)}
+\end{axis}
+\end{tikzpicture}

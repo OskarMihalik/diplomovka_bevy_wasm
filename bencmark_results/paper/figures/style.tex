@@ -1,0 +1,43 @@
+% Shared look of the benchmark figures, \input once in the preamble after pgfplots.
+% Colours are Okabe-Ito (colour-blind safe), the patterns keep the bars apart in grayscale print.
+% \benchdata is the folder with the csv files written by `cargo run -p bencmark_results`.
+\usetikzlibrary{patterns}
+\pgfplotsset{compat=1.18}
+\providecommand{\benchdata}{out/data}
+\definecolor{bevywasm}{HTML}{0072B2}
+\definecolor{babylonwasm}{HTML}{E69F00}
+\definecolor{bevynative}{HTML}{009E73}
+\definecolor{bevyrtx}{HTML}{CC79A7}
+\pgfplotsset{
+  bench/axis/.style={
+    width=\linewidth,
+    font=\footnotesize,
+    tick label style={font=\footnotesize},
+    label style={font=\footnotesize},
+    legend style={font=\footnotesize, draw=none, fill=none, legend columns=-1,
+      at={(0.5,1.02)}, anchor=south, /tikz/every even column/.append style={column sep=6pt}},
+    legend cell align=left,
+    ymajorgrids, grid style={gray!25},
+    axis lines*=left,
+    unbounded coords=discard,
+    table/col sep=comma,
+  },
+  % one tick per model, the labels come from the csv
+  bench/models/.style={
+    % fixed ticks from 0, the labels are assigned to the ticks in order
+    xtick={0,1,...,30},
+    xticklabels from table={#1}{label},
+    xticklabel style={rotate=30, anchor=north east, inner sep=1pt},
+  },
+  bench/phase1/.style={draw=black, fill=gray!80},
+  bench/phase2/.style={draw=black, fill=white, postaction={pattern=north east lines}},
+  bench/phase3/.style={draw=black, fill=gray!25},
+  bench/bevywasm/.style={draw=bevywasm!70!black, fill=bevywasm},
+  bench/babylonwasm/.style={draw=babylonwasm!70!black, fill=babylonwasm!35,
+    postaction={pattern=north east lines, pattern color=babylonwasm!70!black}},
+  bench/bevynative/.style={draw=bevynative!70!black, fill=bevynative!25,
+    postaction={pattern=crosshatch dots, pattern color=bevynative!70!black}},
+  bench/bevyrtx/.style={draw=bevyrtx!70!black, fill=bevyrtx!30},
+  bench/errorbars/.style={error bars/.cd, y dir=both, y explicit,
+    error bar style={black, line width=0.5pt}, error mark options={rotate=90, mark size=1.5pt, black}},
+}

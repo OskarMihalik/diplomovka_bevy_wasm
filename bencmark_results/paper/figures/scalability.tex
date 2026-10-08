@@ -1,0 +1,19 @@
+% Average fps over scene complexity on the integrated GPU
+\begin{tikzpicture}
+\begin{semilogxaxis}[
+  bench/axis,
+  height=5cm,
+  xlabel={Triangles},
+  ylabel={Average frames per second},
+  ymin=0,
+  xmajorgrids,
+]
+\addplot[bevywasm, thick, mark=*, mark options={fill=bevywasm}, bench/errorbars]
+  table[x=triangles, y=mean, y error=sd] {\benchdata/scalability_bevy_wasm.csv};
+\addplot[babylonwasm!90!black, thick, dashed, mark=square*, mark options={solid, fill=babylonwasm}, bench/errorbars]
+  table[x=triangles, y=mean, y error=sd] {\benchdata/scalability_babylon_wasm.csv};
+\addplot[bevynative!80!black, thick, dotted, mark=triangle*, mark options={solid, fill=bevynative}, bench/errorbars]
+  table[x=triangles, y=mean, y error=sd] {\benchdata/scalability_bevy_native.csv};
+\legend{Bevy (WASM), Babylon.js (WASM), Bevy (native)}
+\end{semilogxaxis}
+\end{tikzpicture}

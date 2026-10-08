@@ -1,0 +1,23 @@
+% Median frame time (marker) with a whisker up to the 99th percentile, averaged over the runs.
+% Log scale: the slow models have p99 frame times of hundreds of ms.
+\begin{tikzpicture}
+\begin{semilogyaxis}[
+  bench/axis,
+  height=5cm,
+  enlarge x limits=0.1,
+  ylabel={Frame time (ms)},
+  bench/models={\benchdata/frametimes.csv},
+  log ticks with fixed point,
+]
+\addplot[only marks, mark=*, mark options={fill=bevywasm, draw=bevywasm!70!black},
+  error bars/.cd, y dir=plus, y explicit, error bar style={bevywasm!70!black, thick}]
+  table[x expr=\thisrow{x}-0.22, y=bevy_wasm_p50, y error plus=bevy_wasm_up] {\benchdata/frametimes.csv};
+\addplot[only marks, mark=square*, mark options={fill=babylonwasm, draw=babylonwasm!70!black},
+  error bars/.cd, y dir=plus, y explicit, error bar style={babylonwasm!70!black, thick, dashed}]
+  table[x=x, y=babylon_wasm_p50, y error plus=babylon_wasm_up] {\benchdata/frametimes.csv};
+\addplot[only marks, mark=triangle*, mark options={fill=bevynative, draw=bevynative!70!black},
+  error bars/.cd, y dir=plus, y explicit, error bar style={bevynative!70!black, thick, dotted}]
+  table[x expr=\thisrow{x}+0.22, y=bevy_native_p50, y error plus=bevy_native_up] {\benchdata/frametimes.csv};
+\legend{Bevy (WASM), Babylon.js (WASM), Bevy (native)}
+\end{semilogyaxis}
+\end{tikzpicture}

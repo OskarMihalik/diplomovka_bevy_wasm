@@ -16,3 +16,7 @@ bevy,4,on,20.00,2026-09-30 13:43:44,unknown,linux,28,NVIDIA GeForce RTX 4070 Lap
 bevy,4,on,20.00,2026-09-30 13:47:26,unknown,linux,28,Intel(R) Graphics (RPL-S),Vulkan,native,,release,2088x1550,,national_airport_by_aditya,1,723,27072433,13805487,2067.4,10.0,332.9,2410.6,576
 bevy,4,on,20.00,2026-09-30 13:54:19,unknown,linux,28,Intel(R) Graphics (RPL-S),Vulkan,native,,release,2088x1550,,full_gameready_city_buildings_iv_hongkong,1,488,569375,368217,345.9,8.7,101.8,456.4,25
 bevy,4,on,10.00,2026-09-30 13:54:27,unknown,linux,28,Intel(R) Graphics (RPL-S),Vulkan,native,,release,2088x1550,,full_gameready_city_buildings_iv_hongkong,1,488,569375,368217,335.6,7.5,95.0,438.2,43
+bevy,4,on,5.22,2026-10-08 08:22:50,unknown,linux,28,Intel(R) Graphics (RPL-S),Vulkan,native,,release,2088x1550,,barling_wrecks,1,12,652437,776478,620.4,0.3,90.0,710.7,139
+bevy,4,on,5.22,2026-10-08 08:33:16,unknown,linux,28,Intel(R) Graphics (RPL-S),Vulkan,native,,release,2088x1550,,cai_mep_port_vietnam,1,56,3598511,3500543,1157.0,1.2,280.2,1438.4,276
+bevy,4,on,5.22,2026-10-08 09:06:15,unknown,linux,28,Intel(R) Graphics (RPL-S),Vulkan,native,,release,2088x1550,,london_city,1,334,14714620,9514299,2572.0,3.7,288.5,2864.3,630
+bevy,4,on,19000.00,2026-10-08 09:07:53,unknown,linux,28,Intel(R) Graphics (RPL-S),Vulkan,native,,release,2088x1550,,london_city,1,334,14714620,9514299,3093.8,2.9,289.2,3386.0,765
