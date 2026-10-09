@@ -1,0 +1,133 @@
+# Configuration of experiment A (framework without a database). See PLAN.md, sections 4 and 5.
+#
+# Core layout of the i7-14700HX (`lscpu -e`): CPUs 0-15 are 8 P-cores with two threads each
+# (CPU 2n and 2n+1 share core n; cores 4 and 5, CPUs 8-11, boost to 5.5 GHz, the rest to 5.3 GHz),
+# CPUs 16-27 are 12 E-cores. The server uses one thread on each of four 5.3 GHz P-cores and their
+# siblings stay idle. Goose gets all E-cores plus the free P-cores 4, 5 and 7 (CPUs 8-11, 14-15):
+# in the pilot, 12 E-cores were saturated (80 %+) by axum-1c on /plaintext and /json.
+# CPUs 0-1 are left to the host and Docker.
+
+network = "fwbench_edge"
+server_port = 8080
+# Raised from 1g: express-4c /upload was OOM-killed at 1 GiB (4 workers buffering 1 MiB bodies).
+server_memory = "2g"
+goose_cpus = "8-11,14-15,16-27"
+csv = "bencmark_results/framework_load.csv"
+pilot_csv = "bencmark_results/framework_load_pilot.csv"
+raw_dir = "framework_bench/results/raw"
+
+[load]
+users = 256
+ramp_s = 10      # Goose launches all users over this time (warm-up, not measured)
+run_s = 60       # measured window
+idle_s = 5       # idle CPU/RAM sampling after the server is ready
+cooldown_s = 10  # sampling after the load stops
+reps = 5
+sample_ms = 250
+
+[pilot]
+reps = 1
+run_s = 20
+
+# rtt_ms and jitter_ms describe the round trip: each side gets rtt/2 and jitter/sqrt(2).
+# loss_pct is applied on each direction.
+[[profile]]
+id = "P0"
+rtt_ms = 0
+jitter_ms = 0
+loss_pct = 0.0
+
+[[profile]]
+id = "P3"
+rtt_ms = 60
+jitter_ms = 15
+loss_pct = 0.1
+
+[[profile]]
+id = "P5"
+rtt_ms = 120
+jitter_ms = 40
+loss_pct = 2.0
+
+[[config]]
+id = "axum-1c"
+framework = "axum"
+image = "fwbench-axum"
+cores = 1
+cpuset = "2"
+env = { TOKIO_WORKER_THREADS = "1", BLOCKING_THREADS = "1" }
+
+[[config]]
+id = "axum-4c"
+framework = "axum"
+image = "fwbench-axum"
+cores = 4
+cpuset = "2,4,6,12"
+env = { TOKIO_WORKER_THREADS = "4", BLOCKING_THREADS = "4" }
+
+[[config]]
+id = "express-1c"
+framework = "express"
+image = "fwbench-express"
+cores = 1
+cpuset = "2"
+env = { WORKERS = "1", UV_THREADPOOL_SIZE = "1" }
+
+[[config]]
+id = "express-4c"
+framework = "express"
+image = "fwbench-express"
+cores = 4
+cpuset = "2,4,6,12"
+env = { WORKERS = "4", UV_THREADPOOL_SIZE = "4" }
+
+# P0: all endpoints; P3: /json, /delay, /file; P5: /json, /delay, /json-large.
+# /plaintext, /json and /echo-json at P0 run only at 1 core: at 4 cores Goose (12 E-cores)
+# saturates before axum-4c does (pilot: Goose 11.6 cores, axum-4c 2.2 of 4 cores).
+# At P5, /file is replaced by /json-large: a 3.7 MiB download takes 25-30 s at 2 % loss, so few
+# complete in the window and the server is idle (0.02 cores).
+[[cell]]
+endpoint = "plaintext"
+profile = "P0"
+cores = [1]
+[[cell]]
+endpoint = "json"
+profile = "P0"
+cores = [1]
+[[cell]]
+endpoint = "echo-json"
+profile = "P0"
+cores = [1]
+[[cell]]
+endpoint = "json-large"
+profile = "P0"
+[[cell]]
+endpoint = "cpu"
+profile = "P0"
+[[cell]]
+endpoint = "delay"
+profile = "P0"
+[[cell]]
+endpoint = "file"
+profile = "P0"
+[[cell]]
+endpoint = "upload"
+profile = "P0"
+[[cell]]
+endpoint = "json"
+profile = "P3"
+[[cell]]
+endpoint = "delay"
+profile = "P3"
+[[cell]]
+endpoint = "file"
+profile = "P3"
+[[cell]]
+endpoint = "json"
+profile = "P5"
+[[cell]]
+endpoint = "delay"
+profile = "P5"
+[[cell]]
+endpoint = "json-large"
+profile = "P5"

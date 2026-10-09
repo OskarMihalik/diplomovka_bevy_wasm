@@ -1,0 +1,12 @@
+[package]
+name = "framework_bench_axum"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+argon2 = "0.5.3"
+axum = "0.8"
+serde = { version = "1.0.197", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.52.3", features = ["macros", "net", "rt-multi-thread", "signal", "time"] }
+tower-http = { version = "0.6", features = ["fs"] }

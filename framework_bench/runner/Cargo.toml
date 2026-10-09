@@ -1,0 +1,22 @@
+[package]
+name = "framework_bench_runner"
+version = "0.1.0"
+edition = "2024"
+
+# `attack` runs inside the Goose container (framework_bench/docker/attack.Dockerfile),
+# `runner` runs on the host and orchestrates Docker, netem and the cgroup sampler.
+[[bin]]
+name = "attack"
+path = "src/bin/attack.rs"
+
+[[bin]]
+name = "runner"
+path = "src/bin/runner/main.rs"
+
+[dependencies]
+goose = { git = "https://github.com/tag1consulting/goose.git" }
+gumdrop = "0.8"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.52.3", features = ["io-util", "macros", "net", "rt-multi-thread", "time"] }
+toml = "0.5"

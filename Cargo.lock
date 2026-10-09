@@ -3834,6 +3834,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "framework_bench_axum"
+version = "0.1.0"
+dependencies = [
+ "argon2",
+ "axum",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tower-http 0.6.11",
+]
+
+[[package]]
+name = "framework_bench_runner"
+version = "0.1.0"
+dependencies = [
+ "goose 0.19.0-dev",
+ "gumdrop",
+ "serde",
+ "serde_json",
+ "tokio",
+ "toml",
+]
+
+[[package]]
 name = "freetype-sys"
 version = "0.20.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8407,6 +8431,11 @@ dependencies = [
  "http",
  "http-body",
  "http-body-util",
+ "http-range-header",
+ "httpdate",
+ "mime",
+ "mime_guess",
+ "percent-encoding",
  "pin-project-lite",
  "tokio",
  "tokio-util",

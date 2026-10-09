@@ -11,3 +11,4 @@ node_modules
 .http-asset-cache
 backend/assets/models/*
 !backend/assets/models/.gitkeep
+framework_bench/results/
