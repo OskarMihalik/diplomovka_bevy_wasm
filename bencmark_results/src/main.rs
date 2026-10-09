@@ -3,8 +3,10 @@
 //! - `out/data/*.csv`    data for the pgfplots figures in `paper/figures`
 //!
 //! `cargo run -p bencmark_results`, rerun after adding benchmark rows.
+//! Reads rendering_fps.csv, rendering_load.csv and framework_load.csv (see framework.rs).
 
 mod data;
+mod framework;
 mod stats;
 
 use data::{MODELS, Measurement, Platform, Row};
@@ -41,6 +43,18 @@ fn run() -> Result<(), String> {
         }
     }
     print_overview(&fps);
+
+    // Experiment A of framework_bench (Axum vs Express), skipped until the CSV exists
+    let framework_csv = root.join("framework_load.csv");
+    if framework_csv.exists() {
+        let rows = framework::read(&framework_csv)?;
+        out.write("tables/fw_throughput.tex", &framework::throughput_table(&rows))?;
+        out.write("tables/fw_latency.tex", &framework::latency_table(&rows))?;
+        out.write("tables/fw_resources.tex", &framework::resources_table(&rows))?;
+        out.write("tables/fw_scaling.tex", &framework::scaling_table(&rows))?;
+        out.write("tables/fw_network.tex", &framework::network_table(&rows))?;
+        framework::print_overview(&rows);
+    }
     Ok(())
 }
 

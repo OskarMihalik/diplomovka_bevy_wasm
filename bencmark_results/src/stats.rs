@@ -77,9 +77,33 @@ pub fn welch(a: Summary, b: Summary) -> Option<Welch> {
     })
 }
 
+/// Holm-Bonferroni adjusted p-values, in the order of `p`.
+pub fn holm(p: &[f64]) -> Vec<f64> {
+    let m = p.len();
+    let mut order: Vec<usize> = (0..m).collect();
+    order.sort_by(|&a, &b| p[a].total_cmp(&p[b]));
+    let mut adjusted = vec![0.; m];
+    let mut running_max: f64 = 0.;
+    for (rank, &i) in order.iter().enumerate() {
+        running_max = running_max.max(((m - rank) as f64 * p[i]).min(1.));
+        adjusted[i] = running_max;
+    }
+    adjusted
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn holm_matches_reference() {
+        // statsmodels.stats.multitest.multipletests([0.01, 0.04, 0.03, 0.005], method="holm")
+        let adjusted = holm(&[0.01, 0.04, 0.03, 0.005]);
+        let expected = [0.03, 0.06, 0.06, 0.02];
+        for (a, e) in adjusted.iter().zip(expected) {
+            assert!((a - e).abs() < 1e-12, "{adjusted:?}");
+        }
+    }
 
     #[test]
     fn summary() {

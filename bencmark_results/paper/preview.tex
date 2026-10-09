@@ -70,4 +70,39 @@
 \resizebox{\columnwidth}{!}{\input{../out/tables/load.tex}}
 \end{table}
 
+\begin{table*}[!t]
+\centering
+\caption{Throughput of Axum and ExpressJS without a database (requests per second, P0, mean $\pm$ standard deviation over five 60-second runs). $\Delta = (\text{Axum} - \text{ExpressJS})/\text{ExpressJS}$; $p$: Welch's $t$-test, Holm-adjusted over all 13 comparisons; bold: $p < 0.05$ and $|\Delta| \geq 5\%$. The light endpoints were not run at 4 cores because the load generator saturates first.}
+\label{tab:fw_throughput}
+\input{../out/tables/fw_throughput.tex}
+\end{table*}
+
+\begin{table}[!t]
+\centering
+\caption{Latency without a database at P0: median / 99th percentile in ms, mean over five runs}
+\label{tab:fw_latency}
+\resizebox{\columnwidth}{!}{\input{../out/tables/fw_latency.tex}}
+\end{table}
+
+\begin{table*}[!t]
+\centering
+\caption{Server CPU time per 1{,}000 requests and peak memory (working set) at P0, mean over five runs. Idle: memory after start, before any load.}
+\label{tab:fw_resources}
+\input{../out/tables/fw_resources.tex}
+\end{table*}
+
+\begin{table}[!t]
+\centering
+\caption{Throughput speedup from 1 to 4 cores at P0 (from the means in Table~\ref{tab:fw_throughput}); parallel efficiency in parentheses}
+\label{tab:fw_scaling}
+\input{../out/tables/fw_scaling.tex}
+\end{table}
+
+\begin{table*}[!t]
+\centering
+\caption{Effect of emulated network conditions (P0: local; P3: 60\,ms RTT, 0.1\% loss; P5: 120\,ms RTT, 2\% loss). RTT measured before each run; p99 latency and CPU time per 1{,}000 requests, mean over five runs.}
+\label{tab:fw_network}
+\input{../out/tables/fw_network.tex}
+\end{table*}
+
 \end{document}
