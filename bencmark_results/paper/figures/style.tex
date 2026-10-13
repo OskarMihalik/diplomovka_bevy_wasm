@@ -29,6 +29,11 @@
     xticklabels from table={#1}{label},
     xticklabel style={rotate=30, anchor=north east, inner sep=1pt},
   },
+  % load test charts: six lines, so the legend takes three rows
+  bench/loadtest/.style={
+    xmin=0, enlarge x limits=false,
+    legend style={legend columns=2},
+  },
   bench/phase1/.style={draw=black, fill=gray!80},
   bench/phase2/.style={draw=black, fill=white, postaction={pattern=north east lines}},
   bench/phase3/.style={draw=black, fill=gray!25},

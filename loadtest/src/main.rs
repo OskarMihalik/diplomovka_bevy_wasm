@@ -1,15 +1,23 @@
 use dto::{
-    auth::{AuthDtoResponse, LoginDto, UserDto},
-    default::NewTagDto,
-    model::ModelsDtoResponse,
-    project::{NewProjectDto, ProjectsDtoResponse},
+    auth::{AuthDtoResponse, LoginDto, RegisterDto, UserDto},
+    default::{ErrorDto, NewTagDto},
+    model::ModelDto,
+    project::{NewProjectDto, ProjectDto},
 };
-use goose::prelude::*;
+use goose::{goose::GooseResponse, prelude::*};
 use plotters::prelude::*;
+use serde::de::{DeserializeOwned, IgnoredAny};
 use std::{
     sync::{Arc, Mutex},
-    time::{SystemTime, UNIX_EPOCH},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
+
+const AXUM_HOST: &str = "http://localhost:4000/";
+const EXPRESS_HOST: &str = "http://localhost:4001/";
+const PROJECT_NAME_PREFIX: &str = "goose-project-";
+const PROJECT_DESCRIPTION: &str = "goose loadtest session project";
+const LOADTEST_PASSWORD: &str = "goose-loadtest-password";
+
 #[derive(Clone, Default)]
 struct StatPoint {
     time_sec: f32,
@@ -30,24 +38,69 @@ struct ContainerStats {
     backend_express: Vec<StatPoint>,
 }
 
-async fn login_to_system(user: &mut GooseUser) -> TransactionResult {
-    let body = LoginDto {
-        email: "user@mail.com".to_string(),
-        password: "user@mail.com".to_string(),
-    };
-    let mut goose_response = user.post_json("/login", &body).await?;
+/// Returns the `Ok` payload of a backend response.
+///
+/// Both backends answer most errors with HTTP 200 and an `Err` body, so the status code alone
+/// does not tell whether a request succeeded. Everything else is recorded as a failed request.
+async fn ok_body<T: DeserializeOwned>(
+    user: &mut GooseUser,
+    goose_response: GooseResponse,
+) -> Result<T, Box<TransactionError>> {
+    let GooseResponse {
+        mut request,
+        response,
+    } = goose_response;
+    // a request without response (timeout) was already recorded as failed by goose
+    let response = response?;
 
+    let status = response.status();
+    let tag = if !status.is_success() {
+        // already recorded as failed by goose, `set_failure` only returns the error
+        format!("error: status {status}")
+    } else {
+        match response.json::<Result<T, ErrorDto>>().await {
+            Ok(Ok(body)) => return Ok(body),
+            Ok(Err(e)) => format!("error: {}", e.message),
+            Err(e) => format!("error: invalid response body: {e}"),
+        }
+    };
+
+    user.set_failure(&tag, &mut request, None, None)?;
+    Err(tag.into())
+}
+
+/// Stops a user without a usable session from looping without ever yielding.
+async fn missing_session(what: &str) -> TransactionResult {
+    tokio::time::sleep(Duration::from_secs(1)).await;
+    Err(format!("error: missing {what} in session").into())
+}
+
+/// Logs in as the account of this goose user and creates the account on the first run.
+///
+/// Every goose user needs its own account: the backends return the projects of the logged in
+/// account, so with one shared account the users would see (and delete) each other's projects.
+async fn login_own_account(user: &mut GooseUser) -> TransactionResult {
+    let username = format!("goose-{}", user.weighted_users_index);
+    let email = format!("{username}@loadtest.local");
+
+    let body = LoginDto {
+        email: email.clone(),
+        password: LOADTEST_PASSWORD.to_string(),
+    };
+    let goose_response = user.post_json("/login", &body).await?;
+    // not `ok_body`: an `Err` here means that the account does not exist yet
     let response = goose_response.response?.json::<AuthDtoResponse>().await?;
 
     let user_dto = match response {
         Ok(dto) => dto,
-        Err(e) => {
-            return user.set_failure(
-                &format!("error: {}", e.message),
-                &mut goose_response.request,
-                None,
-                None,
-            );
+        Err(_) => {
+            let body = RegisterDto {
+                email,
+                username,
+                password: LOADTEST_PASSWORD.to_string(),
+            };
+            let goose_response = user.post_json("/register", &body).await?;
+            ok_body::<UserDto>(user, goose_response).await?
         }
     };
 
@@ -69,45 +122,44 @@ fn unique_suffix() -> String {
 }
 
 async fn create_project(user: &mut GooseUser) -> TransactionResult {
-    let session = user.get_session_data_unchecked::<Session>();
+    let Some(session) = user.get_session_data::<Session>() else {
+        return missing_session("login").await;
+    };
     let user_dto = session.user_dto.clone();
-    let project_name = format!("goose-project-{}", unique_suffix());
+    // the user index keeps the name unique even if two users share a timestamp
+    let project_name = format!(
+        "{PROJECT_NAME_PREFIX}{}-{}",
+        user.weighted_users_index,
+        unique_suffix()
+    );
     let body = NewProjectDto {
-        name: project_name,
-        description: "goose loadtest session project".to_string(),
+        name: project_name.clone(),
+        description: PROJECT_DESCRIPTION.to_string(),
     };
 
     let reqwest_request_builder = user
         .get_request_builder(&GooseMethod::Post, "/project")?
         .json(&body)
-        .header("authorization", &session.user_dto.token);
+        .header("authorization", &user_dto.token);
 
     let goose_request = GooseRequest::builder()
+        .method(GooseMethod::Post)
+        .path("/project")
+        .name("/project")
         .set_request_builder(reqwest_request_builder)
         .build();
 
-    let mut goose_response = user.request(goose_request).await?;
-    let response = goose_response
-        .response?
-        .json::<ProjectsDtoResponse>()
-        .await?;
+    let goose_response = user.request(goose_request).await?;
+    let mut request = goose_response.request.clone();
+    let projects = ok_body::<Vec<ProjectDto>>(user, goose_response).await?;
 
-    let project_id = match response {
-        Ok(projects) => match projects.into_iter().next() {
-            Some(project) => project.id,
-            None => {
-                return user.set_failure(
-                    "error: /project returned no projects",
-                    &mut goose_response.request,
-                    None,
-                    None,
-                );
-            }
-        },
-        Err(e) => {
+    // the response lists all projects of the account, the new one is found by its unique name
+    let project_id = match projects.into_iter().find(|p| p.name == project_name) {
+        Some(project) => project.id,
+        None => {
             return user.set_failure(
-                &format!("error: {}", e.message),
-                &mut goose_response.request,
+                "error: /project did not return the new project",
+                &mut request,
                 None,
                 None,
             );
@@ -124,11 +176,13 @@ async fn create_project(user: &mut GooseUser) -> TransactionResult {
 }
 
 async fn create_model(user: &mut GooseUser) -> TransactionResult {
-    let session = user.get_session_data_unchecked::<Session>();
+    let Some(session) = user.get_session_data::<Session>() else {
+        return missing_session("login").await;
+    };
     let user_dto = session.user_dto.clone();
     let project_id = match session.project_id {
         Some(id) => id,
-        None => return Err("error: missing project_id in session".into()),
+        None => return missing_session("project_id").await,
     };
 
     let model_name = format!("goose-model-{}", unique_suffix());
@@ -142,31 +196,25 @@ async fn create_model(user: &mut GooseUser) -> TransactionResult {
     let reqwest_request_builder = user
         .get_request_builder(&GooseMethod::Post, &path)?
         .multipart(form)
-        .header("authorization", &session.user_dto.token);
+        .header("authorization", &user_dto.token);
 
     let goose_request = GooseRequest::builder()
+        .method(GooseMethod::Post)
+        .path(path.as_str())
+        .name("/model/{project_id}/{model_name}")
         .set_request_builder(reqwest_request_builder)
         .build();
 
-    let mut goose_response = user.request(goose_request).await?;
-    let response = goose_response.response?.json::<ModelsDtoResponse>().await?;
+    let goose_response = user.request(goose_request).await?;
+    let mut request = goose_response.request.clone();
+    let models = ok_body::<Vec<ModelDto>>(user, goose_response).await?;
 
-    let model_id = match response {
-        Ok(models) => match models.get(0) {
-            Some(model) => model.id,
-            None => {
-                return user.set_failure(
-                    "error: /model upload returned no models",
-                    &mut goose_response.request,
-                    None,
-                    None,
-                );
-            }
-        },
-        Err(e) => {
+    let model_id = match models.into_iter().find(|m| m.name == model_name) {
+        Some(model) => model.id,
+        None => {
             return user.set_failure(
-                &format!("error: {}", e.message),
-                &mut goose_response.request,
+                "error: /model upload did not return the new model",
+                &mut request,
                 None,
                 None,
             );
@@ -183,14 +231,12 @@ async fn create_model(user: &mut GooseUser) -> TransactionResult {
 }
 
 async fn create_tag(user: &mut GooseUser) -> TransactionResult {
-    // This will panic if the session is missing or if the session is not of the right type.
-    // Use `get_session_data` to handle a missing session.
-    let session = user.get_session_data_unchecked::<Session>();
+    let Some(session) = user.get_session_data::<Session>() else {
+        return missing_session("login").await;
+    };
     let project_id = match session.project_id {
         Some(id) => id,
-        None => {
-            return Err("error: missing project_id in session".to_string().into());
-        }
+        None => return missing_session("project_id").await,
     };
 
     let body = NewTagDto {
@@ -201,26 +247,29 @@ async fn create_tag(user: &mut GooseUser) -> TransactionResult {
         position_z: -28.943491,
     };
 
-    // Create a Reqwest RequestBuilder object and configure bearer authentication when making
-    // a GET request for the index.
     let reqwest_request_builder = user
         .get_request_builder(&GooseMethod::Post, "/tags")?
         .json(&body)
         .header("authorization", &session.user_dto.token);
 
-    // Add the manually created RequestBuilder and build a GooseRequest object.
     let goose_request = GooseRequest::builder()
+        .method(GooseMethod::Post)
+        .path("/tags")
+        .name("/tags")
         .set_request_builder(reqwest_request_builder)
         .build();
 
-    // Make the actual request.
-    user.request(goose_request).await?;
+    let goose_response = user.request(goose_request).await?;
+    // the tag list itself is not needed, only whether the backend answered with `Ok`
+    ok_body::<IgnoredAny>(user, goose_response).await?;
 
     Ok(())
 }
 
 async fn cleanup_project(user: &mut GooseUser) -> TransactionResult {
-    let session = user.get_session_data_unchecked::<Session>();
+    let Some(session) = user.get_session_data::<Session>() else {
+        return Ok(());
+    };
     let project_id = match session.project_id {
         Some(id) => id,
         None => return Ok(()),
@@ -232,18 +281,79 @@ async fn cleanup_project(user: &mut GooseUser) -> TransactionResult {
         .header("authorization", &session.user_dto.token);
 
     let goose_request = GooseRequest::builder()
+        .method(GooseMethod::Delete)
+        .path(path.as_str())
+        .name("/project/{project_id}")
         .set_request_builder(reqwest_request_builder)
         .build();
 
-    user.request(goose_request).await?;
+    let goose_response = user.request(goose_request).await?;
+    ok_body::<IgnoredAny>(user, goose_response).await?;
 
     Ok(())
 }
 
-fn generate_graph(stats: &ContainerStats) {
+/// Runs a command in the directory of `docker-compose.yml` and fails if it does not succeed.
+async fn docker_compose(args: &[&str]) {
+    let status = tokio::process::Command::new("docker")
+        .arg("compose")
+        .args(args)
+        .current_dir(concat!(env!("CARGO_MANIFEST_DIR"), "/.."))
+        .status()
+        .await
+        .expect("Failed to run docker compose");
+    assert!(status.success(), "docker compose {args:?} failed: {status}");
+}
+
+/// Removes what earlier load tests left behind, so every attack starts from the same tables.
+///
+/// The tag queries scan the whole `Tag` table, so leftover rows (and dead rows that were not
+/// vacuumed yet) of the previous attack would slow down the backend that is tested second.
+async fn reset_database() {
+    println!("Resetting loadtest data in the database...");
+    let delete = format!(
+        "DELETE FROM public.\"Project\" WHERE name LIKE '{PROJECT_NAME_PREFIX}%' AND description = '{PROJECT_DESCRIPTION}'"
+    );
+    docker_compose(&[
+        "exec",
+        "-T",
+        "postgres",
+        "psql",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "postgres",
+        "-d",
+        "bevy",
+        "-c",
+        &delete,
+        "-c",
+        "VACUUM (ANALYZE) public.\"Tag\", public.\"Model\", public.\"ProjectUser\", public.\"Project\", public.\"User\"",
+    ])
+    .await;
+}
+
+/// Waits until the backend answers HTTP requests.
+async fn wait_for_backend(host: &str) {
+    let client = reqwest::Client::new();
+    let url = format!("{host}project");
+    for _ in 0..120 {
+        // unauthorized, but any HTTP response means that the server is up
+        if client.get(&url).send().await.is_ok() {
+            return;
+        }
+        tokio::time::sleep(Duration::from_millis(500)).await;
+    }
+    panic!("{host} did not start in 60s");
+}
+
+/// `suffix` is appended to the file names, so the scenarios do not overwrite each other.
+fn generate_graph(stats: &ContainerStats, suffix: &str) {
+    let cpu_file = format!("cpu_usage{suffix}.png");
+    let mem_file = format!("mem_usage{suffix}.png");
     // CPU graph
     {
-        let root = BitMapBackend::new("cpu_usage.png", (800, 600)).into_drawing_area();
+        let root = BitMapBackend::new(&cpu_file, (800, 600)).into_drawing_area();
         root.fill(&WHITE).unwrap();
 
         let max_time = stats
@@ -317,7 +427,7 @@ fn generate_graph(stats: &ContainerStats) {
 
     // Mem graph
     {
-        let root = BitMapBackend::new("mem_usage.png", (800, 600)).into_drawing_area();
+        let root = BitMapBackend::new(&mem_file, (800, 600)).into_drawing_area();
         root.fill(&WHITE).unwrap();
 
         let max_time = stats
@@ -388,29 +498,27 @@ fn generate_graph(stats: &ContainerStats) {
             .unwrap();
         root.present().unwrap();
     }
-    println!("Graphs saved to cpu_usage.png and mem_usage.png");
+    println!("Graphs saved to {cpu_file} and {mem_file}");
 }
+
 
 #[tokio::main]
 async fn main() -> Result<(), GooseError> {
-    println!("Starting docker-compose...");
-    let _ = tokio::process::Command::new("docker")
-        .args([
-            "compose",
-            "up",
-            "-d",
-            "--build",
-            "postgres",
-            "backend",
-            "backend-express",
-        ])
-        .current_dir("..")
-        .status()
-        .await
-        .expect("Failed to run docker compose");
+    // LOADTEST_SCENARIO=login runs the login scenario, the default is tag creation
+    let login_only = match std::env::var("LOADTEST_SCENARIO").as_deref() {
+        Ok("login") => true,
+        Ok("tag") | Err(_) => false,
+        Ok(other) => panic!("unknown LOADTEST_SCENARIO {other:?}, expected `tag` or `login`"),
+    };
 
-    println!("Waiting for containers to be ready (15s)...");
-    tokio::time::sleep(std::time::Duration::from_secs(15)).await;
+    println!("Starting docker-compose...");
+    // the backends connect to the database on startup, so it has to accept connections first
+    docker_compose(&["up", "-d", "--wait", "postgres"]).await;
+    docker_compose(&["up", "-d", "--build", "backend", "backend-express"]).await;
+
+    println!("Waiting for the backends to be ready...");
+    wait_for_backend(AXUM_HOST).await;
+    wait_for_backend(EXPRESS_HOST).await;
 
     let stats = Arc::new(Mutex::new(ContainerStats::default()));
     let stats_clone = stats.clone();
@@ -458,38 +566,51 @@ async fn main() -> Result<(), GooseError> {
 
     println!("Starting GooseAttack for axum...");
 
-    let scenario1 = scenario!("session tag creation")
-        .register_transaction(transaction!(login_to_system).set_on_start())
-        .register_transaction(transaction!(create_project).set_on_start())
-        .register_transaction(transaction!(create_model).set_on_start())
-        .register_transaction(transaction!(create_tag))
-        .register_transaction(transaction!(cleanup_project).set_on_stop());
+    let (scenario, suffix) = if login_only {
+        (
+            scenario!("login").register_transaction(transaction!(login_own_account)),
+            "-login",
+        )
+    } else {
+        (
+            scenario!("session tag creation")
+                .register_transaction(transaction!(login_own_account).set_on_start())
+                .register_transaction(transaction!(create_project).set_on_start())
+                .register_transaction(transaction!(create_model).set_on_start())
+                .register_transaction(transaction!(create_tag))
+                .register_transaction(transaction!(cleanup_project).set_on_stop()),
+            "",
+        )
+    };
 
-    let scenario_only_login =
-        scenario!("login").register_transaction(transaction!(login_to_system));
-
+    reset_database().await;
     GooseAttack::initialize()?
-        .register_scenario(scenario1.clone())
-        // .register_scenario(scenario_only_login.clone())
-        .set_default(GooseDefault::Host, "http://localhost:4000/")?
-        .set_default(GooseDefault::ReportFile, "axumReport.html")?
+        .register_scenario(scenario.clone())
+        .set_default(GooseDefault::Host, AXUM_HOST)?
+        .set_default(
+            GooseDefault::ReportFile,
+            format!("axumReport{suffix}.html").as_str(),
+        )?
         .set_default(GooseDefault::NoResetMetrics, true)?
         .execute()
         .await?;
 
     println!("Starting GooseAttack for express...");
+    reset_database().await;
     GooseAttack::initialize()?
-        .register_scenario(scenario1.clone())
-        // .register_scenario(scenario_only_login.clone())
-        .set_default(GooseDefault::Host, "http://localhost:4001/")?
-        .set_default(GooseDefault::ReportFile, "expressReport.html")?
+        .register_scenario(scenario.clone())
+        .set_default(GooseDefault::Host, EXPRESS_HOST)?
+        .set_default(
+            GooseDefault::ReportFile,
+            format!("expressReport{suffix}.html").as_str(),
+        )?
         .set_default(GooseDefault::NoResetMetrics, true)?
         .execute()
         .await?;
 
     cancel_token.notify_one();
 
-    generate_graph(&stats.lock().unwrap());
+    generate_graph(&stats.lock().unwrap(), suffix);
 
     Ok(())
 }

@@ -105,4 +105,39 @@
 \input{../out/tables/fw_network.tex}
 \end{table*}
 
+\input{../out/tables/lt_axum.tex}
+\input{../out/tables/lt_express.tex}
+\input{../out/tables/lt_axum_login.tex}
+\input{../out/tables/lt_express_login.tex}
+
+\def\loadtestrun{axum}
+\begin{figure}[!t]
+\centering
+\input{figures/loadtest_requests.tex}
+\caption{Axum request metrics tag creation}
+\label{fig:axum_request_metrics}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\input{figures/loadtest_response.tex}
+\caption{Axum response times tag creation}
+\label{fig:axum_response_times}
+\end{figure}
+
+\def\loadtestrun{express}
+\begin{figure}[!t]
+\centering
+\input{figures/loadtest_requests.tex}
+\caption{Express request metrics tag creation}
+\label{fig:express_request_metrics}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\input{figures/loadtest_response.tex}
+\caption{Express response times tag creation}
+\label{fig:express_response_times}
+\end{figure}
+
 \end{document}

@@ -14,6 +14,7 @@ const getTagsForProject = async (projectId: number) => {
             's.title as status_title', 's.id as status_id', 's.color_r as status_color_r', 's.color_g as status_color_g', 's.color_b as status_color_b', 's.project_id as status_project_id', 's.shape as status_shape'
         ])
         .where('t.project_id', '=', projectId)
+        .orderBy('t.created_at', 'desc')
         .limit(100)
         .offset(0)
         .execute();

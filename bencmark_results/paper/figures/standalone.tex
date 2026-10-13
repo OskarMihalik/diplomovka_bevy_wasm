@@ -1,0 +1,12 @@
+% One figure as a cropped PDF, for a paper that is built without pgfplots (see export_figures.sh).
+% \figurefile is the file in figures/ without .tex, \loadtestrun the backend of the load test figures.
+\documentclass{standalone}
+\usepackage{mathptmx}
+\usepackage{pgfplots}
+\newcommand{\benchdata}{../out/data}
+\input{figures/style.tex}
+\begin{document}
+% column width of the paper, the figures are as wide as \linewidth
+\setlength{\linewidth}{242pt}%
+\input{figures/\figurefile.tex}
+\end{document}

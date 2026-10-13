@@ -1,0 +1,19 @@
+% Requests per second during the tag creation load test, one line per request.
+% \loadtestrun selects the backend: \def\loadtestrun{axum} or \def\loadtestrun{express}.
+\begin{tikzpicture}
+\begin{axis}[
+  bench/axis, bench/loadtest,
+  height=5cm,
+  xlabel={Time (s)},
+  ylabel={Requests per second},
+  ymin=0,
+]
+\addplot[black, thick] table[x=t, y=total] {\benchdata/lt_\loadtestrun_rps.csv};
+\addplot[bevywasm, thick, dashed] table[x=t, y=post_tags] {\benchdata/lt_\loadtestrun_rps.csv};
+\addplot[babylonwasm!90!black, mark=*, mark size=0.8pt] table[x=t, y=post_login] {\benchdata/lt_\loadtestrun_rps.csv};
+\addplot[bevynative!80!black, mark=square*, mark size=0.8pt] table[x=t, y=post_project] {\benchdata/lt_\loadtestrun_rps.csv};
+\addplot[bevyrtx, mark=triangle*, mark size=0.9pt] table[x=t, y=post_model_project_id_model_name] {\benchdata/lt_\loadtestrun_rps.csv};
+\addplot[red!70!black, mark=x, mark size=1.5pt] table[x=t, y=delete_project_project_id] {\benchdata/lt_\loadtestrun_rps.csv};
+\legend{Total, POST /tags, POST /login, POST /project, POST /model, DELETE /project}
+\end{axis}
+\end{tikzpicture}

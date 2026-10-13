@@ -11,22 +11,35 @@ services:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_USER=postgres
       - POSTGRES_DB=bevy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d bevy"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
 
-  # backend-express:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile.backend-express
-  #     args:
-  #       - DB_POSTGRES_PORT=5432
-  #       - DB_POSTGRES_USER=postgres
-  #       - DB_POSTGRES_PASSWORD=postgres
-  #       - DB_POSTGRES_DB=bevy
-  #       - DB_POSTGRES_HOST=postgres
-  #       - PORT=4001
-  #   ports:
-  #     - "4001:4001"
-  #   depends_on:
-  #     - postgres
+  # Comparison backend for the load test. It is started only when it is named explicitly
+  # (`docker compose up backend-express`, as loadtest does) or with `--profile loadtest`.
+  backend-express:
+    profiles: ["loadtest"]
+    build:
+      context: .
+      dockerfile: Dockerfile.backend-express
+      args:
+        - DB_POSTGRES_PORT=5432
+        - DB_POSTGRES_USER=postgres
+        - DB_POSTGRES_PASSWORD=postgres
+        - DB_POSTGRES_DB=bevy
+        - DB_POSTGRES_HOST=postgres
+        - PORT=4001
+    ports:
+      - "4001:4001"
+    # same limit as backend
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    depends_on:
+      - postgres
   backend:
     build:
       context: .
@@ -41,6 +54,11 @@ services:
         - PORT=4000
     ports:
       - "4000:4000"
+    # the default soft limit of 1024 open files is too low for 1000 concurrent connections
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     depends_on:
       - postgres
 

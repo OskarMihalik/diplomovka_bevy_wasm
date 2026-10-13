@@ -3,10 +3,12 @@
 //! - `out/data/*.csv`    data for the pgfplots figures in `paper/figures`
 //!
 //! `cargo run -p bencmark_results`, rerun after adding benchmark rows.
-//! Reads rendering_fps.csv, rendering_load.csv and framework_load.csv (see framework.rs).
+//! Reads rendering_fps.csv, rendering_load.csv, framework_load.csv (see framework.rs) and the
+//! Goose reports in `../loadtest` (see loadtest.rs), whose resource graphs go to `out/figures`.
 
 mod data;
 mod framework;
+mod loadtest;
 mod stats;
 
 use data::{MODELS, Measurement, Platform, Row};
@@ -48,12 +50,49 @@ fn run() -> Result<(), String> {
     let framework_csv = root.join("framework_load.csv");
     if framework_csv.exists() {
         let rows = framework::read(&framework_csv)?;
-        out.write("tables/fw_throughput.tex", &framework::throughput_table(&rows))?;
+        out.write(
+            "tables/fw_throughput.tex",
+            &framework::throughput_table(&rows),
+        )?;
         out.write("tables/fw_latency.tex", &framework::latency_table(&rows))?;
-        out.write("tables/fw_resources.tex", &framework::resources_table(&rows))?;
+        out.write(
+            "tables/fw_resources.tex",
+            &framework::resources_table(&rows),
+        )?;
         out.write("tables/fw_scaling.tex", &framework::scaling_table(&rows))?;
         out.write("tables/fw_network.tex", &framework::network_table(&rows))?;
         framework::print_overview(&rows);
+    }
+
+    // Full-stack load test (Axum vs Express with the database), from the Goose reports
+    let loadtest_dir = root.join("../loadtest");
+    eprintln!("\nload test, aggregated:");
+    for run in &loadtest::RUNS {
+        let path = loadtest_dir.join(run.file);
+        if !path.exists() {
+            continue;
+        }
+        let report = loadtest::read(&path)?;
+        let key = run.key;
+        out.write(
+            &format!("tables/lt_{key}.tex"),
+            &loadtest::request_table(run, &report),
+        )?;
+        out.write(
+            &format!("data/lt_{key}_rps.csv"),
+            &loadtest::chart_data(&report.rps),
+        )?;
+        out.write(
+            &format!("data/lt_{key}_response.csv"),
+            &loadtest::chart_data(&report.response),
+        )?;
+        loadtest::print_overview(run, &report);
+    }
+    for graph in loadtest::GRAPHS {
+        let path = loadtest_dir.join(graph);
+        if path.exists() {
+            out.copy(&path, &format!("figures/{graph}"))?;
+        }
     }
     Ok(())
 }
@@ -64,7 +103,7 @@ struct Output {
 
 impl Output {
     fn new(dir: PathBuf) -> Result<Self, String> {
-        for sub in ["tables", "data"] {
+        for sub in ["tables", "data", "figures"] {
             fs::create_dir_all(dir.join(sub)).map_err(|e| format!("{}: {e}", dir.display()))?;
         }
         Ok(Self { dir })
@@ -73,6 +112,13 @@ impl Output {
     fn write(&self, path: &str, content: &str) -> Result<(), String> {
         let path = self.dir.join(path);
         fs::write(&path, content).map_err(|e| format!("{}: {e}", path.display()))?;
+        eprintln!("wrote {}", path.display());
+        Ok(())
+    }
+
+    fn copy(&self, from: &Path, path: &str) -> Result<(), String> {
+        let path = self.dir.join(path);
+        fs::copy(from, &path).map_err(|e| format!("{}: {e}", path.display()))?;
         eprintln!("wrote {}", path.display());
         Ok(())
     }

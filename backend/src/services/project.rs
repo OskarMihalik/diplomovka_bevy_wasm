@@ -96,13 +96,19 @@ pub async fn insert_project_service(
     State(pool): State<ConnectionPool>,
     Json(dto): Json<NewProjectDto>,
 ) -> Json<ProjectsDtoResponse> {
-    let connection = match pool.get().await {
+    let mut connection = match pool.get().await {
         Ok(connection) => connection,
         Err(error) => return map_err_pool_con(error),
     };
 
+    // one transaction, so a project is never left without its admin (rolled back on drop)
+    let transaction = match connection.transaction().await {
+        Ok(transaction) => transaction,
+        Err(error) => return map_sql_error(error),
+    };
+
     let new_project_id = match insert_project()
-        .bind(connection.client(), &dto.name, &dto.description, &claims.id)
+        .bind(&transaction, &dto.name, &dto.description, &claims.id)
         .one()
         .await
     {
@@ -112,7 +118,7 @@ pub async fn insert_project_service(
 
     let result = insert_project_user()
         .params(
-            connection.client(),
+            &transaction,
             &InsertProjectUserParams {
                 project_id: new_project_id,
                 user_id: claims.id,
@@ -124,6 +130,10 @@ pub async fn insert_project_service(
     match result {
         Ok(_) => (),
         Err(error) => return map_sql_error(error),
+    }
+
+    if let Err(error) = transaction.commit().await {
+        return map_sql_error(error);
     }
 
     return get_projects(connection.client(), &claims.id).await;

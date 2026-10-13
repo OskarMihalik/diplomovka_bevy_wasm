@@ -16,16 +16,21 @@ export const getModel = async (req: AuthRequest, res: Response) => {
 
 export const getModels = async (req: AuthRequest, res: Response) => {
     const projectId = parseInt(req.params.project_id as string);
-    // matching rust model `select_models` behavior via innerJoin
-    const models = await db.selectFrom('Model')
-        .selectAll()
-        .where('project_id', '=', projectId)
-        // Need to check project-user access if necessary, rust code queries `select_models` which presumably limits by project
+    const models = await selectModels(req.user!.id, projectId);
+    jsonOk(res, models);
+};
+
+// Equivalent of Rust select_models
+const selectModels = (userId: number, projectId: number) =>
+    db.selectFrom('Model as m')
+        .innerJoin('ProjectUser as pu', 'pu.project_id', 'm.project_id')
+        .selectAll('m')
+        .where('m.project_id', '=', projectId)
+        .where('pu.user_id', '=', userId)
+        .orderBy('m.created_at', 'desc')
         .limit(100)
         .offset(0)
         .execute();
-    jsonOk(res, models);
-};
 
 // Use Multer for memory storage, then stream out to match Rust
 // Rust uploads file named `{inserted_model_id}.glb` into `backend/assets/models/`
@@ -66,12 +71,7 @@ export const uploadModel = async (req: AuthRequest, res: Response) => {
         await fs.writeFile(targetPath, req.file.buffer);
     } // If multipart doesn't have file it continues
 
-    const models = await db.selectFrom('Model')
-        .selectAll()
-        .where('project_id', '=', projectId)
-        .limit(100)
-        .offset(0)
-        .execute();
+    const models = await selectModels(req.user!.id, projectId);
 
     jsonOk(res, models);
 };

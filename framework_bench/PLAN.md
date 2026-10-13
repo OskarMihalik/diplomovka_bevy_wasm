@@ -26,7 +26,13 @@ This plan addresses Reviewer 1's item 10 (backend benchmarks: Axum/Tokio vs Expr
 
 ## 2. What stays unchanged
 
-- `backend/`, `backend-express/`, `loadtest/` (including `*Report*.html` and `*.png`), `docker-compose.yml`, and every existing CSV in `bencmark_results/`.
+- `backend/`, `backend-express/`, `loadtest/` (including `*Report*.html` and `*.png`), `docker-compose.yml`, and every existing CSV in `bencmark_results/`, **except for the scenario fixes below**.
+- Scenario fixes made before C (the old reports predate them, so their numbers are not comparable with new runs):
+  - `loadtest`: one account per virtual user instead of one shared account. With the shared account, each user took the first project of the shared list as its own; in the paper's run only 44 of 1,000 Express deletes succeeded (956 returned 403) and the Express tags went into about 44 projects.
+  - `loadtest`: a request fails when the backend answers with an `Err` body (both backends return most errors as HTTP 200); requests are named per endpoint; goose projects are deleted and the tables vacuumed before each attack.
+  - `backend-express`: the project, model and tag lists use the same `DISTINCT`, membership join and `ORDER BY created_at DESC` as the Cornucopia queries.
+  - `backend`: project creation runs in one transaction, as in Express.
+  - `docker-compose.yml`: `backend-express` is back (profile `loadtest`), and both backends get the same open-file limit (65,536; with the default of 1,024, Axum failed uploads with "Too many open files").
 - Experiment C needs only two small additions to the existing backends, controlled by env vars. When the env var isn't set, the backend behaves exactly as it does now:
   - `DB_POOL_SIZE` (default 10, as today)
   - `KEEP_ALIVE_TIMEOUT_MS`, for Express only (default: Node's default, as today)
@@ -238,8 +244,8 @@ The comparisons are then:
 - `db_snapshot.sh` creates a `bevy_seed` database (schema plus the test user).
 - Before every run: `DROP DATABASE bevy; CREATE DATABASE bevy TEMPLATE bevy_seed`. This is fast and gives every run an identical starting state.
 
-**Scenarios** (copied from the old `loadtest`, to keep continuity with the paper):
-- `tag`: 1000 users; login → create project → upload model → repeatedly create tags → delete project
+**Scenarios** (copied from the fixed `loadtest`, see section 2):
+- `tag`: 1000 users, each with its own account from the seed DB; login → create project → upload model → repeatedly create tags → delete project
 - `login`: 100 users, repeated login
 
 **Cells:** 4 configurations × 2 scenarios × profiles P0/P3/P5.
