@@ -6698,6 +6698,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d55d956fa96f5ec02be2e13af0e20391a5aa83d6a074e3ad368959d0fab299ea"
 
 [[package]]
+name = "qbench"
+version = "0.1.0"
+dependencies = [
+ "bb8",
+ "bb8-postgres",
+ "cornucopia_async",
+ "libc",
+ "model",
+ "tokio",
+ "tokio-postgres",
+]
+
+[[package]]
 name = "quick-error"
 version = "1.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"

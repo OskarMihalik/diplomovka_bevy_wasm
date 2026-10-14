@@ -1,0 +1,8 @@
+*
+!Cargo.lock
+!model/Cargo.toml
+!model/build.rs
+!model/src
+!model/queries
+!framework_bench/query_bench/rust/Cargo.toml
+!framework_bench/query_bench/rust/src

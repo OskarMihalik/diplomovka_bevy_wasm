@@ -1,0 +1,6 @@
+*
+!backend-express/src/db/types.ts
+!framework_bench/query_bench/node/package.json
+!framework_bench/query_bench/node/package-lock.json
+!framework_bench/query_bench/node/tsconfig.json
+!framework_bench/query_bench/node/src/index.ts

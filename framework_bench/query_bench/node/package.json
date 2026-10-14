@@ -1,0 +1,21 @@
+{
+  "name": "qbench-node",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Experiment B client, Kysely variant (see framework_bench/PLAN.md, section 6)",
+  "main": "dist/index.js",
+  "scripts": {
+    "prebuild": "mkdir -p src/db && cp ../../../backend-express/src/db/types.ts src/db/types.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "kysely": "0.29.2",
+    "pg": "8.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "25.9.0",
+    "@types/pg": "8.20.0",
+    "typescript": "6.0.3"
+  }
+}

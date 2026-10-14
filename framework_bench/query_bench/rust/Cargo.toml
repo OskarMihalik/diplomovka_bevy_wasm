@@ -1,0 +1,15 @@
+[package]
+name = "qbench"
+version = "0.1.0"
+edition = "2024"
+
+# Experiment B client, Cornucopia variant: the `model` crate's generated queries over bb8, as in
+# `backend/`. Build with SKIP_DB_BUILD=1 so `model` uses the committed `cornucopia.rs`.
+[dependencies]
+model = { path = "../../../model" }
+bb8 = "0.8.3"
+bb8-postgres = "0.8.1"
+cornucopia_async = "0.6.0"
+libc = "0.2"
+tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread"] }
+tokio-postgres = "0.7.7"

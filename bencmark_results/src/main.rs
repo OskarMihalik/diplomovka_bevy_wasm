@@ -3,12 +3,14 @@
 //! - `out/data/*.csv`    data for the pgfplots figures in `paper/figures`
 //!
 //! `cargo run -p bencmark_results`, rerun after adding benchmark rows.
-//! Reads rendering_fps.csv, rendering_load.csv, framework_load.csv (see framework.rs) and the
+//! Reads rendering_fps.csv, rendering_load.csv, framework_load.csv (see framework.rs),
+//! query_layer.csv (see query.rs) and the
 //! Goose reports in `../loadtest` (see loadtest.rs), whose resource graphs go to `out/figures`.
 
 mod data;
 mod framework;
 mod loadtest;
+mod query;
 mod stats;
 
 use data::{MODELS, Measurement, Platform, Row};
@@ -62,6 +64,15 @@ fn run() -> Result<(), String> {
         out.write("tables/fw_scaling.tex", &framework::scaling_table(&rows))?;
         out.write("tables/fw_network.tex", &framework::network_table(&rows))?;
         framework::print_overview(&rows);
+    }
+
+    // Experiment B of framework_bench (Cornucopia vs Kysely), skipped until the CSV exists
+    let query_csv = root.join("query_layer.csv");
+    if query_csv.exists() {
+        let rows = query::read(&query_csv)?;
+        out.write("tables/qb_summary.tex", &query::summary_table(&rows))?;
+        out.write("tables/qb_steps.tex", &query::steps_table(&rows))?;
+        query::print_overview(&rows);
     }
 
     // Full-stack load test (Axum vs Express with the database), from the Goose reports

@@ -105,6 +105,20 @@
 \input{../out/tables/fw_network.tex}
 \end{table*}
 
+\begin{table}[!t]
+\centering
+\caption{Database layer without HTTP: Cornucopia (Rust, bb8) vs Kysely (Node.js, \texttt{pg}), one scenario of four steps run by 10 workers over a pool of 10 connections, 10{,}000 scenarios per run, mean $\pm$ standard deviation over five runs. $\Delta = (\text{Cornucopia} - \text{Kysely})/\text{Kysely}$; $p$: Welch's $t$-test, Holm-adjusted over the 11 comparisons of Tables~\ref{tab:qb_summary} and~\ref{tab:qb_steps}; bold: $p < 0.05$ and $|\Delta| \geq 5\%$. The client ran on 1 core, Postgres~14 on 4.}
+\label{tab:qb_summary}
+\resizebox{\columnwidth}{!}{\input{../out/tables/qb_summary.tex}}
+\end{table}
+
+\begin{table}[!t]
+\centering
+\caption{Latency of each step of the database scenario in ms (including taking a pool connection), median and 99th percentile, mean over five runs. $\Delta$ and $p$ refer to the median, as in Table~\ref{tab:qb_summary}.}
+\label{tab:qb_steps}
+\resizebox{\columnwidth}{!}{\input{../out/tables/qb_steps.tex}}
+\end{table}
+
 \input{../out/tables/lt_axum.tex}
 \input{../out/tables/lt_express.tex}
 \input{../out/tables/lt_axum_login.tex}

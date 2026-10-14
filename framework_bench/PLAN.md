@@ -9,7 +9,7 @@ This plan addresses Reviewer 1's item 10 (backend benchmarks: Axum/Tokio vs Expr
 | Goal | Reviewer item | Experiment |
 |---|---|---|
 | Compare the Axum/Tokio and Express/Node frameworks with no database | 10 | **A**: framework |
-| Compare Cornucopia and Kysely as query layers, against each language's raw driver | 10 | **B**: query layer |
+| Compare Cornucopia and Kysely as query layers (one DB scenario, no HTTP) | 10 | **B**: query layer |
 | Re-measure RQ3 with fair CPU allocation, repeated runs and percentiles | 10, 15 | **C**: full stack |
 | Measure the effect of DB pool size | 10 | **C2**: pool sweep |
 | Measure behavior under network latency and packet loss | 12 | **A** and **C**, profiles P0/P3/P5 |
@@ -43,7 +43,7 @@ This plan addresses Reviewer 1's item 10 (backend benchmarks: Axum/Tokio vs Expr
 
 ## 3. New layout
 
-Items marked (C) or (B) are not built yet.
+Items marked (C) are not built yet. B is built (section 6).
 
 ```
 framework_bench/
@@ -62,13 +62,13 @@ framework_bench/
     host_prepare.sh          turbo off, performance governor, AC check (sudo)
     db_snapshot.sh           (C) create seed DB template
   docker-compose.full.yml    (C) backend, backend-express, postgres, goose (edge_net + db_net)
-  query_bench/               (B) rust/: tokio-postgres raw vs Cornucopia; node/: pg raw vs Kysely
+  query_bench/               B: rust/ + node/ qbench clients, seed.sql, run.sh (section 6.5)
   results/raw/<run_id>/      attack.json, attack.log, resources.csv, netem.txt, server.log (gitignored)
 
 bencmark_results/
   framework_load.csv         A
   framework_load_pilot.csv   A, --pilot runs
-  query_layer.csv            (B)
+  query_layer.csv            B
   backend_fullstack.csv      (C) + C2
   src/backend.rs             new loader + stats + table/figure generation
   paper/figures/be_*.tex     new figures
@@ -207,31 +207,94 @@ Options: `--build`, `--pilot` (1 repetition, 20 s windows, separate CSV), `--rep
 
 ## 6. Experiment B: query layer, Cornucopia vs Kysely
 
-**Why the raw drivers are included:** comparing Cornucopia (Rust) with Kysely (TypeScript) directly mixes two effects, the language/driver and the abstraction layer. Four variants keep them apart:
+**Question:** how fast is the database layer of each backend on its own, with no HTTP: Cornucopia (`backend/`) vs Kysely (`backend-express/`)?
 
-| Variant | Language | Layer |
+### 6.1 Variants
+
+Both run exactly as in the backends:
+
+| id | Language | Layer | Pool |
+|---|---|---|---|
+| `cornucopia` | Rust | the `model` crate's generated functions (`cornucopia_async` 0.6), `tokio-postgres` | bb8, 10 connections |
+| `kysely` | Node | Kysely + `PostgresDialect`, types from `backend-express/src/db/types.ts` | `pg.Pool`, 10 connections |
+
+**Statement handling (a note for the discussion):** with bb8, Cornucopia prepares the statement again on every call (`cornucopia_async/src/private.rs:21`), which costs 2 round trips per query. `pg` sends an unnamed query in 1 round trip. This belongs to "the layer as the app uses it", so the benchmark keeps it as it is and the paper mentions it as a possible explanation.
+
+### 6.2 Scenario
+
+One **iteration** runs these steps in order, using the worker's own user and project:
+
+| Step | Query (Cornucopia / Kysely source) | Kind |
 |---|---|---|
-| `rust-raw` | Rust | `tokio-postgres` + bb8, prepared statements |
-| `rust-cornucopia` | Rust | Cornucopia-generated functions + bb8 |
-| `node-raw` | Node | `pg` Pool, parameterized queries |
-| `node-kysely` | Node | Kysely + `pg` Pool |
+| 1 `user_by_email` | `select_user` / login in `auth.ts` | point lookup, 1 row |
+| 2 `tags_by_project` | `select_tags` / `getTagsForProject`, `LIMIT 100` | 2 joins + sort, 100 rows |
+| 3 `insert_tag` | `insert_tag` / `insertTag` | insert |
+| 4 `project_tx` | `insert_project` + `ProjectUser` insert in one transaction, then `delete_project` | transaction + cascading delete |
 
-The comparisons are then:
-- **Abstraction overhead:** Cornucopia vs raw, Kysely vs raw
-- **Stack:** Cornucopia vs Kysely
-- **Driver:** raw vs raw
+- The queries are copied from `model/queries/*.sql` and from the controllers in `backend-express/src/controllers/`, so both variants send the same SQL. The only change: Kysely's login query selects the same 5 columns as Cornucopia instead of `selectAll()`.
+- Kysely's inserts leave `updated_at` to the column default, as Cornucopia's do (the controllers set it to `new Date()`).
+- Every step takes its own pool connection, as one backend request does (the transaction holds one for its 4 statements; the delete is a separate request, as in the app).
+- Each step reads the rows it gets back into a content checksum (ids, status ids, title lengths, positions), so nothing is skipped and both variants can be compared. The rows aren't mapped to DTOs; that's the framework's work, which A measures.
+- `Tag.project_id` has no index in the schema, so `tags_by_project` scans the whole Tag table, which grows by 1 row per scenario during a run (from 1,000 to ~12,000). That's the app's real schema and it's the same for both variants.
 
-**Queries:** the same SQL the apps run, taken from the existing `backend/` queries and the Kysely code:
-1. `select user by email` (the login lookup)
-2. `insert tag`
-3. `select tags by project` (~50 rows)
-4. `insert project + delete project` (cascade)
+### 6.3 One run
 
-**Harness:** an in-process loop with C concurrent tasks (C = 10 and C = 50, the second exceeding the pool to show queuing), 30 s per query, 5 s warm-up, pool size 10. The client is pinned to 1 P-core (fair to Node's single JS thread), and Postgres to its own 2 P-cores. The DB is restored from the template before each repetition, and the variant order is randomized.
+- **10 workers** (= pool size), each with its own user and project
+- each worker: **100 warm-up iterations** (not measured), then **1,000 measured iterations**
+- so one run = 10,000 measured scenarios = 40,000 database operations (50,000 statements)
+- The time of every step and of the whole iteration is stored (10,000 values each), and the percentiles are exact (nearest rank). The same code exists in both languages.
 
-**Metrics:** ops/s, p50/p95/p99 latency, client CPU-seconds per 1k ops, client RSS.
+**A run creates one CSV row.**
 
-**Time:** 4 variants × 4 queries × 2 concurrency levels × 35 s × 5 repetitions ≈ **1.3 h**.
+### 6.4 Repetitions
+
+- **5 runs per variant**, alternating `cornucopia, kysely, kysely, cornucopia, …` so a slow drift (temperature, disk) affects both equally.
+- Before every run, the DB is restored from the seed: `DROP DATABASE qbench; CREATE DATABASE qbench TEMPLATE qbench_seed`.
+- In total: 10 runs → 10 CSV rows.
+
+### 6.5 Setup
+
+```
+framework_bench/query_bench/
+  README.md        how to run B
+  seed.sql         10 users, each with 1 project, 2 statuses and 100 tags (half with a status);
+                   loaded after the Prisma migrations, which run.sh applies in order (the schema of both backends)
+  rust/            `qbench` binary (workspace member), uses the `model` crate (SKIP_DB_BUILD=1)
+  node/            `qbench` in TS, kysely 0.29.2 + pg 8.21.0 (the versions in backend-express); the Kysely
+                   types are copied from backend-express/src/db/types.ts at build time
+  run.sh           [--build] [--smoke] [--reps N] [--csv PATH] [--pg-cpus LIST] [--allow-turbo]
+docker/qbench-rust.Dockerfile, docker/qbench-node.Dockerfile
+```
+
+- **Postgres:** `postgres:14-alpine` (as in `docker-compose.yml`), cpuset `8,10` by default (`--pg-cpus`, see 6.8), 2 GiB, `shared_buffers=256MB`, `synchronous_commit=off` (otherwise the inserts mostly measure the NVMe fsync, the same for both variants)
+- **Client:** cpuset `2` (1 core, fair to Node's single JS thread), 1 GiB. Rust runs with `TOKIO_WORKER_THREADS=1`.
+- Both containers are on one Docker network with no netem. `sudo scripts/host_prepare.sh` runs first (turbo off, as in A).
+- **Same command line in both languages:** `qbench --rep <n> --workers 10 --warmup 100 --iterations 1000`. All 10 pool connections are opened before the warm-up. At the end, the client prints **one CSV row** to stdout and `run.sh` adds the host columns in front and appends it to `bencmark_results/query_layer.csv`.
+- `run.sh` refuses to run with turbo on (as the A runner), unless `--allow-turbo` is given.
+- The client measures its own CPU and memory:
+  - Rust: `getrusage` (CPU time) and `VmHWM` from `/proc/self/status` (peak RSS)
+  - Node: `process.cpuUsage()` and `process.resourceUsage().maxRSS`
+
+### 6.6 Check before the runs
+
+`run.sh --smoke` (also run automatically before every batch): 1 worker, 1 iteration per variant on a fresh DB. Both variants must return the same checksum and row count and leave the same table counts. ✅ Both give checksum 11300, 105 rows, Tag/Project/ProjectUser = 1001/10/10.
+
+### 6.7 Time
+
+The measured part of a run takes 4–9 s (pilot), plus ~2 s for the DB restore and the container start. 10 runs ≈ **2 min**, plus ~15 s to start Postgres and build the seed.
+
+### 6.8 Pilot (turbo on, 2026-10-14)
+
+| Postgres cores | Variant | scenarios/s | p50 ms | client CPU ms/scenario | peak RSS MiB | Postgres CPU |
+|---|---|---|---|---|---|---|
+| 2 (`8,10`) | cornucopia | 1,148–1,161 | 8.0–8.1 | 0.19–0.20 | 6 | ~1.9 of 2 cores |
+| 2 (`8,10`) | kysely | 1,162–1,164 | 8.1–8.2 | 0.42 | 113 | ~1.8 of 2 cores |
+| 4 (`4,6,8,10`) | cornucopia | 2,262 | 4.1 | 0.18 | 6 | 3.6 of 4 cores |
+| 4 (`4,6,8,10`) | kysely | 1,906 | 4.9 | 0.39 | 112 | 2.8 of 4 cores |
+
+- **With 2 cores, Postgres is the bottleneck:** both variants reach the same throughput, and the difference is visible only in the client CPU (Kysely uses ~2.2× more) and memory. The 2-core default comes from C, where Postgres shares the machine with the servers and Goose.
+- **With 4 cores**, Postgres is no longer saturated and the throughput separates (Cornucopia +19 %). Nothing else runs in B, so the 4 cores are free.
+- **Open decision before the full run:** use `--pg-cpus 4,6,8,10` (recommended: B then compares the layers rather than the database) or keep `8,10` (consistent with C). The CSV records `pg_cpus` either way, so both can be run.
 
 ---
 
@@ -268,7 +331,7 @@ If the supervisor wants data anyway, add an `axum-sync-db` variant: the same bac
 
 ## 9. Output formats
 
-All three CSVs share these metadata columns:
+The A and C CSVs share these metadata columns:
 `run_id,date,host,os,kernel,cpu_model,turbo,governor,docker_version,server_image,seed,rep,config,framework,cores,cpuset,profile,rtt_ms,jitter_ms,loss_pct,measured_rtt_ms,netem_drops_client,netem_drops_server,tcp_retrans,client_saturated,goose_cpu_avg_cores,cpu_temp_max_c,cpu_freq_avg_mhz`
 
 **`framework_load.csv` (A)** adds (latencies in ms, memory in MiB):
@@ -283,8 +346,8 @@ All three CSVs share these metadata columns:
 
 Recording `status_0` and `status_5xx` directly fixes the inconsistent failure counts currently in the paper.
 
-**`query_layer.csv` (B)** adds:
-`variant,language,layer,query,concurrency,pool_size,ops,ops_per_s,lat_p50,lat_p95,lat_p99,cpu_s_per_1k_ops,rss_peak_mib`
+**`query_layer.csv` (B)** is simpler: one row per run, its own columns (latencies in ms, `rows` = rows read or written, 105 per scenario, per scenario `scen_*` and per step `q1`–`q4` = user_by_email, tags_by_project, insert_tag, project_tx):
+`run_id,date,host,cpu_model,turbo,pg_cpus,variant,language,layer,rep,workers,pool_size,scenarios,duration_s,scenarios_per_s,errors,rows,scen_mean,scen_p50,scen_p95,scen_p99,q1_p50,q1_p99,q2_p50,q2_p99,q3_p50,q3_p99,q4_p50,q4_p99,cpu_s,cpu_ms_per_scenario,rss_peak_mib`
 
 Raw files go to `framework_bench/results/raw/<run_id>/` (gitignored): the attack summary with the latency histogram, the attack and server logs, the resource time series, and the ping and `tc -s` output.
 
@@ -296,7 +359,7 @@ Raw files go to `framework_bench/results/raw/<run_id>/` (gitignored): the attack
 - **Per cell:** mean ± SD and median.
 - **Comparisons:**
   - A and C: Axum vs Express at 1c and at 4c
-  - B: the variant pairs from section 6
+  - B: Cornucopia vs Kysely (5 runs each)
   - C2: pool sizes against pool 10
 - **Effect and test:**
   - Δ = (A − B)/B, with a 95% CI from Welch's interval
@@ -317,7 +380,8 @@ Everything is generated by `bencmark_results`. Nothing in these tables is edited
 | `tables/be_fullstack.tex` | C: RPS, p50, p99, errors (0/5xx), CPU, peak RAM; 4 configurations × 2 scenarios (P0). The main table for RQ3 |
 | `tables/be_fullstack_ttest.tex` | C: Δ and p for Axum vs Express at 1c and 4c, plus scaling efficiency |
 | `tables/be_framework.tex` | A: RPS and p99 per endpoint, 4 configurations (P0) |
-| `tables/be_query.tex` | B: ops/s and p99, 4 variants × 4 queries, with Δ |
+| `tables/qb_summary.tex` | ✅ B: throughput, scenario latency (mean/p50/p95/p99), client CPU per scenario, peak RSS; Cornucopia vs Kysely, mean ± SD, Δ and Holm-adjusted p |
+| `tables/qb_steps.tex` | ✅ B: p50/p99 of each step, Δ and p on the p50 |
 | `tables/be_pool.tex` | C2: RPS and p99 for pool sizes 5/10/20/50 |
 | `tables/be_network.tex` | A and C: p99 and RPS for P0/P3/P5 |
 | `figures/be_scaling.tex` | 1c vs 4c RPS (A and C) |
@@ -353,12 +417,12 @@ Everything is generated by `bencmark_results`. Nothing in these tables is edited
 | 4 | **A full run** | `framework_load.csv` | overnight, ~6.8 h |
 | 5 | C: env vars in the backends, DB template, `docker-compose.full.yml`, fullstack attack | ready for C | 1 day |
 | 6 | C pilot, then **C + C2 full run** | `backend_fullstack.csv` | overnight, ~3.8 h |
-| 7 | B: Rust + Node harness, Cornucopia and Kysely on the same SQL | ready for B | 1 day |
-| 8 | **B run** | `query_layer.csv` | ~1.3 h |
+| 7 | ✅ B: `seed.sql`, Rust + Node `qbench`, `run.sh`, smoke check and pilot (section 6.8) | ready for B | done |
+| 8 | ✅ **B run** (5 runs per variant, turbo off, `--pg-cpus 4,6,8,10`) + tables (`bencmark_results/src/query.rs`) | `query_layer.csv`, `qb_*.tex` | done |
 | 9 | `bencmark_results`: loaders, statistics, tables, figures | `be_*.tex` | 1 day |
 | 10 | Paper + `changes_1.md` + response letter (items 10, 12) | revision | 1–2 days |
 
-Total compute time is about 12 h (two nights). Total work is about 8–10 days.
+Total compute time is about 11 h (two nights). Total work is about 8–10 days.
 
 ---
 
@@ -373,5 +437,6 @@ Total compute time is about 12 h (two nights). Total work is about 8–10 days.
 | Netem not actually applied | RTT probe and drop counters stored for every run |
 | DB state drifting between runs | restored from the template before every run |
 | Express 4c cluster balancing | Node's default round-robin scheduling (on Linux); recorded in the README |
-| Cornucopia vs Kysely mixing language and layer | raw-driver baselines in both languages |
+| Cornucopia vs Kysely also mixes the language, the driver and the statement protocol | stated as a limitation: B compares the layers as the backends use them; the per-call prepare (6.1) is named in the discussion |
+| The inserts measuring the disk instead of the layer | `synchronous_commit=off`, DB restored before every run |
 | The results weaken the "about 2×" claim | acceptable: the paper already frames claims modestly, and reviewers prefer defensible numbers |

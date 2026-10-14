@@ -1,0 +1,4 @@
+node_modules/
+dist/
+# copied from backend-express by `npm run build` (prebuild) and by the Dockerfile
+src/db/
