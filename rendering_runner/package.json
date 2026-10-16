@@ -1,0 +1,10 @@
+{
+  "name": "rendering_runner",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Runs the rendering and loading benchmarks from a matrix CSV, see PLAN.md",
+  "dependencies": {
+    "playwright": "1.63.0"
+  }
+}

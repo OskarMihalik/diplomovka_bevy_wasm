@@ -18,6 +18,6 @@
 \addplot[only marks, mark=triangle*, mark options={fill=bevynative, draw=bevynative!70!black},
   error bars/.cd, y dir=plus, y explicit, error bar style={bevynative!70!black, thick, dotted}]
   table[x expr=\thisrow{x}+0.22, y=bevy_native_p50, y error plus=bevy_native_up] {\benchdata/frametimes.csv};
-\legend{Bevy (WASM), Babylon.js (WASM), Bevy (native)}
+\legend{Bevy (Wasm), Babylon.js (Wasm), Bevy (native)}
 \end{semilogyaxis}
 \end{tikzpicture}

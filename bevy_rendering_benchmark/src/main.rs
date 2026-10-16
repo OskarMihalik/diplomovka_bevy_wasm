@@ -7,6 +7,7 @@ mod config;
 mod file_picker;
 mod load_timing;
 mod measure;
+mod report;
 mod scene;
 mod system_info;
 
@@ -24,11 +25,16 @@ use config::BenchConfig;
 pub struct ModelAssetPath(pub String);
 
 fn main() {
+    #[cfg(not(target_arch = "wasm32"))]
+    system_info::init_local_offset();
     let config = match BenchConfig::from_env() {
         Ok(config) => config,
         Err(error) => {
             #[cfg(target_arch = "wasm32")]
-            web_sys::console::error_1(&error.into());
+            {
+                web_sys::console::error_1(&error.as_str().into());
+                report::error(&error);
+            }
             #[cfg(not(target_arch = "wasm32"))]
             {
                 eprintln!("{error}");
@@ -95,6 +101,15 @@ fn main() {
         load_timing::LoadTimingPlugin,
         bench::BenchPlugin,
     ));
+    // after DefaultPlugins, whose PanicHandlerPlugin installs the hook that logs to the console
+    #[cfg(target_arch = "wasm32")]
+    {
+        let log_panic = std::panic::take_hook();
+        std::panic::set_hook(Box::new(move |info| {
+            log_panic(info);
+            report::error(&format!("panic: {info}"));
+        }));
+    }
     // a picked file inserts it later
     if let Some(model_path) = model_path {
         app.insert_resource(ModelAssetPath(model_path));

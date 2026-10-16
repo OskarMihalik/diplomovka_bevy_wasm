@@ -10,7 +10,7 @@
 //! - `id`         model id for the CSV, defaults to the file name if it is a number (`14.glb`)
 //! - `name`       model name for the CSV, defaults to the name of a known id, else the file name
 //! - `version`    model version for the CSV, defaults to 1
-//! - `runs`       how many measured runs, default 5
+//! - `runs`       how many measured runs, default 5; 0 only measures the load
 //! - `duration`   seconds of one run, the camera does one full orbit in this time, default 60
 //! - `warmup`     seconds before the first run that are not measured, default 5
 //! - `gpu`        `low` or `high`, the wgpu power preference (default from `WGPU_POWER_PREF`, else high)
@@ -19,8 +19,10 @@
 //! - `shadows`    `on` or `off`, shadows of the point light, default on like bevy_diplomovka
 //! - `distance`   meters from the camera to the center of the orbit, default 5.22 like
 //!                bevy_diplomovka, the model is scaled to 0.25 so a 100 m model is 25 m wide
+//! - `pc`         name of the computer in the CSV, default `PC_NAME` at build time, else unknown
 //! - `out`        native only, directory to append `rendering_fps.csv` and `rendering_load.csv` to
 //! - `exit`       native only, `off` keeps the window open after the benchmark
+//! - `report`     web only, url the results are posted to (rendering_runner), read by index.html
 
 use bevy::prelude::*;
 use bevy::render::settings::PowerPreference;
@@ -43,6 +45,7 @@ pub struct BenchConfig {
     pub model_id: String,
     pub model_name: String,
     pub model_version: String,
+    /// 0 = only the load is measured
     pub runs: usize,
     pub duration: f32,
     pub warmup: f32,
@@ -53,6 +56,7 @@ pub struct BenchConfig {
     pub shadows: bool,
     /// orbit radius in meters
     pub distance: f32,
+    pub pc: String,
     #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
     pub out_dir: Option<String>,
     pub exit_when_done: bool,
@@ -152,7 +156,8 @@ impl BenchConfig {
             model_id,
             model_name,
             model_version,
-            runs: (number("runs", 5.)? as usize).max(1),
+            // a negative number saturates to 0
+            runs: number("runs", 5.)? as usize,
             duration: number("duration", 60.)?.max(1.),
             warmup: number("warmup", 5.)?.max(0.),
             power_preference,
@@ -161,6 +166,9 @@ impl BenchConfig {
             msaa,
             shadows: on_off("shadows", true)?,
             distance: number("distance", crate::scene::DEFAULT_DISTANCE)?.max(0.01),
+            pc: get("pc")
+                .unwrap_or(crate::system_info::PC_NAME)
+                .to_string(),
             out_dir: get("out").map(str::to_string),
             exit_when_done: on_off("exit", true)?,
         })
@@ -213,7 +221,8 @@ fn args() -> Result<Vec<(String, String)>, String> {
 #[cfg(not(target_arch = "wasm32"))]
 const USAGE: &str = "usage: bevy_rendering_benchmark --model <path.glb | url> [--id N] [--name NAME] \
 [--version N] [--runs 5] [--duration 60] [--warmup 5] [--gpu low|high] [--resolution 1920x1080] \
-[--msaa 4] [--shadows on|off] [--distance 5.22] [--out DIR] [--exit on|off]";
+[--msaa 4] [--shadows on|off] [--distance 5.22] [--pc NAME] [--out DIR] [--exit on|off]
+--runs 0 only measures the load";
 
 /// `?key=value&...` from the page url, a relative `model` is resolved against the page
 #[cfg(target_arch = "wasm32")]

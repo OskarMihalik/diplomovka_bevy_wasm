@@ -1,0 +1,12 @@
+# The configurations of the old manual rendering_fps.csv (git fb60410), measured again the same
+# way: one launch per configuration with 5 orbits of 60 s after a 5 s warmup. Bevy on the web
+# didn't run london_city and national_airport_by_aditya (4 GB of wasm memory).
+platform,model,distance,repeat,runs,duration,warmup,gpu,resolution,msaa,shadows,expect_gpu
+bevy-native bevy-web babylon-web,barling_wrecks,5.22,1,5,60,5,low,2088x1550,4,on,Intel
+bevy-native bevy-web babylon-web,full_gameready_city_buildings_iv_hongkong,10,1,5,60,5,low,2088x1550,4,on,Intel
+bevy-native bevy-web babylon-web,cai_mep_port_vietnam,5.22,1,5,60,5,low,2088x1550,4,on,Intel
+bevy-native bevy-web babylon-web,administrative_and_warehouse_complex,19000,1,5,60,5,low,2088x1550,4,on,Intel
+bevy-native babylon-web,london_city,19000,1,5,60,5,low,2088x1550,4,on,Intel
+bevy-native babylon-web,national_airport_by_aditya,20,1,5,60,5,low,2088x1550,4,on,Intel
+# test run at another resolution, ignored by bencmark_results/src/data.rs
+# bevy-native,barling_wrecks,5.22,1,5,60,5,low,1920x1080,4,on,Intel

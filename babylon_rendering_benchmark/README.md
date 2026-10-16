@@ -33,7 +33,7 @@ npx http-server backend/assets/models --cors -p 8090
 console. Uncap the browser frame rate first: in Firefox, set `layout.frame_rate` to `0` in
 about:config. In Chrome, start it with `--disable-frame-rate-limit --disable-gpu-vsync`.
 
-`PC_NAME="desktop" npm run build` sets the `pc` column.
+`PC_NAME="desktop" npm run build` sets the default of the `pc` column, `?pc=…` overrides it.
 
 ## Options
 
@@ -45,7 +45,7 @@ about:config. In Chrome, start it with `--disable-frame-rate-limit --disable-gpu
 | `id`         | file name     | model id in the CSV, `14.glb` → 14                           |
 | `name`       | known ids     | model name in the CSV, ids 12–18 are known                   |
 | `version`    | 1             |                                                              |
-| `runs`       | 5             |                                                              |
+| `runs`       | 5             | 0 only measures the load                                     |
 | `duration`   | 60            | seconds per run = one orbit                                  |
 | `warmup`     | 5             | seconds, not measured                                        |
 | `gpu`        | high          | `low` / `high` WebGL power preference                        |
@@ -53,6 +53,8 @@ about:config. In Chrome, start it with `--disable-frame-rate-limit --disable-gpu
 | `msaa`       | 4             | 1, 2, 4, 8                                                   |
 | `shadows`    | on            | point light shadows                                          |
 | `distance`   | 5.22          | camera distance from the center in m (model is scaled 0.25)  |
+| `pc`         | `PC_NAME`     | name of the computer in the CSV                              |
+| `report`     | –             | url the CSV rows, `done` and errors are posted to, used by `rendering_runner` |
 
 ## How it matches the Bevy version
 
@@ -76,3 +78,8 @@ Differences that remain:
 - `entities` counts Babylon scene nodes (meshes, transform nodes, lights, cameras)
 - `first_frame_ms` is, like in Bevy, the first frame after the model was added; shaders
   compiling in the background may still hide parts of it, the warmup covers that
+
+## Automated runs
+
+`rendering_runner` runs this benchmark in Firefox through Playwright from a matrix CSV and appends
+the rows to `bencmark_results`, see [rendering_runner](../rendering_runner).

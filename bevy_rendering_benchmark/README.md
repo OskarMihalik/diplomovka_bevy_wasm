@@ -14,10 +14,10 @@ The CSV rows have the same columns as `load.csv` and `fps.csv`, with `engine,msa
 
 ```sh
 cargo run -p bevy_rendering_benchmark --release -- \
-    --model backend/assets/models/14.glb --gpu low --out bencmark_results
-# all models, one process each
-bevy_rendering_benchmark/run_native.sh --gpu low
+    --model ~/Documents/diplomovka_models/barling_wrecks.glb --gpu low --out bencmark_results
 ```
+
+Several models or settings, native and web together: [rendering_runner](../rendering_runner).
 
 `--gpu low` picks the integrated GPU (the one the browser uses), `--gpu high` picks the dedicated one.
 Set `WGPU_BACKEND=gl` to use OpenGL like the browser does instead of Vulkan.
@@ -52,7 +52,7 @@ Native `--key value`, web `?key=value&...`:
 | `id`         | file name | model id in the CSV, `14.glb` → 14                                                            |
 | `name`       | known ids | model name in the CSV, ids 12–18 are known                                                    |
 | `version`    | 1         |                                                                                               |
-| `runs`       | 5         |                                                                                               |
+| `runs`       | 5         | 0 only measures the load                                                                      |
 | `duration`   | 60        | seconds per run = one orbit                                                                   |
 | `warmup`     | 5         | seconds, not measured                                                                         |
 | `gpu`        | high      | `low` / `high` wgpu power preference                                                          |
@@ -60,5 +60,12 @@ Native `--key value`, web `?key=value&...`:
 | `msaa`       | 4         | 1, 2, 4, 8                                                                                    |
 | `shadows`    | on        | point light shadows                                                                           |
 | `distance`   | 5.22      | camera distance from the center in m (model is scaled 0.25)                                   |
+| `pc`         | `PC_NAME` | name of the computer in the CSV, default `PC_NAME` at build time, else `unknown`              |
 | `out`        | –         | native: directory to append the CSVs to                                                       |
 | `exit`       | on        | native: close the window when done                                                            |
+| `report`     | –         | web: url the CSV rows, `done` and errors are posted to, used by `rendering_runner`            |
+
+## Automated runs
+
+[rendering_runner](../rendering_runner) runs the native and web benchmarks from a matrix CSV and
+appends the rows to `bencmark_results`.

@@ -1,6 +1,7 @@
 // CSV rows, the same columns as bevy_rendering_benchmark, with `engine` = babylon
 
-import { BUILD, PC_NAME, browser, cpuCores, csvRow, date, os } from "./systemInfo.js";
+import { report } from "./report.js";
+import { BUILD, browser, cpuCores, csvRow, date, os } from "./systemInfo.js";
 
 /** Columns in front of every CSV row, fps.csv and load.csv start the same without the first three */
 export const COMMON_CSV_HEADER =
@@ -14,7 +15,7 @@ function commonFields(engine, config) {
     config.shadows ? "on" : "off",
     config.distance.toFixed(2),
     date(),
-    PC_NAME,
+    config.pc,
     os(),
     cpuCores(),
     engine.getGlInfo().renderer,
@@ -30,9 +31,10 @@ function commonFields(engine, config) {
   ];
 }
 
-/** Logs `summary` with the CSV row, returns the row */
+/** Logs `summary` with the CSV row and reports it to the runner, returns the row */
 export function emitCsv(engine, config, fileName, header, fields, summary) {
   const row = csvRow([...commonFields(engine, config), ...fields]);
   console.log(`${summary}\n----- csv: ${fileName}\n${COMMON_CSV_HEADER},${header}\n${row}`);
+  report({ file: fileName, header: `${COMMON_CSV_HEADER},${header}`, row });
   return row;
 }

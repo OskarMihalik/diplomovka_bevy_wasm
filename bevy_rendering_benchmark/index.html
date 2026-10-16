@@ -38,6 +38,25 @@
       </label>
     </div>
     <script>
+      // Posts results to rendering_runner when the url has `?report=<url>`, one message after
+      // another so `done` arrives after the last row. src/report.rs calls it for every CSV row,
+      // at the end and on errors.
+      (() => {
+        const url = new URLSearchParams(location.search).get("report");
+        if (!url) return;
+        let queue = Promise.resolve();
+        window.benchReport = (message) => {
+          const body = JSON.stringify(message);
+          queue = queue
+            .then(() => fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body }))
+            .catch((error) => console.error("report failed:", error));
+        };
+        // a wasm trap (e.g. out of memory) isn't a Rust panic
+        addEventListener("error", (event) => window.benchReport({ error: String(event.error ?? event.message) }));
+        addEventListener("unhandledrejection", (event) => window.benchReport({ error: String(event.reason) }));
+      })();
+    </script>
+    <script>
       // Reads the picked model into memory, the wasm app takes it from window.benchModelFile
       (() => {
         if (new URLSearchParams(location.search).get("model")) return;

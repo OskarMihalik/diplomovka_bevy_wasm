@@ -14,6 +14,6 @@
   table[x=triangles, y=mean, y error=sd] {\benchdata/scalability_babylon_wasm.csv};
 \addplot[bevynative!80!black, thick, dotted, mark=triangle*, mark options={solid, fill=bevynative}, bench/errorbars]
   table[x=triangles, y=mean, y error=sd] {\benchdata/scalability_bevy_native.csv};
-\legend{Bevy (WASM), Babylon.js (WASM), Bevy (native)}
+\legend{Bevy (Wasm), Babylon.js (Wasm), Bevy (native)}
 \end{semilogxaxis}
 \end{tikzpicture}

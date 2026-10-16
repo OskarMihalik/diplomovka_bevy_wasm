@@ -32,7 +32,8 @@ bevy = { version = "0.19", default-features = false, features = [
     "http",
     "https",
 ] }
-time = "0.3"
+# local-offset: native dates in local time like on the web, see system_info.rs
+time = { version = "0.3", features = ["local-offset"] }
 # keep in sync with bevy_diplomovka, trunk needs the matching wasm-bindgen-cli
 wasm-bindgen = "=0.2.121"
 js-sys = "0.3.66"

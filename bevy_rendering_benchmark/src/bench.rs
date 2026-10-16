@@ -14,6 +14,7 @@ use std::f32::consts::TAU;
 use crate::config::BenchConfig;
 use crate::load_timing::ModelLoadTiming;
 use crate::measure::MeasureModel;
+use crate::report;
 use crate::scene::{BenchCamera, BenchModel, orbit_transform};
 use crate::system_info;
 
@@ -81,16 +82,28 @@ fn start_warmup(
     mut bench: ResMut<Bench>,
     config: Res<BenchConfig>,
     q_models: Query<Has<ModelLoadTiming>, With<BenchModel>>,
+    mut exit: MessageWriter<AppExit>,
 ) {
     // no model yet while it is being picked on the page
     let shown = !q_models.is_empty() && q_models.iter().all(|loading| !loading);
-    if matches!(bench.phase, Phase::Loading) && shown {
-        info!(
-            "Benchmark: {:.0} s warmup, then {} runs of {:.0} s",
-            config.warmup, config.runs, config.duration
-        );
-        bench.phase = Phase::Warmup { elapsed: 0. };
+    if !matches!(bench.phase, Phase::Loading) || !shown {
+        return;
     }
+    // the load row was emitted when ModelLoadTiming was removed
+    if config.runs == 0 {
+        info!("Benchmark finished, load only");
+        bench.phase = Phase::Done;
+        report::done();
+        if config.exit_when_done && cfg!(not(target_arch = "wasm32")) {
+            exit.write(AppExit::Success);
+        }
+        return;
+    }
+    info!(
+        "Benchmark: {:.0} s warmup, then {} runs of {:.0} s",
+        config.warmup, config.runs, config.duration
+    );
+    bench.phase = Phase::Warmup { elapsed: 0. };
 }
 
 fn record_frame_time(time: Res<Time<Real>>, config: Res<BenchConfig>, mut bench: ResMut<Bench>) {
@@ -244,6 +257,7 @@ fn finish_run(
             config.runs,
             bench.rows.join("\n")
         );
+        report::done();
         if config.exit_when_done && cfg!(not(target_arch = "wasm32")) {
             exit.write(AppExit::Success);
         }
@@ -272,7 +286,7 @@ impl CsvContext<'_, '_> {
             if self.config.shadows { "on" } else { "off" }.to_string(),
             format!("{:.2}", self.config.distance),
             system_info::date(),
-            system_info::PC_NAME.to_string(),
+            self.config.pc.clone(),
             system_info::os(),
             system_info::cpu_cores().to_string(),
             self.adapter.name.clone(),
@@ -288,8 +302,8 @@ impl CsvContext<'_, '_> {
     }
 }
 
-/// Logs `summary` with the CSV row, natively also appends the row to `out/file_name`.
-/// Returns the row.
+/// Logs `summary` with the CSV row and reports it to the runner (web), natively also appends the
+/// row to `out/file_name`. Returns the row.
 pub fn emit_csv(
     csv: &CsvContext,
     file_name: &str,
@@ -302,6 +316,7 @@ pub fn emit_csv(
     let row = system_info::csv_row(&all);
     let header = format!("{COMMON_CSV_HEADER},{header}");
     info!("{summary}\n----- csv: {file_name}\n{header}\n{row}");
+    report::row(file_name, &header, &row);
 
     #[cfg(not(target_arch = "wasm32"))]
     if let Some(dir) = &csv.config.out_dir {

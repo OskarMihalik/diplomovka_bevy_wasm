@@ -1,0 +1,10 @@
+# Main comparison for the thesis: every model on the three platforms on the integrated GPU, at
+# the camera distances of bencmark_results/src/data.rs. 5 launches per configuration with one 60 s
+# orbit each, so every launch is also a cold load. Bevy on the web can't load london_city and
+# national_airport_by_aditya (4 GB of wasm memory, see bencmark_results/readme.md).
+platform,model,distance,repeat,runs,duration,warmup,gpu,resolution,msaa,shadows,expect_gpu
+bevy-native bevy-web babylon-web,barling_wrecks cai_mep_port_vietnam,5.22,5,1,60,5,low,2088x1550,4,on,Intel
+bevy-native bevy-web babylon-web,full_gameready_city_buildings_iv_hongkong,10,5,1,60,5,low,2088x1550,4,on,Intel
+bevy-native bevy-web babylon-web,administrative_and_warehouse_complex,19000,5,1,60,5,low,2088x1550,4,on,Intel
+bevy-native babylon-web,london_city,19000,5,1,60,5,low,2088x1550,4,on,Intel
+bevy-native babylon-web,national_airport_by_aditya,20,5,1,60,5,low,2088x1550,4,on,Intel

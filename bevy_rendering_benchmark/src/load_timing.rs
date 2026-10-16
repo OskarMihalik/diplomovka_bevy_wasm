@@ -89,7 +89,9 @@ fn log_model_load_timing(
     for (entity, root, mut timing) in &mut q_models {
         if timing.download_parse_ms.is_none() {
             if asset_server.load_state(&root.0).is_failed() {
-                error!("model load failed: {:?}", asset_server.load_state(&root.0));
+                let error = format!("model load failed: {:?}", asset_server.load_state(&root.0));
+                error!("{error}");
+                crate::report::error(&error);
                 exit.write(AppExit::error());
                 return;
             }

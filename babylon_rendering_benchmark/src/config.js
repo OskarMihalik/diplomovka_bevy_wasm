@@ -7,7 +7,7 @@
 // - `id`         model id for the CSV, defaults to the file name if it is a number (`14.glb`)
 // - `name`       model name for the CSV, defaults to the name of a known id, else the file name
 // - `version`    model version for the CSV, defaults to 1
-// - `runs`       how many measured runs, default 5
+// - `runs`       how many measured runs, default 5; 0 only measures the load
 // - `duration`   seconds of one run, the camera does one full orbit in this time, default 60
 // - `warmup`     seconds before the first run that are not measured, default 5
 // - `gpu`        `low` or `high`, the WebGL power preference, default high
@@ -16,8 +16,11 @@
 // - `shadows`    `on` or `off`, shadows of the point light, default on like bevy_diplomovka
 // - `distance`   meters from the camera to the center of the orbit, default 5.22 like
 //                bevy_diplomovka, the model is scaled to 0.25 so a 100 m model is 25 m wide
+// - `pc`         name of the computer in the CSV, default `PC_NAME` at build time, else unknown
+// - `report`     url the results are posted to (rendering_runner), see report.js
 
 import { DEFAULT_DISTANCE } from "./scene.js";
+import { PC_NAME } from "./systemInfo.js";
 
 // Known models, so the CSV rows can be joined with bencmark_results/fps.csv by id
 const MODELS = [
@@ -92,7 +95,7 @@ function parse(params) {
     modelId,
     modelName,
     modelVersion,
-    runs: Math.max(Math.trunc(number("runs", 5)), 1),
+    runs: Math.max(Math.trunc(number("runs", 5)), 0),
     duration: Math.max(number("duration", 60), 1),
     warmup: Math.max(number("warmup", 5), 0),
     powerPreference: gpu === "low" ? "low-power" : "high-performance",
@@ -101,5 +104,6 @@ function parse(params) {
     msaa,
     shadows: onOff("shadows", true),
     distance: Math.max(number("distance", DEFAULT_DISTANCE), 0.01),
+    pc: get("pc") ?? PC_NAME,
   };
 }

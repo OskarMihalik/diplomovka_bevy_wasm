@@ -15,10 +15,10 @@
   table[x=x, y=babylon_wasm_mean, y error=babylon_wasm_sd] {\benchdata/fps.csv};
 \addplot+[bench/bevynative, bar shift=8pt, bench/errorbars]
   table[x=x, y=bevy_native_mean, y error=bevy_native_sd] {\benchdata/fps.csv};
-% OOM labels above the empty Bevy (WASM) slot
+% OOM labels above the empty Bevy (Wasm) slot
 \addplot[forget plot, draw=none, fill=none, bar shift=-8pt,
   nodes near coords={OOM}, every node near coord/.style={font=\scriptsize, rotate=90, anchor=west}]
   table[x=x, y=bevy_wasm_oom] {\benchdata/fps.csv};
-\legend{Bevy (WASM), Babylon.js (WASM), Bevy (native)}
+\legend{Bevy (Wasm), Babylon.js (Wasm), Bevy (native)}
 \end{axis}
 \end{tikzpicture}

@@ -7,6 +7,7 @@ import "@babylonjs/loaders/glTF";
 import { Bench } from "./bench.js";
 import { configFromUrl } from "./config.js";
 import { LoadTiming } from "./loadTiming.js";
+import { report } from "./report.js";
 import { setupScene, spawnModel } from "./scene.js";
 
 const canvas = document.getElementById("babylon");
@@ -18,6 +19,7 @@ try {
   config = configFromUrl();
 } catch (error) {
   console.error(error.message);
+  report({ error: error.message });
   throw error;
 }
 
@@ -71,6 +73,7 @@ async function loadModel(source, fileName) {
     loading.spawned(frame);
   } catch (error) {
     console.error("model load failed:", error);
+    report({ error: `model load failed: ${error.message ?? error}` });
     pickerText.textContent = `Model load failed: ${error.message ?? error}`;
     picker.classList.add("open");
     loading = null;

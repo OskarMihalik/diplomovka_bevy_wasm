@@ -5,6 +5,7 @@
 
 import { COMMON_CSV_HEADER, emitCsv } from "./csv.js";
 import { measureModel } from "./measure.js";
+import { report } from "./report.js";
 import { placeCamera } from "./scene.js";
 
 const FPS_CSV_HEADER =
@@ -41,6 +42,12 @@ export class Bench {
   /** Once per frame before rendering, `delta` in seconds since the previous frame */
   update(delta, modelShown) {
     const config = this.config;
+    // the load row was emitted before the model counts as shown
+    if (this.phase === "loading" && modelShown && config.runs === 0) {
+      console.log("Benchmark finished, load only");
+      this.phase = "done";
+      report({ done: true });
+    }
     if (this.phase === "loading" && modelShown) {
       console.log(
         `Benchmark: ${config.warmup.toFixed(0)} s warmup, then ${config.runs} runs of ${config.duration.toFixed(0)} s`,
@@ -153,6 +160,7 @@ export class Bench {
       console.log(
         `Benchmark finished, ${config.runs} runs\n----- csv:\n${COMMON_CSV_HEADER},${FPS_CSV_HEADER}\n${this.rows.join("\n")}`,
       );
+      report({ done: true });
     }
   }
 }

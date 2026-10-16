@@ -92,7 +92,7 @@ impl Platform {
 
     pub fn label(self) -> &'static str {
         match self {
-            Platform::BevyWasm => "Bevy (WASM)",
+            Platform::BevyWasm => "Bevy (Wasm)",
             Platform::BabylonWasm => "Babylon.js",
             Platform::BevyNative => "Bevy (native)",
             // Platform::BevyNativeRtx => "Bevy (native, RTX 4070)",
