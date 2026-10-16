@@ -29,6 +29,25 @@
       <canvas id="bevy"> Javascript and support for canvas is required </canvas>
     </div>
     <script>
+      // Bench mode (src/bench_mode.rs): posts results to rendering_runner when the url has
+      // `?report=<url>`, one message after another so `done` arrives after the last row.
+      // src/report.rs calls it for every CSV row, at the end and on errors.
+      (() => {
+        const url = new URLSearchParams(location.search).get("report");
+        if (!url) return;
+        let queue = Promise.resolve();
+        window.benchReport = (message) => {
+          const body = JSON.stringify(message);
+          queue = queue
+            .then(() => fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body }))
+            .catch((error) => console.error("report failed:", error));
+        };
+        // a wasm trap (e.g. out of memory) isn't a Rust panic
+        addEventListener("error", (event) => window.benchReport({ error: String(event.error ?? event.message) }));
+        addEventListener("unhandledrejection", (event) => window.benchReport({ error: String(event.reason) }));
+      })();
+    </script>
+    <script>
       // Keep Tab inside the canvas so egui can move focus between inputs
       // (default event handling is otherwise left to the browser, see main.rs)
       document.getElementById("bevy").addEventListener("keydown", (e) => {

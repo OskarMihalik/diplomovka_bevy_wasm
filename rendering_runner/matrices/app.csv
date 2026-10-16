@@ -1,0 +1,11 @@
+# The whole bevy_diplomovka app as a user sees it (egui panels, picking, outlines), in bench mode
+# (bevy_diplomovka/src/bench_mode.rs): it logs in, opens the model and runs the F9 benchmark by
+# itself, at the camera distances of main.csv (the same orbit as the rendering benchmark). The
+# models are uploaded into the benchmark account's project from the models folder. London and the
+# airport don't fit into wasm memory, they run natively only. 5 launches × one 60 s orbit.
+platform,model,distance,repeat,runs,duration,warmup,gpu,resolution,expect_gpu
+app-native app-web,barling_wrecks cai_mep_port_vietnam,5.22,5,1,60,5,low,2088x1550,Intel
+app-native app-web,full_gameready_city_buildings_iv_hongkong,10,5,1,60,5,low,2088x1550,Intel
+app-native app-web,administrative_and_warehouse_complex,19000,5,1,60,5,low,2088x1550,Intel
+app-native,london_city,19000,5,1,60,5,low,2088x1550,Intel
+app-native,national_airport_by_aditya,20,5,1,60,5,low,2088x1550,Intel

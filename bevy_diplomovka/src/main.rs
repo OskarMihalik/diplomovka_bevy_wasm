@@ -6,6 +6,8 @@ use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::ecs::system::NonSendMarker;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
+#[cfg(feature = "debug_tools")]
+use bevy::window::{PresentMode, WindowResolution};
 #[cfg(not(feature = "debug_tools"))]
 use bevy::winit::{UpdateMode, WinitSettings};
 use bevy::winit::WINIT_WINDOWS;
@@ -22,19 +24,52 @@ extern crate dotenv_codegen;
 fn main() {
     // this breaks the wasm build
     // env::set_var("RUST_BACKTRACE", "1");
+    #[cfg(not(target_arch = "wasm32"))]
+    bevy_diplomovka::system_info::init_local_offset();
+    // bench mode for rendering_runner, see src/bench_mode.rs
+    #[cfg(feature = "debug_tools")]
+    let bench = match bevy_diplomovka::bench_mode::BenchConfig::from_env() {
+        Ok(bench) => bench,
+        Err(error) => {
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                eprintln!("{error}");
+                std::process::exit(2);
+            }
+            #[cfg(target_arch = "wasm32")]
+            {
+                web_sys::console::error_1(&error.as_str().into());
+                bevy_diplomovka::report::error(&error);
+                Default::default()
+            }
+        }
+    };
+
+    #[allow(unused_mut)]
+    let mut window = Window {
+        title: "Bevy game".to_string(), // ToDo
+        fit_canvas_to_parent: true,
+        // Bind to canvas included in `index.html`
+        canvas: Some("#bevy".to_owned()),
+        // Tells wasm not to override default event handling, like F5 and Ctrl+R
+        prevent_default_event_handling: false,
+        ..default()
+    };
+    #[cfg(feature = "debug_tools")]
+    if let Some((width, height)) = bench.resolution {
+        // physical pixels, so every machine and browser renders the same amount, like
+        // bevy_rendering_benchmark; uncapped, browsers still sync through requestAnimationFrame
+        window.resolution = WindowResolution::new(width, height).with_scale_factor_override(1.0);
+        window.fit_canvas_to_parent = false;
+        window.resizable = false;
+        window.present_mode = PresentMode::AutoNoVsync;
+    }
+
     let mut app = App::new();
     app.add_plugins(
             DefaultPlugins
                 .set(WindowPlugin {
-                    primary_window: Some(Window {
-                        title: "Bevy game".to_string(), // ToDo
-                        fit_canvas_to_parent: true,
-                        // Bind to canvas included in `index.html`
-                        canvas: Some("#bevy".to_owned()),
-                        // Tells wasm not to override default event handling, like F5 and Ctrl+R
-                        prevent_default_event_handling: false,
-                        ..default()
-                    }),
+                    primary_window: Some(window),
                     ..default()
                 })
                 .set(AssetPlugin {
@@ -50,6 +85,19 @@ fn main() {
         .add_plugins(ReqwestPlugin::default())
         .add_plugins(GamePlugin)
         .add_systems(Startup, set_window_icon);
+    #[cfg(feature = "debug_tools")]
+    {
+        app.insert_resource(bench);
+        // after DefaultPlugins, whose PanicHandlerPlugin installs the hook that logs to the console
+        #[cfg(target_arch = "wasm32")]
+        {
+            let log_panic = std::panic::take_hook();
+            std::panic::set_hook(Box::new(move |info| {
+                log_panic(info);
+                bevy_diplomovka::report::error(&format!("panic: {info}"));
+            }));
+        }
+    }
     // uncapped with debug_tools, so benchmarks measure the model and not the frame limiter
     #[cfg(not(feature = "debug_tools"))]
     app.add_systems(Startup, init_refresh_rate);

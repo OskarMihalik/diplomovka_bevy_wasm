@@ -2,13 +2,16 @@
 
 mod api;
 mod api_tracking;
+#[cfg(feature = "debug_tools")]
+pub mod bench_mode;
 mod building;
 #[cfg(feature = "debug_tools")]
 mod debug_tools;
 mod gui;
 mod loading;
 mod models;
-mod system_info;
+pub mod report;
+pub mod system_info;
 mod users;
 mod utils;
 

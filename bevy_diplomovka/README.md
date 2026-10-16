@@ -22,6 +22,12 @@ some words what it does...
 # Run backend:
 `cargo run -p backend`
 
+# Benchmarks
+With `--features debug_tools` the app has debug overlays (F1–F9, see `src/debug_tools.rs`) and a
+bench mode for [rendering_runner](../rendering_runner): `--bench_model <id> --bench_project <id>
+--email … --password …` natively, or the same as `?key=value` on the web, logs in, opens the model
+and runs the F9 benchmark by itself. All options are in `src/bench_mode.rs`.
+
 
 ### Updating the icons
  1. Replace `build/macos/icon_1024x1024.png` with a `1024` times `1024` pixel png icon and run `create_icns.sh` or `create_icns_linux.sh` if you use linux (make sure to run the script inside the `build/macos` directory) - _Note: `create_icns.sh` requires a mac, and `create_icns_linux.sh` requires imagemagick and png2icns_

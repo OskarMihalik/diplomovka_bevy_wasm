@@ -4,6 +4,8 @@ target
 .env
 
 dist
+# bevy_diplomovka built with debug_tools by rendering_runner
+dist-bench
 
 db/data
 node_modules

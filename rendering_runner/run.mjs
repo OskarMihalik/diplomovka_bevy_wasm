@@ -10,8 +10,9 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { backendUrl, prepareBackend } from "./lib/app.js";
 import { busyApps, keepScreenAwake, machineInfo, onAcPower, screenLocked } from "./lib/host.js";
-import { checkFirefox, jobTimeoutS, runNative, runWeb, stopRunningJob } from "./lib/jobs.js";
+import { checkFirefox, csvFiles, jobTimeoutS, runNative, runWeb, stopRunningJob } from "./lib/jobs.js";
 import { formatDuration, parseCsv, readMatrix } from "./lib/matrix.js";
 import { startServer } from "./lib/server.js";
 
@@ -61,6 +62,7 @@ try {
 }
 const platforms = new Set(jobs.map((job) => job.platform));
 const hasWeb = [...platforms].some((platform) => platform.endsWith("-web"));
+const appJobs = jobs.filter((job) => job.platform.startsWith("app-"));
 
 // --- batch folder, --resume -------------------------------------------------------------------
 const logsDir = path.join(outDir, "logs/rendering");
@@ -126,6 +128,17 @@ if (!noBuild) {
   if (platforms.has("babylon-web")) {
     steps.push(["npm", ["run", "build"], path.join(ROOT, "babylon_rendering_benchmark")]);
   }
+  if (platforms.has("app-native")) {
+    steps.push(["cargo", ["build", "-p", "bevy_diplomovka", "--release", "--features", "debug_tools"], ROOT]);
+  }
+  if (platforms.has("app-web")) {
+    // its own dist, the deployed `dist` stays a build without debug_tools
+    steps.push([
+      "trunk",
+      ["build", "--release", "--cargo-profile", "wasm-release", "--features", "debug_tools", "--dist", "dist-bench"],
+      path.join(ROOT, "bevy_diplomovka"),
+    ]);
+  }
   for (const [command, commandArgs, cwd] of steps) {
     console.log(`build: ${command} ${commandArgs.join(" ")}`);
     try {
@@ -163,6 +176,7 @@ if (hasWeb) {
     {
       "/bevy/": path.join(ROOT, "bevy_rendering_benchmark/dist"),
       "/babylon/": path.join(ROOT, "babylon_rendering_benchmark/dist"),
+      "/app/": path.join(ROOT, "bevy_diplomovka/dist-bench"),
     },
     port,
   );
@@ -194,6 +208,26 @@ if (hasWeb) {
   if (!check.cross_origin_isolated) console.warn("warning: the page isn't cross-origin isolated, frame times are rounded to 1 ms");
 }
 
+// --- the app's backend: account, project, models --------------------------------------------
+if (appJobs.length) {
+  const backend = backendUrl(ROOT);
+  try {
+    const { project, models } = await prepareBackend(ROOT, backend, appJobs.map((job) => job.model), (message) =>
+      console.log(`app: ${message}`),
+    );
+    for (const job of appJobs) {
+      job.appProject = project;
+      job.appModel = models.get(job.model);
+    }
+    thisRun.app = { backend, project, models: Object.fromEntries([...models].map(([file, id]) => [path.basename(file), id])) };
+    writeMeta();
+    console.log(`app: project ${project}, models ${[...models.values()].join(", ")} on ${backend}`);
+  } catch (error) {
+    console.error(`app: preparing the backend failed: ${error.message}`);
+    await finish(1);
+  }
+}
+
 // --- jobs -------------------------------------------------------------------------------------
 const failed = [];
 let passed = 0;
@@ -210,7 +244,7 @@ for (const [index, job] of todo.entries()) {
     const started = Date.now();
     log.write(`\n===== ${new Date().toISOString()} attempt ${attempt + 1}, timeout ${jobTimeoutS(job)} s\n`);
     result =
-      job.platform === "bevy-native"
+      job.platform.endsWith("-native")
         ? await runNative(job, { root: ROOT, pc, jobDir: path.join(batchDir, "native", job.id), log })
         : await runWeb(job, { server, pc, log });
     result.seconds = Math.round((Date.now() - started) / 1000);
@@ -278,9 +312,10 @@ async function waitForUnlock() {
 
 /** null if the job produced what it should: one load row, `runs` fps rows, the expected GPU */
 function validate(job, rows) {
+  const [loadFile, fpsFile] = csvFiles(job.platform);
   const count = (file) => rows.filter((row) => row.file === file).length;
-  if (count("rendering_load.csv") !== 1) return `${count("rendering_load.csv")} load rows instead of 1`;
-  if (count("rendering_fps.csv") !== job.runs) return `${count("rendering_fps.csv")} fps rows instead of ${job.runs}`;
+  if (count(loadFile) !== 1) return `${count(loadFile)} load rows instead of 1`;
+  if (count(fpsFile) !== job.runs) return `${count(fpsFile)} fps rows instead of ${job.runs}`;
   if (job.expectGpu) {
     for (const { header, row } of rows) {
       const gpu = field(header, row, "gpu");
@@ -314,9 +349,9 @@ function field(header, row, name) {
 function describe(rows) {
   const parts = [];
   for (const { file, header, row } of rows) {
-    if (file === "rendering_load.csv") parts.push(`load ${(Number(field(header, row, "total_ms")) / 1000).toFixed(1)} s`);
+    if (file.endsWith("load.csv")) parts.push(`load ${(Number(field(header, row, "total_ms")) / 1000).toFixed(1)} s`);
   }
-  const fps = rows.filter((row) => row.file === "rendering_fps.csv").map((r) => field(r.header, r.row, "avg_fps"));
+  const fps = rows.filter((row) => row.file.endsWith("fps.csv")).map((r) => field(r.header, r.row, "avg_fps"));
   if (fps.length) parts.push(`${fps.join(", ")} fps`);
   return parts.join(", ");
 }

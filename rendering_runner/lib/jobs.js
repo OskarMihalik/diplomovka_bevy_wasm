@@ -1,10 +1,25 @@
 // Running one job: a native process or a Firefox started through Playwright. Both return the CSV
-// rows the benchmark produced as `{file, header, row}`, and an error if the job failed.
+// rows the benchmark produced as `{file, header, row}`, and an error if the job failed. The
+// rendering benchmarks write rendering_*.csv, the app (app-native, app-web) fps.csv and load.csv.
+
+/** The CSV files a platform writes, `[load, fps]` */
+export const csvFiles = (platform) =>
+  platform.startsWith("app-") ? ["load.csv", "fps.csv"] : ["rendering_load.csv", "rendering_fps.csv"];
+
+/** The app's bench mode options for a job, see bevy_diplomovka/src/bench_mode.rs */
+const appOptions = (job) => ({
+  bench_model: String(job.appModel),
+  bench_project: String(job.appProject),
+  email: ACCOUNT.email,
+  password: ACCOUNT.password,
+});
 
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { firefox } from "playwright";
+
+import { ACCOUNT } from "./app.js";
 
 // launching Firefox, opening a page and navigating hang while Firefox can't draw (locked screen)
 const STEP_TIMEOUT_MS = 60_000;
@@ -28,19 +43,28 @@ function launchFirefox(env = {}) {
   });
 }
 
-/** Native Bevy, writes its CSVs to `jobDir` (`--out`), which is read back afterwards */
+/** Native Bevy or the native app, writes its CSVs to `jobDir` (`--out`), read back afterwards */
 export async function runNative(job, { root, pc, jobDir, log }) {
   fs.rmSync(jobDir, { recursive: true, force: true });
   fs.mkdirSync(jobDir, { recursive: true });
-  const binary = path.join(root, "target/release/bevy_rendering_benchmark");
-  const args = ["--model", job.model];
+  const app = job.platform === "app-native";
+  const binary = path.join(root, "target/release", app ? "bevy_diplomovka" : "bevy_rendering_benchmark");
+  const args = [];
+  for (const [key, value] of Object.entries(app ? appOptions(job) : { model: job.model })) args.push(`--${key}`, value);
   for (const [key, value] of Object.entries(job.options)) {
-    if (!["out", "exit", "report", "pc"].includes(key)) args.push(`--${key}`, value);
+    // the app picks the GPU through wgpu's environment variable
+    if (!["out", "exit", "report", "pc", ...(app ? ["gpu"] : [])].includes(key)) args.push(`--${key}`, value);
   }
   args.push("--pc", pc, "--out", jobDir, "--exit", "on");
-  log.write(`$ ${binary} ${args.join(" ")}\n`);
+  log.write(`$ ${binary} ${args.join(" ").replace(ACCOUNT.password, "***")}\n`);
 
-  const child = spawn(binary, args, { env: { ...process.env, ...job.env }, stdio: ["ignore", "pipe", "pipe"] });
+  const env = { ...process.env };
+  if (app) {
+    // the binary runs from target/release, its assets are next to Cargo.toml
+    env.BEVY_ASSET_ROOT = path.join(root, "bevy_diplomovka");
+    if (job.options.gpu) env.WGPU_POWER_PREF = job.options.gpu;
+  }
+  const child = spawn(binary, args, { env: { ...env, ...job.env }, stdio: ["ignore", "pipe", "pipe"] });
   child.stdout.on("data", (data) => log.write(data));
   child.stderr.on("data", (data) => log.write(data));
   const timeoutS = jobTimeoutS(job);
@@ -62,7 +86,7 @@ export async function runNative(job, { root, pc, jobDir, log }) {
   stopCurrent = null;
 
   const rows = [];
-  for (const file of ["rendering_load.csv", "rendering_fps.csv"]) {
+  for (const file of csvFiles(job.platform)) {
     const csvPath = path.join(jobDir, file);
     if (!fs.existsSync(csvPath)) continue;
     const [header, ...lines] = fs.readFileSync(csvPath, "utf8").split("\n").filter(Boolean);
@@ -71,8 +95,9 @@ export async function runNative(job, { root, pc, jobDir, log }) {
   return { rows, error: outcome };
 }
 
-/** Bevy or Babylon in a new Firefox with a new profile, the page posts its rows to the server */
+/** Bevy, Babylon or the app in a new Firefox with a new profile, the page posts its rows */
 export async function runWeb(job, { server, pc, log }) {
+  // the url path the server mounts each dist at
   const engine = job.platform.replace(/-web$/, "");
   const rows = [];
   let settle;
@@ -102,12 +127,13 @@ export async function runWeb(job, { server, pc, log }) {
 
     const params = new URLSearchParams({
       ...job.options,
-      model: `/models/${path.basename(job.model)}`,
+      // the app downloads the model from the backend, the rendering benchmarks from this server
+      ...(engine === "app" ? appOptions(job) : { model: `/models/${path.basename(job.model)}` }),
       report: "/report",
       pc,
     });
     const url = `${server.origin}/${engine}/?${params}`;
-    log.write(`open ${url}\n`);
+    log.write(`open ${url.replace(ACCOUNT.password, "***")}\n`);
     await within(page.goto(url, { waitUntil: "commit" }), "opening the benchmark page");
 
     const timeoutS = jobTimeoutS(job);

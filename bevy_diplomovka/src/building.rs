@@ -24,7 +24,7 @@ use crate::{
 
 /// Durations of the steps of opening a model, logged by [`log_model_load_timing`]
 #[derive(Component)]
-struct ModelLoadTiming {
+pub(crate) struct ModelLoadTiming {
     started: Instant,
     started_frame: u32,
     /// end of the previous step
@@ -312,7 +312,17 @@ fn react_to_model_change(
         );
 }
 
-const LOAD_CSV_HEADER: &str = "date,pc,os,cpu_cores,gpu,graphics_backend,browser,browser_version,build,resolution,model_id,model_name,model_version,meshes,vertices,triangles,download_parse_ms,mesh_creation_ms,first_frame_ms,total_ms,frames";
+/// Orbit radius of the camera in m for the CSV rows, like bevy_rendering_benchmark's
+/// `camera_distance` (the model is scaled to 0.25 in both)
+pub(crate) fn camera_distance(q_camera: &Query<&PanOrbitCamera>) -> String {
+    q_camera
+        .iter()
+        .next()
+        .map(|camera| format!("{:.2}", camera.radius.unwrap_or(camera.target_radius)))
+        .unwrap_or_default()
+}
+
+const LOAD_CSV_HEADER: &str = "camera_distance,date,pc,os,cpu_cores,gpu,graphics_backend,browser,browser_version,build,resolution,model_id,model_name,model_version,meshes,vertices,triangles,download_parse_ms,mesh_creation_ms,first_frame_ms,total_ms,frames";
 
 /// Logs how long downloading + parsing and rendering the first frame took, and a summary of
 /// all steps at the end. Steps are noticed once per frame, so they are precise to one frame time.
@@ -326,6 +336,7 @@ fn log_model_load_timing(
     meshes: Res<Assets<Mesh>>,
     adapter: Res<RenderAdapterInfo>,
     q_window: Query<&Window, With<PrimaryWindow>>,
+    q_camera: Query<&PanOrbitCamera>,
 ) {
     for (entity, model, root, mut timing) in &mut q_models {
         let id = model.dto.id;
@@ -371,8 +382,9 @@ fn log_model_load_timing(
             .map(|window| format!("{}x{}", window.physical_width(), window.physical_height()))
             .unwrap_or_default();
         let csv = system_info::csv_row(&[
+            camera_distance(&q_camera),
             system_info::date(),
-            system_info::PC_NAME.to_string(),
+            system_info::pc(),
             system_info::os(),
             system_info::cpu_cores().to_string(),
             adapter.name.clone(),
@@ -409,6 +421,7 @@ fn log_model_load_timing(
             model.dto.name,
             model.dto.version,
         );
+        crate::report::row("load.csv", LOAD_CSV_HEADER, &csv);
         commands.entity(entity).remove::<ModelLoadTiming>();
     }
 }

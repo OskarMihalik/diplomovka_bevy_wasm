@@ -233,3 +233,89 @@ snap Firefox is **157.0**.
   machine state today (VS Code, Discord, Obsidian open; possibly GPU clocks or power profile), not
   the runner. So native should also be re-measured in the same batches, and the background apps
   closed (section 4.5).
+
+---
+
+## 7. The bevy_diplomovka app benchmark
+
+The same runner also measures the **whole app** (egui, picking, outlines, the backend download),
+which today is done by hand: log in, open project "models benchmarks", open a model, press F9,
+copy the CSV from the console into `bencmark_results/fps.csv` and `load.csv`.
+
+**Decisions:** web and native; the new rows **replace** the old `fps.csv` and `load.csv` (same
+columns as now, no `engine,…` prefix); the backend runs against the local docker-compose
+Postgres (`db/data`); the app is measured **as it is**, with its panels on screen; models are
+named by file name like in the rendering matrices, because database ids differ between PCs.
+
+### 7.1 Bench mode in bevy_diplomovka (only with the `debug_tools` feature)
+
+The UI is drawn by egui into a canvas, so Playwright can't click it. Instead the app gets a bench
+mode, switched on by options (`?key=value` on the web, `--key value` natively, parsed like
+`bevy_rendering_benchmark/src/config.rs`):
+
+| option | |
+|---|---|
+| `bench_model` | model id; without it the app works exactly as now (F9 still works) |
+| `email`, `password` | the benchmark account the app logs in with |
+| `runs`, `duration`, `warmup` | replace the `BENCHMARK_RUNS` and `BENCHMARK_DURATION` constants; `runs=0` = load only |
+| `resolution` | fixed window / canvas size in physical pixels, default 2088x1550, instead of `fit_canvas_to_parent` |
+| `pc`, `report`, `out`, `exit` | as in the rendering benchmark |
+
+With `bench_model`, the app goes through the same path as a user, driven by its own events
+instead of clicks:
+
+1. `GameState::Auth` → trigger `LoginEvent` with `email`/`password` (the login button does the same)
+2. `LoggedUser` exists → `GET /model/{id}` gives the model's `project_id` → insert
+   `ThisProjectIsSelected` on that `ProjectData` (as clicking the project) → the app loads the
+   project's models
+3. the `ModelData` with the id appears → insert `ThisModelIsSelected` (as clicking "Open") →
+   the existing loading path downloads `/assets/model/{id}.glb` and logs the load row
+4. model shown → warmup → the F9 benchmark starts by itself → `runs` fps rows
+5. every row goes through `report::row` (web) or is appended to `--out` (native), then
+   `report::done` / exit; a login error, an unknown model, a failed load or a panic go through
+   `report::error`
+
+Also: the app's native `date()` uses local time (as fixed in the rendering benchmark), and
+`index.html` gets the same `window.benchReport` snippet.
+
+### 7.2 Runner
+
+- platforms `app-native` and `app-web`; `model` is the file name in the models folder, as for
+  the other platforms (`barling_wrecks`)
+- build: `cargo build -p bevy_diplomovka --release --features debug_tools` and
+  `trunk build --release --cargo-profile wasm-release --features debug_tools --dist dist-bench`
+  (a separate dist, so the deployed `dist` isn't replaced by a debug_tools build); served at
+  `/app/`
+- before the first app job, only through the backend's API (no SQL, no ids in the matrix):
+  - `docker compose up -d postgres backend` if `http://localhost:4000` doesn't answer
+  - log in as `bench@bench.local`, or `POST /register` it
+  - project "benchmarks" of that account, `POST /project` if missing
+  - every model of the matrix: uploaded from the models folder with
+    `POST /model/{project}/{file name}` (multipart, limit 1 GiB, the airport is 0.96 GiB) unless a
+    model of that name exists **and** its file downloads from `/assets/model/{id}.glb` (the
+    backend container keeps uploads in its own filesystem, a recreated container loses them)
+  - the id found this way is passed to the app as `bench_model`; `model_name` in the CSV is the
+    file name, as in the rendering CSVs
+- the page (runner origin `127.0.0.1:8090`) downloads from the backend (`localhost:4000`):
+  cross-origin, allowed by the backend's `CorsLayer` (any origin), and compatible with COEP
+  `require-corp` because it is a CORS request, so frame times stay at 20 µs
+- rows go to `fps.csv` / `load.csv` (the file names the app reports); the expected-row check uses
+  them for app jobs
+- `matrices/app.csv`: the six models of `main.csv` on both platforms, London and the airport
+  native only (wasm out of memory), 5 launches × one 60 s orbit like `main.csv`
+
+### 7.3 Done (2026-10-16)
+
+- bevy_diplomovka: `src/bench_mode.rs` (options, login → project → model → benchmark), `src/report.rs`,
+  `pc` and local time in `system_info.rs`, the F9 benchmark takes `runs`/`duration` and reports its
+  rows and `done`, `index.html` has `window.benchReport`. Without `bench_model` nothing changes.
+- runner: `lib/app.js` prepares the backend through the API (tested: registers, creates the project,
+  uploads, and reuses everything on the second run); `app-native` / `app-web` jobs; `matrices/app.csv`
+  and two app rows in `smoke.csv`.
+- the old `fps.csv` and `load.csv` are deleted (git history keeps them).
+- tested: the app rows of `smoke.csv` passed natively and in Firefox: Intel GPU, 2088x1550, local
+  dates, `model_name` = file name, sub-millisecond frame times on the web.
+- `distance` in bench mode sets the radius of the app's PanOrbitCamera (it starts at (0, 1.5, 5)
+  like the rendering benchmark's camera, so it is the same orbit); `fps.csv` and `load.csv` start
+  with a `camera_distance` column (the camera's actual radius, also for a manual F9). `app.csv`
+  uses the distances of `main.csv`. Tested at 20 m natively and on the web.

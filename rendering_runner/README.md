@@ -1,9 +1,11 @@
 # rendering_runner
 
 Runs the rendering and loading benchmarks ([bevy_rendering_benchmark](../bevy_rendering_benchmark)
-native and wasm, [babylon_rendering_benchmark](../babylon_rendering_benchmark)) from a matrix CSV
-and appends the rows to `bencmark_results/rendering_fps.csv` and `rendering_load.csv`. The web
-benchmarks run in Playwright's Firefox. Why it works the way it does: [PLAN.md](PLAN.md).
+native and wasm, [babylon_rendering_benchmark](../babylon_rendering_benchmark)) and the whole
+[bevy_diplomovka](../bevy_diplomovka) app from a matrix CSV, and appends the rows to
+`bencmark_results/rendering_fps.csv` and `rendering_load.csv` (the app: `fps.csv` and
+`load.csv`). The web benchmarks run in Playwright's Firefox. Why it works the way it does:
+[PLAN.md](PLAN.md).
 
 ## Setup
 
@@ -13,7 +15,8 @@ npm install
 npx playwright install firefox
 ```
 
-Also needed: `cargo`, `trunk`, and `npm install` in `babylon_rendering_benchmark`.
+Also needed: `cargo`, `trunk`, `npm install` in `babylon_rendering_benchmark`, and for the app
+`docker compose` (the runner starts Postgres and the backend if they aren't running).
 
 ## Run
 
@@ -53,7 +56,7 @@ bevy-native,administrative_and_warehouse_complex,19000,1,1,60,5,low,2088x1550,1 
 
 | column | |
 |---|---|
-| `platform` | `bevy-native`, `bevy-web`, `babylon-web` |
+| `platform` | `bevy-native`, `bevy-web`, `babylon-web`, `app-native`, `app-web` |
 | `model` | name in the models folder (`barling_wrecks`), or a path |
 | `repeat` | launches of a new process or browser (a cold load each), default 1 |
 | `runs` | measured orbits per launch, default 5; 0 = load only |
@@ -66,9 +69,24 @@ Jobs run in rounds: launch 1 of every configuration, then launch 2, and so on, s
 
 Matrices in `matrices/`:
 
-- `smoke.csv`: every platform once, a few seconds each (~2 min)
+- `smoke.csv`: every platform once, a few seconds each (~4 min)
 - `main.csv`: the thesis comparison, 6 models × 3 platforms, 5 launches × 60 s (~2 h)
 - `load.csv`: load only, 10 launches per model and platform (~1 h 20 min)
+- `previous_fps.csv`: the configurations of the old manual `rendering_fps.csv`, 5 orbits per launch (~1 h 30 min)
+- `app.csv`: the whole app, 6 models, native and web (~1 h 20 min)
+
+## The app (`app-native`, `app-web`)
+
+The app is built with `debug_tools` (the web build into `bevy_diplomovka/dist-bench`) and started
+in bench mode ([bench_mode.rs](../bevy_diplomovka/src/bench_mode.rs)): it logs in, selects the
+project, opens the model and runs the F9 benchmark by itself, with its panels on screen. Before
+the first app job the runner prepares the backend through its API: the account
+`bench@bench.local`, its project "benchmarks", and every model of the matrix uploaded from the
+models folder unless it is there and downloads. So the matrix names models by file name on every
+PC; the ids found on this PC are in `meta.json`. Natively, `gpu=low` becomes `WGPU_POWER_PREF`.
+`distance` sets the radius of the app's orbit camera (the same orbit as the rendering benchmark,
+written to the `camera_distance` column); `msaa` and `shadows` don't apply, the app renders with
+its own settings.
 
 ## Output
 

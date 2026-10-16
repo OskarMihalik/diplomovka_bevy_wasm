@@ -3,7 +3,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
-export const PLATFORMS = ["bevy-native", "bevy-web", "babylon-web"];
+// app-*: the whole bevy_diplomovka app in bench mode (PLAN.md section 7)
+export const PLATFORMS = ["bevy-native", "bevy-web", "babylon-web", "app-native", "app-web"];
 
 // columns the runner uses itself, every other column is a benchmark option
 const RUNNER_COLUMNS = ["platform", "model", "repeat", "env", "expect_gpu"];

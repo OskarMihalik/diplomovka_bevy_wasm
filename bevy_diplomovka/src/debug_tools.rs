@@ -10,7 +10,8 @@
 //! - F6: toggle ground grid
 //! - F7: toggle fps counter and diagnostics windows
 //! - F8: toggle camera auto orbit
-//! - F9: run a benchmark, one full camera orbit, and print the results to the console
+//! - F9: run a benchmark, `runs` full camera orbits, and print the results to the console; in
+//!   bench mode (bench_mode.rs) it starts by itself and the rows go to rendering_runner
 //!
 //! The app runs uncapped (no reactive / low power update mode, no vsync on native) so the
 //! numbers measure the model and not the frame limiter. Every few seconds a short frame time
@@ -40,8 +41,10 @@ use bevy::window::{PresentMode, PrimaryWindow};
 use bevy::winit::WinitSettings;
 use bevy_panorbit_camera::PanOrbitCamera;
 
-use crate::building::{ModelData, ThisModelIsSelected};
-use crate::system_info;
+use crate::bench_mode::{BenchConfig, BenchModePlugin};
+use crate::building::{camera_distance, ModelData, ThisModelIsSelected};
+use crate::{report, system_info};
+use bevy::app::AppExit;
 use std::collections::HashSet;
 use std::f32::consts::TAU;
 use std::time::Duration;
@@ -60,12 +63,9 @@ const SIZE_Z: DiagnosticPath = DiagnosticPath::const_new("model/size_z");
 
 /// How often the rolling frame time summary is printed
 const SUMMARY_INTERVAL: Duration = Duration::from_secs(5);
-/// How long the F9 benchmark takes, the camera does one full orbit in this time
-const BENCHMARK_DURATION: f32 = 60.;
-/// How many times F9 repeats the benchmark, each run is printed separately
-const BENCHMARK_RUNS: usize = 5;
-/// Auto orbit speed in radians per second
-const ORBIT_SPEED: f32 = TAU / BENCHMARK_DURATION;
+// how many runs F9 does and how long one takes come from BenchConfig, 5 × 60 s by default
+/// Auto orbit speed in radians per second, one orbit per minute
+const ORBIT_SPEED: f32 = TAU / 60.;
 
 pub struct DebugToolsPlugin;
 
@@ -84,6 +84,7 @@ impl Plugin for DebugToolsPlugin {
             EntityCountDiagnosticsPlugin::default(),
             MeshAllocatorDiagnosticPlugin,
             MaterialAllocatorDiagnosticPlugin::<StandardMaterial>::default(),
+            BenchModePlugin,
         ));
 
         #[cfg(not(target_arch = "wasm32"))]
@@ -305,6 +306,7 @@ fn handle_input(
     mut auto_orbit: ResMut<AutoOrbit>,
     mut frame_times: ResMut<FrameTimes>,
     q_orbit_camera: Query<&PanOrbitCamera>,
+    config: Res<BenchConfig>,
     #[cfg(not(target_arch = "wasm32"))] mut wireframe: ResMut<
         bevy::pbr::wireframe::WireframeConfig,
     >,
@@ -352,13 +354,13 @@ fn handle_input(
     if keyboard.just_pressed(KeyCode::F8) {
         auto_orbit.0 = !auto_orbit.0;
     }
-    if keyboard.just_pressed(KeyCode::F9) && frame_times.benchmark.is_none() {
+    if keyboard.just_pressed(KeyCode::F9) && frame_times.benchmark.is_none() && config.runs > 0 {
         let start_yaw = q_orbit_camera
             .iter()
             .next()
             .map(|camera| camera.target_yaw)
             .unwrap_or_default();
-        info!("Benchmark started, {BENCHMARK_RUNS} runs of {BENCHMARK_DURATION} s");
+        info!("Benchmark started, {} runs of {} s", config.runs, config.duration);
         frame_times.benchmark = Some(BenchmarkRun::new(1, start_yaw));
     }
 }
@@ -378,14 +380,14 @@ fn uncap_frame_rate(
 struct AutoOrbit(bool);
 
 #[derive(Resource, Default)]
-struct FrameTimes {
+pub(crate) struct FrameTimes {
     /// frame times in ms since the last summary
     window: Vec<f32>,
-    benchmark: Option<BenchmarkRun>,
+    pub(crate) benchmark: Option<BenchmarkRun>,
 }
 
-struct BenchmarkRun {
-    /// 1-based index of this run out of BENCHMARK_RUNS
+pub(crate) struct BenchmarkRun {
+    /// 1-based index of this run out of `runs`
     index: usize,
     elapsed: f32,
     start_yaw: f32,
@@ -396,7 +398,7 @@ struct BenchmarkRun {
 }
 
 impl BenchmarkRun {
-    fn new(index: usize, start_yaw: f32) -> Self {
+    pub(crate) fn new(index: usize, start_yaw: f32) -> Self {
         Self {
             index,
             elapsed: 0.,
@@ -425,6 +427,7 @@ fn record_frame_time(time: Res<Time<Real>>, mut frame_times: ResMut<FrameTimes>)
 
 fn orbit_camera(
     time: Res<Time<Real>>,
+    config: Res<BenchConfig>,
     auto_orbit: Res<AutoOrbit>,
     frame_times: Res<FrameTimes>,
     mut q_camera: Query<&mut PanOrbitCamera>,
@@ -432,14 +435,14 @@ fn orbit_camera(
     for mut camera in &mut q_camera {
         if let Some(run) = &frame_times.benchmark {
             // driven by elapsed time so every run covers exactly the same path
-            camera.target_yaw = run.start_yaw + TAU * (run.elapsed / BENCHMARK_DURATION).min(1.);
+            camera.target_yaw = run.start_yaw + TAU * (run.elapsed / config.duration).min(1.);
         } else if auto_orbit.0 {
             camera.target_yaw += ORBIT_SPEED * time.delta_secs();
         }
     }
 }
 
-const BENCHMARK_CSV_HEADER: &str = "date,pc,os,cpu_cores,gpu,graphics_backend,browser,browser_version,build,resolution,model_id,model_name,model_version,duration_s,frames,avg_fps,median_fps,low_1_fps,low_01_fps,frame_avg_ms,frame_min_ms,frame_p50_ms,frame_p95_ms,frame_p99_ms,frame_max_ms,frame_stddev_ms,mesh_instances,unique_meshes,vertices,triangles,materials,textures,texture_mib,entities";
+const BENCHMARK_CSV_HEADER: &str = "camera_distance,date,pc,os,cpu_cores,gpu,graphics_backend,browser,browser_version,build,resolution,model_id,model_name,model_version,duration_s,frames,avg_fps,median_fps,low_1_fps,low_01_fps,frame_avg_ms,frame_min_ms,frame_p50_ms,frame_p95_ms,frame_p99_ms,frame_max_ms,frame_stddev_ms,mesh_instances,unique_meshes,vertices,triangles,materials,textures,texture_mib,entities";
 
 fn finish_benchmark(
     mut frame_times: ResMut<FrameTimes>,
@@ -447,26 +450,33 @@ fn finish_benchmark(
     q_window: Query<&Window, With<PrimaryWindow>>,
     q_model: Query<&ModelData, With<ThisModelIsSelected>>,
     adapter: Res<RenderAdapterInfo>,
+    config: Res<BenchConfig>,
+    mut exit: MessageWriter<AppExit>,
+    q_camera: Query<&PanOrbitCamera>,
 ) {
     if !frame_times
         .benchmark
         .as_ref()
-        .is_some_and(|run| run.elapsed >= BENCHMARK_DURATION)
+        .is_some_and(|run| run.elapsed >= config.duration)
     {
         return;
     }
     let Some(run) = frame_times.benchmark.take() else {
         return;
     };
-    if run.index < BENCHMARK_RUNS {
+    let finished = run.index >= config.runs;
+    if !finished {
         // continue from where the orbit ended, so the camera doesn't spin back a full turn
         frame_times.benchmark = Some(BenchmarkRun::new(run.index + 1, run.start_yaw + TAU));
-        info!("Benchmark run {}/{BENCHMARK_RUNS} started", run.index + 1);
+        info!("Benchmark run {}/{} started", run.index + 1, config.runs);
     } else {
-        info!("Benchmark finished, {BENCHMARK_RUNS} runs");
+        info!("Benchmark finished, {} runs", config.runs);
     }
     let Some(stats) = FrameStats::new(&run.frames) else {
-        warn!("Benchmark run {}/{BENCHMARK_RUNS} recorded no frames", run.index);
+        warn!("Benchmark run {}/{} recorded no frames", run.index, config.runs);
+        if finished {
+            benchmark_done(&config, &mut exit);
+        }
         return;
     };
     let value = |path: &DiagnosticPath| {
@@ -483,8 +493,9 @@ fn finish_benchmark(
     let model = q_model.iter().next();
     let (browser, browser_version) = system_info::browser();
     let csv = system_info::csv_row(&[
+        camera_distance(&q_camera),
         system_info::date(),
-        system_info::PC_NAME.to_string(),
+        system_info::pc(),
         system_info::os(),
         system_info::cpu_cores().to_string(),
         adapter.name.clone(),
@@ -526,7 +537,7 @@ fn finish_benchmark(
     ]);
 
     info!(
-        "\n===== Benchmark run {}/{BENCHMARK_RUNS} ({:.1} s, one camera orbit) =====\n\
+        "\n===== Benchmark run {}/{} ({:.1} s, one camera orbit) =====\n\
          resolution        {resolution}\n\
          frames            {}\n\
          average fps       {:.1}\n\
@@ -552,6 +563,7 @@ fn finish_benchmark(
          ----- csv: {BENCHMARK_CSV_HEADER}\n
          {csv}",
         run.index,
+        config.runs,
         run.elapsed,
         stats.frames,
         stats.average_fps,
@@ -577,6 +589,21 @@ fn finish_benchmark(
         value(&TEXTURE_MEMORY),
         value(&EntityCountDiagnosticsPlugin::ENTITY_COUNT),
     );
+    report::row("fps.csv", BENCHMARK_CSV_HEADER, &csv);
+    if finished {
+        benchmark_done(&config, &mut exit);
+    }
+}
+
+/// After the last run's row: tells rendering_runner, natively closes the app in bench mode
+fn benchmark_done(config: &BenchConfig, exit: &mut MessageWriter<AppExit>) {
+    if !config.active() {
+        return;
+    }
+    report::done();
+    if config.exit_when_done && cfg!(not(target_arch = "wasm32")) {
+        exit.write(AppExit::Success);
+    }
 }
 
 fn print_summary(mut frame_times: ResMut<FrameTimes>) {

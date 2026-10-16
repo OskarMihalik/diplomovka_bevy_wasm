@@ -6,6 +6,17 @@ pub const PC_NAME: &str = match option_env!("PC_NAME") {
     None => "unknown",
 };
 
+/// Name of the computer in the CSV rows, `pc` in bench mode overrides `PC_NAME`
+static PC: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+
+pub fn set_pc(name: &str) {
+    let _ = PC.set(name.to_string());
+}
+
+pub fn pc() -> String {
+    PC.get().cloned().unwrap_or_else(|| PC_NAME.to_string())
+}
+
 pub const BUILD: &str = if cfg!(debug_assertions) {
     "debug"
 } else {
@@ -27,10 +38,26 @@ pub fn date() -> String {
     )
 }
 
-/// UTC date and time, `YYYY-MM-DD HH:MM:SS`
+/// The local time zone, read once by `init_local_offset`
+#[cfg(not(target_arch = "wasm32"))]
+static LOCAL_OFFSET: std::sync::OnceLock<time::UtcOffset> = std::sync::OnceLock::new();
+
+/// Reads the local time zone. Has to run first in `main`: `time` can only read it while the
+/// process has a single thread.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn init_local_offset() {
+    let offset = time::UtcOffset::current_local_offset().unwrap_or_else(|error| {
+        eprintln!("can't read the local time zone, dates are in UTC: {error}");
+        time::UtcOffset::UTC
+    });
+    let _ = LOCAL_OFFSET.set(offset);
+}
+
+/// Local date and time like on the web, `YYYY-MM-DD HH:MM:SS`
 #[cfg(not(target_arch = "wasm32"))]
 pub fn date() -> String {
-    let date = time::OffsetDateTime::now_utc();
+    let offset = LOCAL_OFFSET.get().copied().unwrap_or(time::UtcOffset::UTC);
+    let date = time::OffsetDateTime::now_utc().to_offset(offset);
     format!(
         "{:04}-{:02}-{:02} {:02}:{:02}:{:02}",
         date.year(),
