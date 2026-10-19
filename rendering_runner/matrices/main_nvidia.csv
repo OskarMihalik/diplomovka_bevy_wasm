@@ -1,0 +1,12 @@
+# main.csv on the dedicated GPU (RTX 4070 Laptop GPU) as a reference: the same models, distances
+# and settings. Firefox renders on it through PRIME render offload (the env column; checked: the
+# WebGL renderer and nvidia-smi show the RTX 4070), natively gpu=high picks it. The laptop panel
+# is driven by the integrated GPU, so every frame is copied to it for display (hybrid mode).
+# Disconnect monitors on the NVIDIA GPU (HDMI) first, the runner warns about them.
+platform,model,distance,repeat,runs,duration,warmup,gpu,resolution,msaa,shadows,env,expect_gpu
+bevy-native bevy-web babylon-web,building,20,5,1,60,5,high,2088x1550,4,on,__NV_PRIME_RENDER_OFFLOAD=1;__GLX_VENDOR_LIBRARY_NAME=nvidia,NVIDIA
+bevy-native bevy-web babylon-web,barling_wrecks cai_mep_port_vietnam,5.22,5,1,60,5,high,2088x1550,4,on,__NV_PRIME_RENDER_OFFLOAD=1;__GLX_VENDOR_LIBRARY_NAME=nvidia,NVIDIA
+bevy-native bevy-web babylon-web,full_gameready_city_buildings_iv_hongkong,10,5,1,60,5,high,2088x1550,4,on,__NV_PRIME_RENDER_OFFLOAD=1;__GLX_VENDOR_LIBRARY_NAME=nvidia,NVIDIA
+bevy-native bevy-web babylon-web,administrative_and_warehouse_complex,19000,5,1,60,5,high,2088x1550,4,on,__NV_PRIME_RENDER_OFFLOAD=1;__GLX_VENDOR_LIBRARY_NAME=nvidia,NVIDIA
+bevy-native babylon-web,london_city,19000,5,1,60,5,high,2088x1550,4,on,__NV_PRIME_RENDER_OFFLOAD=1;__GLX_VENDOR_LIBRARY_NAME=nvidia,NVIDIA
+bevy-native babylon-web,national_airport_by_aditya,20,5,1,60,5,high,2088x1550,4,on,__NV_PRIME_RENDER_OFFLOAD=1;__GLX_VENDOR_LIBRARY_NAME=nvidia,NVIDIA

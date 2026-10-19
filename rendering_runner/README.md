@@ -70,10 +70,22 @@ Jobs run in rounds: launch 1 of every configuration, then launch 2, and so on, s
 Matrices in `matrices/`:
 
 - `smoke.csv`: every platform once, a few seconds each (~4 min)
-- `main.csv`: the thesis comparison, 6 models × 3 platforms, 5 launches × 60 s (~2 h)
-- `load.csv`: load only, 10 launches per model and platform (~1 h 20 min)
+- `main.csv`: the thesis comparison, 7 models × 3 platforms, 5 launches × 60 s (~2 h 30 min)
+- `load.csv`: load only, 10 launches per model and platform (~1 h 35 min)
 - `previous_fps.csv`: the configurations of the old manual `rendering_fps.csv`, 5 orbits per launch (~1 h 30 min)
-- `app.csv`: the whole app, 6 models, native and web (~1 h 20 min)
+- `app.csv`: the whole app, 7 models, native and web (~1 h 35 min)
+- `nvidia.csv`: `main.csv` on the dedicated RTX 4070 as a reference (~2 h 30 min); the results
+  tool writes it to `tables/fps_rtx.tex` and `ttest_rtx.tex`
+
+## The NVIDIA GPU (`nvidia.csv`)
+
+Natively `gpu=high` picks the RTX 4070. Firefox renders on it only with PRIME render offload,
+`env` = `__NV_PRIME_RENDER_OFFLOAD=1;__GLX_VENDOR_LIBRARY_NAME=nvidia` (checked with the WebGL
+renderer and `nvidia-smi`; under XWayland Firefox has no WebGL2). `expect_gpu=NVIDIA` fails any
+job that falls back to the integrated GPU: native rows say `NVIDIA GeForce RTX 4070 Laptop GPU`,
+Firefox `NVIDIA GeForce GTX 980, or similar` (its sanitized name). The laptop panel is driven by
+the integrated GPU, so every frame is copied to it (hybrid mode). Disconnect monitors on the
+NVIDIA GPU (HDMI) before the batch, the runner warns about them.
 
 ## The app (`app-native`, `app-web`)
 

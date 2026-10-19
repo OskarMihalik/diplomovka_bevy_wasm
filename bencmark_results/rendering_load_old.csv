@@ -1,0 +1,17 @@
+engine,msaa,shadows,camera_distance,date,pc,os,cpu_cores,gpu,graphics_backend,browser,browser_version,build,resolution,model_id,model_name,model_version,meshes,vertices,triangles,download_parse_ms,mesh_creation_ms,first_frame_ms,total_ms,frames
+bevy,4,on,5.22,2026-10-16 13:07:06,legion,linux,28,Intel(R) Graphics (RPL-S),Vulkan,native,,release,2088x1550,,barling_wrecks,1,12,652437,776478,1222.0,2.9,183.3,1408.2,221
+bevy,4,on,5.22,2026-10-16 13:12:31,legion,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,155.0,release,2088x1550,,barling_wrecks,1,12,652437,776478,4057.8,2.1,1198.3,5258.2,51
+babylon,4,on,5.22,2026-10-16 13:17:51,legion,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,155.0,release,2088x1550,,barling_wrecks,1,12,652437,776478,1301.0,1.1,499.3,1801.6,34
+bevy,4,on,10.00,2026-10-16 13:23:09,legion,linux,28,Intel(R) Graphics (RPL-S),Vulkan,native,,release,2088x1550,,full_gameready_city_buildings_iv_hongkong,1,488,569375,368217,637.2,6.4,166.4,810.2,72
+bevy,4,on,10.00,2026-10-16 13:28:34,legion,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,155.0,release,2088x1550,,full_gameready_city_buildings_iv_hongkong,1,488,569375,368217,3804.0,38.0,1897.1,5739.4,77
+babylon,4,on,10.00,2026-10-16 13:33:55,legion,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,155.0,release,2088x1550,,full_gameready_city_buildings_iv_hongkong,1,488,569375,368217,1950.0,3.1,1233.1,3187.0,52
+bevy,4,on,5.22,2026-10-16 13:39:14,legion,linux,28,Intel(R) Graphics (RPL-S),Vulkan,native,,release,2088x1550,,cai_mep_port_vietnam,1,56,3598511,3500543,2034.5,1.7,579.9,2616.1,362
+bevy,4,on,5.22,2026-10-16 13:44:47,legion,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,155.0,release,2088x1550,,cai_mep_port_vietnam,1,56,3598511,3500543,11005.3,5.1,2080.3,13090.8,209
+babylon,4,on,5.22,2026-10-16 13:50:10,legion,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,155.0,release,2088x1550,,cai_mep_port_vietnam,1,56,3598511,3500543,4111.6,1.5,530.1,4643.4,127
+bevy,4,on,19000.00,2026-10-16 13:55:29,legion,linux,28,Intel(R) Graphics (RPL-S),Vulkan,native,,release,2088x1550,,administrative_and_warehouse_complex,1,114,6978312,6147933,1561.6,1.6,211.8,1775.0,280
+bevy,4,on,19000.00,2026-10-16 14:00:54,legion,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,155.0,release,2088x1550,,administrative_and_warehouse_complex,1,114,6978312,6147933,3547.0,9.4,1852.9,5409.3,247
+babylon,4,on,19000.00,2026-10-16 14:06:14,legion,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,155.0,release,2088x1550,,administrative_and_warehouse_complex,1,114,6978312,6147933,1573.0,1.7,66.5,1641.5,148
+bevy,4,on,19000.00,2026-10-16 14:11:37,legion,linux,28,Intel(R) Graphics (RPL-S),Vulkan,native,,release,2088x1550,,london_city,1,334,14714620,9514299,3808.9,10.3,518.7,4338.0,770
+babylon,4,on,19000.00,2026-10-16 14:17:02,legion,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,155.0,release,2088x1550,,london_city,1,334,14714620,9514299,3632.2,2.4,101.5,3736.6,387
+bevy,4,on,20.00,2026-10-16 14:22:25,legion,linux,28,Intel(R) Graphics (RPL-S),Vulkan,native,,release,2088x1550,,national_airport_by_aditya,1,723,27072433,13805487,4456.7,9.1,625.8,5091.8,891
+babylon,4,on,20.00,2026-10-16 14:27:50,legion,Linux x86_64,28,"Intel(R) HD Graphics, or similar",Gl,Firefox,155.0,release,2088x1550,,national_airport_by_aditya,1,723,27072433,13805487,4443.8,3.9,121.9,4570.5,478

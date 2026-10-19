@@ -154,11 +154,11 @@ export async function runWeb(job, { server, pc, log }) {
  * Opens an empty page once before the batch: Firefox starts, WebGL2 runs on a GPU, the page is
  * cross-origin isolated (20 µs timer steps). Returns what goes into meta.json.
  */
-export async function checkFirefox(server) {
+export async function checkFirefox(server, env = {}) {
   if (!fs.existsSync(firefox.executablePath())) {
     throw new Error("Playwright's Firefox isn't installed: cd rendering_runner && npx playwright install firefox");
   }
-  const browser = await launchFirefox();
+  const browser = await launchFirefox(env);
   try {
     const page = await within((await browser.newContext({ viewport: null })).newPage(), "opening a page");
     await within(page.goto(`${server.origin}/check`), "opening the check page");

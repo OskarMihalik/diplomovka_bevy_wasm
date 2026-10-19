@@ -23,6 +23,14 @@ pub struct Model {
 
 /// In the order they appear in tables and figures
 pub const MODELS: &[Model] = &[
+    // low-complexity baseline: the fixed cost of a frame and of a load in each renderer
+    Model {
+        file: "building",
+        name: "Futuristic Building",
+        short: "Building",
+        distance: 20.,
+        wasm_oom: false,
+    },
     Model {
         file: "barling_wrecks",
         name: "Barling Wrecks",
@@ -72,16 +80,21 @@ pub enum Platform {
     BevyWasm,
     BabylonWasm,
     BevyNative,
-    // dedicated GPU, a reference only, every other platform runs on the integrated one
-    // BevyNativeRtx,
+    // dedicated GPU (RTX 4070 through PRIME render offload), a reference next to the integrated
+    // one, see rendering_runner/matrices/nvidia.csv
+    BevyWasmRtx,
+    BabylonWasmRtx,
+    BevyNativeRtx,
 }
 
 impl Platform {
-    pub const ALL: [Platform; 3] = [
+    pub const ALL: [Platform; 6] = [
         Platform::BevyWasm,
         Platform::BabylonWasm,
         Platform::BevyNative,
-        // Platform::BevyNativeRtx,
+        Platform::BevyWasmRtx,
+        Platform::BabylonWasmRtx,
+        Platform::BevyNativeRtx,
     ];
     // The ones compared on the same integrated GPU
     pub const COMPARED: [Platform; 3] = [
@@ -89,13 +102,36 @@ impl Platform {
         Platform::BabylonWasm,
         Platform::BevyNative,
     ];
+    // The same three on the dedicated GPU
+    pub const RTX: [Platform; 3] = [
+        Platform::BevyWasmRtx,
+        Platform::BabylonWasmRtx,
+        Platform::BevyNativeRtx,
+    ];
 
     pub fn label(self) -> &'static str {
         match self {
             Platform::BevyWasm => "Bevy (Wasm)",
             Platform::BabylonWasm => "Babylon.js",
             Platform::BevyNative => "Bevy (native)",
-            // Platform::BevyNativeRtx => "Bevy (native, RTX 4070)",
+            Platform::BevyWasmRtx => "Bevy (Wasm, RTX 4070)",
+            Platform::BabylonWasmRtx => "Babylon.js (RTX 4070)",
+            Platform::BevyNativeRtx => "Bevy (native, RTX 4070)",
+        }
+    }
+
+    /// Label without the GPU, for tables whose caption names the GPU
+    pub fn short_label(self) -> &'static str {
+        self.on_integrated().label()
+    }
+
+    /// The same renderer on the integrated GPU
+    pub fn on_integrated(self) -> Platform {
+        match self {
+            Platform::BevyWasmRtx => Platform::BevyWasm,
+            Platform::BabylonWasmRtx => Platform::BabylonWasm,
+            Platform::BevyNativeRtx => Platform::BevyNative,
+            other => other,
         }
     }
 
@@ -105,7 +141,9 @@ impl Platform {
             Platform::BevyWasm => "bevy_wasm",
             Platform::BabylonWasm => "babylon_wasm",
             Platform::BevyNative => "bevy_native",
-            // Platform::BevyNativeRtx => "bevy_native_rtx",
+            Platform::BevyWasmRtx => "bevy_wasm_rtx",
+            Platform::BabylonWasmRtx => "babylon_wasm_rtx",
+            Platform::BevyNativeRtx => "bevy_native_rtx",
         }
     }
 
@@ -115,7 +153,9 @@ impl Platform {
             ("bevy", false, false) => Some(Platform::BevyWasm),
             ("babylon", false, false) => Some(Platform::BabylonWasm),
             ("bevy", true, false) => Some(Platform::BevyNative),
-            // ("bevy", true, true) => Some(Platform::BevyNativeRtx),
+            ("bevy", false, true) => Some(Platform::BevyWasmRtx),
+            ("babylon", false, true) => Some(Platform::BabylonWasmRtx),
+            ("bevy", true, true) => Some(Platform::BevyNativeRtx),
             _ => None,
         }
     }

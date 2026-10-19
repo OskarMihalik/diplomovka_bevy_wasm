@@ -11,7 +11,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { backendUrl, prepareBackend } from "./lib/app.js";
-import { busyApps, keepScreenAwake, machineInfo, onAcPower, screenLocked } from "./lib/host.js";
+import { busyApps, displaysOnNvidia, keepScreenAwake, machineInfo, onAcPower, screenLocked } from "./lib/host.js";
 import { checkFirefox, csvFiles, jobTimeoutS, runNative, runWeb, stopRunningJob } from "./lib/jobs.js";
 import { formatDuration, parseCsv, readMatrix } from "./lib/matrix.js";
 import { startServer } from "./lib/server.js";
@@ -104,6 +104,10 @@ if (onAcPower() === false) warnings.push("the laptop is on battery");
 const apps = busyApps();
 if (apps.length) warnings.push(`close these apps, they share the GPU and CPU: ${apps.join(", ")}`);
 if (screenLocked()) warnings.push("the screen is locked, jobs wait until it is unlocked");
+const nvidiaDisplays = displaysOnNvidia();
+if (nvidiaDisplays.length && jobs.some((job) => job.expectGpu.toLowerCase().includes("nvidia"))) {
+  warnings.push(`disconnect ${nvidiaDisplays.join(", ")}, it is driven by the NVIDIA GPU the benchmark runs on`);
+}
 for (const warning of warnings) console.warn(`warning: ${warning}`);
 
 fs.mkdirSync(batchDir, { recursive: true });
@@ -193,7 +197,8 @@ process.on("SIGINT", () => {
 if (hasWeb) {
   await waitForUnlock();
   try {
-    thisRun.firefox = await checkFirefox(server);
+    // with the environment of the web jobs, e.g. the PRIME variables of nvidia.csv
+    thisRun.firefox = await checkFirefox(server, todo.find((job) => job.platform.endsWith("-web"))?.env);
   } catch (error) {
     console.error(`Firefox check failed: ${error.message}`);
     await finish(1);

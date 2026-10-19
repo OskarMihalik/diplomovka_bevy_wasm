@@ -1,6 +1,8 @@
 # Load times only: 10 cold launches per model and platform, nothing is rendered after the first
-# frame. Same models and distances as main.csv (the first frame depends on the distance).
+# frame. Same models and distances as main.csv (the first frame depends on the distance). building
+# gives the fixed cost of a load, independent of the model size.
 platform,model,distance,repeat,runs,gpu,resolution,msaa,shadows,expect_gpu
+bevy-native bevy-web babylon-web,building,20,10,0,low,2088x1550,4,on,Intel
 bevy-native bevy-web babylon-web,barling_wrecks cai_mep_port_vietnam,5.22,10,0,low,2088x1550,4,on,Intel
 bevy-native bevy-web babylon-web,full_gameready_city_buildings_iv_hongkong,10,10,0,low,2088x1550,4,on,Intel
 bevy-native bevy-web babylon-web,administrative_and_warehouse_complex,19000,10,0,low,2088x1550,4,on,Intel

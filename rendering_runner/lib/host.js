@@ -74,6 +74,27 @@ export function keepScreenAwake() {
   };
 }
 
+/** Connected displays driven by an NVIDIA GPU (vendor 0x10de), e.g. `HDMI-A-1` */
+export function displaysOnNvidia() {
+  const drm = "/sys/class/drm";
+  if (!fs.existsSync(drm)) return [];
+  return fs
+    .readdirSync(drm)
+    .filter((name) => /^card\d+-/.test(name))
+    .filter((name) => {
+      try {
+        const connected = fs.readFileSync(`${drm}/${name}/status`, "utf8").trim() === "connected";
+        // the connector (card2-HDMI-A-1) belongs to the card (card2), which has the PCI vendor
+        const card = name.slice(0, name.indexOf("-"));
+        const vendor = fs.readFileSync(`${drm}/${card}/device/vendor`, "utf8").trim();
+        return connected && vendor === "0x10de";
+      } catch {
+        return false;
+      }
+    })
+    .map((name) => name.replace(/^card\d+-/, ""));
+}
+
 /** true if the session's screen is locked, false if not or unknown */
 export function screenLocked() {
   const session = process.env.XDG_SESSION_ID;

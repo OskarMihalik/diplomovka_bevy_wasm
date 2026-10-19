@@ -14,3 +14,4 @@ node_modules
 backend/assets/models/*
 !backend/assets/models/.gitkeep
 framework_bench/results/
+bencmark_results/logs
