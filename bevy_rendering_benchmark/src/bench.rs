@@ -20,6 +20,11 @@ use crate::system_info;
 
 /// Columns in front of every CSV row, fps.csv and load.csv start the same without the first three
 const COMMON_CSV_HEADER: &str = "engine,msaa,shadows,camera_distance,date,pc,os,cpu_cores,gpu,graphics_backend,browser,browser_version,build,resolution,model_id,model_name,model_version";
+/// Frames between finishing and exiting. Rendering runs a frame behind and wgpu reports errors
+/// like Out of Memory a frame or two after the work that caused them, so exiting right away would
+/// end with a success exit code before Bevy's RenderErrorHandler sees the error.
+const EXIT_DELAY_FRAMES: u32 = 10;
+
 const FPS_CSV_HEADER: &str = "duration_s,frames,avg_fps,median_fps,low_1_fps,low_01_fps,frame_avg_ms,frame_min_ms,frame_p50_ms,frame_p95_ms,frame_p99_ms,frame_max_ms,frame_stddev_ms,mesh_instances,unique_meshes,vertices,triangles,materials,textures,texture_mib,entities";
 
 pub struct BenchPlugin;
@@ -33,6 +38,7 @@ impl Plugin for BenchPlugin {
                 record_frame_time,
                 orbit_camera,
                 finish_run,
+                exit_when_done,
             )
                 .chain(),
         );
@@ -54,6 +60,8 @@ struct Bench {
     phase: Phase,
     /// fps rows of the finished runs, printed together at the end for copying
     rows: Vec<String>,
+    /// frames left until the app exits, set once the benchmark is done
+    exit_in: Option<u32>,
 }
 
 struct BenchmarkRun {
@@ -82,7 +90,6 @@ fn start_warmup(
     mut bench: ResMut<Bench>,
     config: Res<BenchConfig>,
     q_models: Query<Has<ModelLoadTiming>, With<BenchModel>>,
-    mut exit: MessageWriter<AppExit>,
 ) {
     // no model yet while it is being picked on the page
     let shown = !q_models.is_empty() && q_models.iter().all(|loading| !loading);
@@ -95,7 +102,7 @@ fn start_warmup(
         bench.phase = Phase::Done;
         report::done();
         if config.exit_when_done && cfg!(not(target_arch = "wasm32")) {
-            exit.write(AppExit::Success);
+            bench.exit_in = Some(EXIT_DELAY_FRAMES);
         }
         return;
     }
@@ -147,7 +154,6 @@ fn finish_run(
     mut bench: ResMut<Bench>,
     csv: CsvContext,
     measure: MeasureModel,
-    mut exit: MessageWriter<AppExit>,
 ) {
     let config = &csv.config;
     let Phase::Running(run) = &bench.phase else {
@@ -259,8 +265,20 @@ fn finish_run(
         );
         report::done();
         if config.exit_when_done && cfg!(not(target_arch = "wasm32")) {
-            exit.write(AppExit::Success);
+            bench.exit_in = Some(EXIT_DELAY_FRAMES);
         }
+    }
+}
+
+/// A render error in the meantime exits first, with AppExit::error from Bevy's RenderErrorHandler
+fn exit_when_done(mut bench: ResMut<Bench>, mut exit: MessageWriter<AppExit>) {
+    let Some(frames) = bench.exit_in else {
+        return;
+    };
+    if frames == 0 {
+        exit.write(AppExit::Success);
+    } else {
+        bench.exit_in = Some(frames - 1);
     }
 }
 

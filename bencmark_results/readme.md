@@ -40,6 +40,35 @@ This could also be a finding for the thesis: WebAssembly's 4 GB memory limit com
 
 I can add the size guard from option 2 if you'd like.
 
+# Native Bevy on the asus (Ivy Bridge HD Graphics 4000)
+
+**Picking the Intel GPU**
+
+Mesa's Vulkan driver for Ivy Bridge (`hasvk`) is incomplete and reports conformance version 0.0.0. wgpu hides non-conformant Vulkan adapters, so native Bevy falls back to `llvmpipe` (CPU rendering, ~1.6 fps). Run the benchmark with the override:
+
+`WGPU_ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER=1 node rendering_runner/run.mjs rendering_runner/matrices/main.csv --pc asus`
+
+With it, Bevy runs on `Intel(R) HD Graphics 4000 (IVB GT2)` over Vulkan.
+
+**Large models run out of GPU memory**
+
+In run `logs/rendering/20261022-133348`, native Bevy failed all 5 repeats of `cai_mep_port_vietnam`, `london_city` and `national_airport_by_aditya`. The first error is `Out of Memory` (cai_mep, in `mesh slab resize encoder`, right after the first frame) or `DeviceLost: Out of memory` (london_city). Babylon and Bevy on wasm load the same models on the same GPU without problems.
+
+The cause is the driver, not the engine:
+
+- `hasvk` advertises a single 1.5 GiB heap, sized from the Ivy Bridge 2 GiB graphics aperture. It counts every allocation against that heap and refuses one that would go over it, even though system RAM is still free. No setting raises it.
+- The web builds go through WebGL2 → Firefox → OpenGL, on Mesa's `crocus` driver. OpenGL has no such budget: buffers live in system RAM and the kernel only has to fit the objects a single draw batch uses into the aperture, swapping the rest in and out.
+
+Native Bevy also needs more GPU memory for the same model:
+
+- GPU preprocessing and GPU clustering are on (they need compute shaders, which WebGL2 doesn't have), adding buffers like `indexed preprocess work item buffer` and `bin unpacking metadata buffer`.
+- Bevy packs meshes into shared slab buffers. Growing a slab allocates a bigger one and copies into it, so both exist for a moment. cai_mep failed during exactly this step.
+- Babylon gives each mesh its own buffer and never makes that copy.
+
+The share of each of these hasn't been measured; the 1.5 GiB Vulkan heap alone explains the failures.
+
+Finding for the thesis: on the asus, native Bevy (Vulkan) cannot render these three models because the `hasvk` driver limits the GPU heap to 1.5 GiB, while the web versions run through OpenGL, which has no such limit. This is a limit of the old GPU's Vulkan driver, not of Bevy. Running native Bevy through OpenGL (wgpu's `gles` feature) would remove the limit and put it on the same driver as the web builds.
+
 # parameters
 
 Intel® UHD Graphics for 14th Gen Intel® Processors

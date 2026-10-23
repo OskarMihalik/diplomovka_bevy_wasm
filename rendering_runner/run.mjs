@@ -130,6 +130,7 @@ if (!noBuild) {
     ]);
   }
   if (platforms.has("babylon-web")) {
+    steps.push(["npm", ["i"], path.join(ROOT, "babylon_rendering_benchmark")]);
     steps.push(["npm", ["run", "build"], path.join(ROOT, "babylon_rendering_benchmark")]);
   }
   if (platforms.has("app-native")) {

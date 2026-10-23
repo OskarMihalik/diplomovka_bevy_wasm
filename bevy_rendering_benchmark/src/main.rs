@@ -114,6 +114,12 @@ fn main() {
     if let Some(model_path) = model_path {
         app.insert_resource(ModelAssetPath(model_path));
     }
+    // AppExit::error from a render error or a failed load has to reach the runner as an exit code
+    #[cfg(not(target_arch = "wasm32"))]
+    if app.run().is_error() {
+        std::process::exit(1);
+    }
+    #[cfg(target_arch = "wasm32")]
     app.run();
 }
 
