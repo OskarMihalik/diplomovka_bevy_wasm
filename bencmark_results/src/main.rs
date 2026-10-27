@@ -60,7 +60,22 @@ fn run() -> Result<(), String> {
             ),
         )?;
     }
-    out.write("tables/load.tex", &load_table(&load))?;
+    // the older notebook (rendering_runner/matrices/main.csv with --pc asus), once it ran
+    if fps.iter().any(|m| Platform::ASUS.contains(&m.platform)) {
+        out.write("tables/fps_asus.tex", &fps_table(&fps, Platform::ASUS))?;
+        out.write(
+            "tables/ttest_asus.tex",
+            &ttest_table(
+                &fps,
+                [
+                    (Platform::BevyWasmAsus, Platform::BabylonWasmAsus),
+                    (Platform::BevyNativeAsus, Platform::BevyWasmAsus),
+                ],
+            ),
+        )?;
+        out.write("tables/load_asus.tex", &load_table(&load, Platform::ASUS))?;
+    }
+    out.write("tables/load.tex", &load_table(&load, Platform::COMPARED))?;
     out.write("data/fps.csv", &fps_data(&fps))?;
     out.write("data/frametimes.csv", &frametime_data(&fps))?;
     for platform in Platform::ALL {
@@ -199,9 +214,13 @@ fn model_metric(rows: &[Measurement], model: usize, f: fn(&Row) -> f64) -> Optio
     .map(|s| s.mean)
 }
 
-/// Cell for a missing measurement: OOM where Bevy can't load the model in the browser
+/// Cell for a missing measurement: OOM where Bevy can't load the model in the browser, or natively
+/// on the asus, whose Vulkan driver runs out of GPU memory
 fn missing(model: usize, platform: Platform) -> &'static str {
-    if MODELS[model].wasm_oom && platform.on_integrated() == Platform::BevyWasm {
+    let model = &MODELS[model];
+    if (model.wasm_oom && platform.on_integrated() == Platform::BevyWasm)
+        || (model.asus_native_oom && platform == Platform::BevyNativeAsus)
+    {
         "OOM"
     } else {
         "--"
@@ -357,10 +376,7 @@ fn ttest_table(fps: &[Measurement], pairs: [(Platform, Platform); 2]) -> String 
                     cells.push(format_p(w.p));
                 }
                 None => {
-                    let reason = if MODELS[i].wasm_oom
-                        && (a.on_integrated() == Platform::BevyWasm
-                            || b.on_integrated() == Platform::BevyWasm)
-                    {
+                    let reason = if missing(i, a) == "OOM" || missing(i, b) == "OOM" {
                         "OOM"
                     } else {
                         "--"
@@ -383,10 +399,10 @@ fn ttest_table(fps: &[Measurement], pairs: [(Platform, Platform); 2]) -> String 
     tex
 }
 
-fn load_table(load: &[Measurement]) -> String {
-    // the dedicated GPU barely changes load times, its few load rows (from the fps launches)
-    // aren't in the paper
-    let platforms: Vec<_> = Platform::COMPARED
+/// The dedicated GPU barely changes load times, its few load rows (from the fps launches) aren't
+/// in the paper
+fn load_table(load: &[Measurement], platforms: [Platform; 3]) -> String {
+    let platforms: Vec<_> = platforms
         .into_iter()
         .filter(|&p| load.iter().any(|m| m.platform == p))
         .collect();
@@ -397,7 +413,7 @@ fn load_table(load: &[Measurement]) -> String {
         "r".repeat(platforms.len())
     );
     for platform in &platforms {
-        let _ = write!(tex, " & {}", platform.label());
+        let _ = write!(tex, " & {}", platform.short_label());
     }
     tex.push_str(" \\\\\n\\midrule\n");
     for (i, model) in MODELS.iter().enumerate() {

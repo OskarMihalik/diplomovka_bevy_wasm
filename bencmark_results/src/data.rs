@@ -19,6 +19,9 @@ pub struct Model {
     pub distance: f64,
     /// doesn't fit into the 4 GB of wasm32 memory in Bevy, see readme.md
     pub wasm_oom: bool,
+    /// native Bevy runs out of GPU memory on the asus (HD Graphics 4000, the hasvk Vulkan driver
+    /// has a 1.5 GiB heap), see readme.md
+    pub asus_native_oom: bool,
 }
 
 /// In the order they appear in tables and figures
@@ -30,6 +33,7 @@ pub const MODELS: &[Model] = &[
         short: "Building",
         distance: 20.,
         wasm_oom: false,
+        asus_native_oom: false,
     },
     Model {
         file: "barling_wrecks",
@@ -37,6 +41,7 @@ pub const MODELS: &[Model] = &[
         short: "Barling",
         distance: 5.22,
         wasm_oom: false,
+        asus_native_oom: false,
     },
     Model {
         file: "full_gameready_city_buildings_iv_hongkong",
@@ -44,6 +49,7 @@ pub const MODELS: &[Model] = &[
         short: "Hong Kong",
         distance: 10.,
         wasm_oom: false,
+        asus_native_oom: false,
     },
     Model {
         file: "cai_mep_port_vietnam",
@@ -51,6 +57,7 @@ pub const MODELS: &[Model] = &[
         short: "Cai Mep",
         distance: 5.22,
         wasm_oom: false,
+        asus_native_oom: true,
     },
     Model {
         file: "administrative_and_warehouse_complex",
@@ -58,6 +65,7 @@ pub const MODELS: &[Model] = &[
         short: "Warehouse",
         distance: 19000.,
         wasm_oom: false,
+        asus_native_oom: false,
     },
     Model {
         file: "london_city",
@@ -65,6 +73,7 @@ pub const MODELS: &[Model] = &[
         short: "London",
         distance: 19000.,
         wasm_oom: true,
+        asus_native_oom: true,
     },
     Model {
         file: "national_airport_by_aditya",
@@ -72,6 +81,7 @@ pub const MODELS: &[Model] = &[
         short: "Airport",
         distance: 20.,
         wasm_oom: true,
+        asus_native_oom: true,
     },
 ];
 
@@ -85,16 +95,24 @@ pub enum Platform {
     BevyWasmRtx,
     BabylonWasmRtx,
     BevyNativeRtx,
+    // the older asus notebook (Intel HD Graphics 4000), see rendering_runner/matrices/main.csv
+    // with --pc asus
+    BevyWasmAsus,
+    BabylonWasmAsus,
+    BevyNativeAsus,
 }
 
 impl Platform {
-    pub const ALL: [Platform; 6] = [
+    pub const ALL: [Platform; 9] = [
         Platform::BevyWasm,
         Platform::BabylonWasm,
         Platform::BevyNative,
         Platform::BevyWasmRtx,
         Platform::BabylonWasmRtx,
         Platform::BevyNativeRtx,
+        Platform::BevyWasmAsus,
+        Platform::BabylonWasmAsus,
+        Platform::BevyNativeAsus,
     ];
     // The ones compared on the same integrated GPU
     pub const COMPARED: [Platform; 3] = [
@@ -108,6 +126,12 @@ impl Platform {
         Platform::BabylonWasmRtx,
         Platform::BevyNativeRtx,
     ];
+    // The same three on the older notebook
+    pub const ASUS: [Platform; 3] = [
+        Platform::BevyWasmAsus,
+        Platform::BabylonWasmAsus,
+        Platform::BevyNativeAsus,
+    ];
 
     pub fn label(self) -> &'static str {
         match self {
@@ -117,6 +141,9 @@ impl Platform {
             Platform::BevyWasmRtx => "Bevy (Wasm, RTX 4070)",
             Platform::BabylonWasmRtx => "Babylon.js (RTX 4070)",
             Platform::BevyNativeRtx => "Bevy (native, RTX 4070)",
+            Platform::BevyWasmAsus => "Bevy (Wasm, HD 4000)",
+            Platform::BabylonWasmAsus => "Babylon.js (HD 4000)",
+            Platform::BevyNativeAsus => "Bevy (native, HD 4000)",
         }
     }
 
@@ -125,12 +152,12 @@ impl Platform {
         self.on_integrated().label()
     }
 
-    /// The same renderer on the integrated GPU
+    /// The same renderer on the integrated GPU of the legion
     pub fn on_integrated(self) -> Platform {
         match self {
-            Platform::BevyWasmRtx => Platform::BevyWasm,
-            Platform::BabylonWasmRtx => Platform::BabylonWasm,
-            Platform::BevyNativeRtx => Platform::BevyNative,
+            Platform::BevyWasmRtx | Platform::BevyWasmAsus => Platform::BevyWasm,
+            Platform::BabylonWasmRtx | Platform::BabylonWasmAsus => Platform::BabylonWasm,
+            Platform::BevyNativeRtx | Platform::BevyNativeAsus => Platform::BevyNative,
             other => other,
         }
     }
@@ -144,10 +171,22 @@ impl Platform {
             Platform::BevyWasmRtx => "bevy_wasm_rtx",
             Platform::BabylonWasmRtx => "babylon_wasm_rtx",
             Platform::BevyNativeRtx => "bevy_native_rtx",
+            Platform::BevyWasmAsus => "bevy_wasm_asus",
+            Platform::BabylonWasmAsus => "babylon_wasm_asus",
+            Platform::BevyNativeAsus => "bevy_native_asus",
         }
     }
 
-    fn of(engine: &str, browser: &str, gpu: &str) -> Option<Self> {
+    fn of(pc: &str, engine: &str, browser: &str, gpu: &str) -> Option<Self> {
+        // Firefox reports the same generic Intel GPU on both notebooks, only `pc` tells them apart
+        if pc == "asus" {
+            return match (engine, browser == "native") {
+                ("bevy", false) => Some(Platform::BevyWasmAsus),
+                ("babylon", false) => Some(Platform::BabylonWasmAsus),
+                ("bevy", true) => Some(Platform::BevyNativeAsus),
+                _ => None,
+            };
+        }
         let rtx = gpu.contains("NVIDIA");
         match (engine, browser == "native", rtx) {
             ("bevy", false, false) => Some(Platform::BevyWasm),
@@ -168,6 +207,7 @@ pub struct Row {
     msaa: String,
     shadows: String,
     camera_distance: f64,
+    pc: String,
     gpu: String,
     browser: String,
     resolution: String,
@@ -243,7 +283,7 @@ fn read(path: &Path, check_distance: bool) -> Result<Vec<Measurement>, String> {
         };
         let c = &row;
         let model = MODELS.iter().position(|m| m.file == c.model_name);
-        let platform = Platform::of(&c.engine, &c.browser, &c.gpu);
+        let platform = Platform::of(&c.pc, &c.engine, &c.browser, &c.gpu);
         let settings_match = c.resolution == RESOLUTION && c.msaa == MSAA && c.shadows == SHADOWS;
         match (model, platform) {
             (Some(model), Some(platform))
