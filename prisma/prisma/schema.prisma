@@ -85,6 +85,9 @@ model Tag {
   created_by_id Int
   status_id     Int?
   status        Status?      @relation(fields: [status_id], references: [id], onDelete: SetNull)
+
+  // the tag list of a project (select_tags) filters by project and sorts by created_at
+  @@index([project_id, created_at(sort: Desc)])
 }
 
 model TagMessage {

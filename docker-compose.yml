@@ -33,6 +33,11 @@ services:
         - PORT=4001
     ports:
       - "4001:4001"
+    # argon2 hashes on the libuv thread pool, whose default is 4 threads, whereas backend hashes
+    # on the blocking pool of Tokio (up to 512 threads). With one thread per logical CPU of the
+    # test machine, both backends can compute the login hashes on all CPUs.
+    environment:
+      - UV_THREADPOOL_SIZE=28
     # same limit as backend
     ulimits:
       nofile:

@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Goose Attack Report</title>
+    <style>
+        .container {
+            width: 1000px;
+            margin: 0 auto;
+            padding: 10px;
+            background: #173529;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 14px;
+            color: #fff;
+        }
+
+        .info span{
+            color: #b3c3bc;
+        }
+
+        table {
+            border-collapse: collapse;
+            text-align: center;
+            width: 100%;
+        }
+
+        td, th {
+            border: 1px solid #cad9ea;
+            color: #666;
+            height: 30px;
+        }
+
+        thead th {
+            background-color: #cce8eb;
+            width: 100px;
+        }
+
+        tr:nth-child(odd) {
+            background: #fff;
+        }
+
+        tr:nth-child(even) {
+            background: #f5fafa;
+        }
+
+        .charts-container .chart {
+            width: 100%;
+            height: 350px;
+            margin-bottom: 30px;
+        }
+
+        .download {
+            float: right;
+        }
+
+        .download a {
+            color: #00ca5a;
+        }
+
+        .status-breakdown td {
+            font-style: italic;
+            color: #888;
+        }
+
+        .graph {
+            margin-bottom: 1em;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.2.2/dist/echarts.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Goose Attack Report</h1>
+
+        <div class="info">
+            <p>Users: <span>100</span> </p>
+            <p>Target Host: <span>http://localhost:4001/</span></p>
+            <p><span><small><em>goose v0.19.0-dev</em></small></span></p>
+            <h2>Plan overview</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Action</th>
+                            <th>Started</th>
+                            <th>Stopped</th>
+                            <th>Elapsed</th>
+                            <th>Users</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Increasing</td><td>26-10-27 22:44:06</td><td>26-10-27 22:44:11</td><td>00:00:05</td><td>0 &rarr; 100</td></tr><tr><td>Maintaining</td><td>26-10-27 22:44:11</td><td>26-10-27 22:45:11</td><td>00:01:00</td><td>100</td></tr><tr><td>Decreasing</td><td>26-10-27 22:45:11</td><td>26-10-27 22:45:11</td><td>00:00:00</td><td>0 &larr; 100</td></tr>
+                    </tbody>
+                </table>
+        </div>
+
+        <div class="requests">
+            <h2>Request Metrics</h2>
+
+            <div class="graph">
+                <div id="graph-rps" style="width: 1000px; height:500px; background: white;"></div>
+
+                <script type="text/javascript">
+                    var chartDom = document.getElementById('graph-rps');
+                    var myChart = echarts.init(chartDom);
+
+                    myChart.setOption({
+                        color: ['#2c664f', '#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de', '#3ba272', '#fc8452', '#9a60b4', '#ea7ccc'],
+                        tooltip: { trigger: 'axis' },
+                        toolbox: {
+                            feature: {
+                                dataZoom: { yAxisIndex: 'none' },
+                                restore: {},
+                                saveAsImage: {}
+                            }
+                        },
+                        dataZoom: [
+                            {
+                                type: 'inside',
+                                start: 0,
+                                end: 100,
+                                fillerColor: 'rgba(34, 80, 61, 0.25)',
+                                selectedDataBackground: {
+                                    lineStyle: { color: '#2c664f' },
+                                    areaStyle: { color: '#378063' }
+                                }
+                            },
+                            {
+                                start: 0,
+                                end: 100,
+                                fillerColor: 'rgba(34, 80, 61, 0.25)',
+                                selectedDataBackground: {
+                                    lineStyle: { color: '#2c664f' },
+                                    areaStyle: { color: '#378063' }
+                                }
+                            },
+                        ],
+                        xAxis: { type: 'time' },
+                        yAxis: {
+                            name: 'Requests #',
+                            nameLocation: 'center',
+                            nameRotate: 90,
+                            nameGap: 45,
+                            type: 'value'
+                        },
+                        
+                        series: [
+                            {
+                                name: 'POST /login',
+                                type: 'line',
+                                symbol: 'none',
+                                sampling: 'lttb',
+                                lineStyle: { color: '#2c664f' },
+                                areaStyle: { color: '#378063' },
+                                markArea: {
+                                    data: [
+                                        [
+                            {
+                                xAxis: '2026-10-27 22:44:06',
+                                itemStyle: { borderColor: 'rgba(44, 102, 79, 0.25)', borderWidth: 1 },
+                            },
+                            {
+                                xAxis: '2026-10-27 22:44:06'
+                            }
+                        ],
+                        [
+                            {
+                                xAxis: '2026-10-27 22:44:06',
+                                itemStyle: { color: 'rgba(44, 102, 79, 0.05)' },
+                            },
+                            {
+                                xAxis: '2026-10-27 22:44:11'
+                            }
+                        ],
+                        [
+                            {
+                                xAxis: '2026-10-27 22:44:11',
+                                itemStyle: { borderColor: 'rgba(44, 102, 79, 0.25)', borderWidth: 1 },
+                            },
+                            {
+                                xAxis: '2026-10-27 22:44:11'
+                            }
+                        ],[
+                            {
+                                xAxis: '2026-10-27 22:45:11',
+                                itemStyle: { borderColor: 'rgba(179, 65, 65, 0.25)', borderWidth: 1 },
+                            },
+                            {
+                                xAxis: '2026-10-27 22:45:11'
+                            }
+                        ],
+                        [
+                            {
+                                xAxis: '2026-10-27 22:45:11',
+                                itemStyle: { color: 'rgba(179, 65, 65, 0.05)' },
+                            },
+                            {
+                                xAxis: '2026-10-27 22:45:11'
+                            }
+                        ],
+                        [
+                            {
+                                xAxis: '2026-10-27 22:45:11',
+                                itemStyle: { borderColor: 'rgba(179, 65, 65, 0.25)', borderWidth: 1 },
+                            },
+                            {
+                                xAxis: '2026-10-27 22:45:11'
+                            }
+                        ],
+                                    ]
+                                },
+                                data: [["2026-10-27 22:44:06",169],["2026-10-27 22:44:07",292],["2026-10-27 22:44:08",300],["2026-10-27 22:44:09",302],["2026-10-27 22:44:10",308],["2026-10-27 22:44:11",292],["2026-10-27 22:44:12",279],["2026-10-27 22:44:13",285],["2026-10-27 22:44:14",290],["2026-10-27 22:44:15",290],["2026-10-27 22:44:16",297],["2026-10-27 22:44:17",287],["2026-10-27 22:44:18",282],["2026-10-27 22:44:19",310],["2026-10-27 22:44:20",284],["2026-10-27 22:44:21",301],["2026-10-27 22:44:22",290],["2026-10-27 22:44:23",298],["2026-10-27 22:44:24",291],["2026-10-27 22:44:25",289],["2026-10-27 22:44:26",297],["2026-10-27 22:44:27",295],["2026-10-27 22:44:28",288],["2026-10-27 22:44:29",299],["2026-10-27 22:44:30",299],["2026-10-27 22:44:31",294],["2026-10-27 22:44:32",286],["2026-10-27 22:44:33",296],["2026-10-27 22:44:34",287],["2026-10-27 22:44:35",310],["2026-10-27 22:44:36",292],["2026-10-27 22:44:37",295],["2026-10-27 22:44:38",293],["2026-10-27 22:44:39",313],["2026-10-27 22:44:40",275],["2026-10-27 22:44:41",292],["2026-10-27 22:44:42",288],["2026-10-27 22:44:43",298],["2026-10-27 22:44:44",291],["2026-10-27 22:44:45",275],["2026-10-27 22:44:46",297],["2026-10-27 22:44:47",294],["2026-10-27 22:44:48",287],["2026-10-27 22:44:49",281],["2026-10-27 22:44:50",292],["2026-10-27 22:44:51",293],["2026-10-27 22:44:52",284],["2026-10-27 22:44:53",291],["2026-10-27 22:44:54",281],["2026-10-27 22:44:55",303],["2026-10-27 22:44:56",291],["2026-10-27 22:44:57",282],["2026-10-27 22:44:58",301],["2026-10-27 22:44:59",296],["2026-10-27 22:45:00",290],["2026-10-27 22:45:01",290],["2026-10-27 22:45:02",299],["2026-10-27 22:45:03",292],["2026-10-27 22:45:04",296],["2026-10-27 22:45:05",281],["2026-10-27 22:45:06",311],["2026-10-27 22:45:07",288],["2026-10-27 22:45:08",295],["2026-10-27 22:45:09",291],["2026-10-27 22:45:10",295],["2026-10-27 22:45:11",99]],
+                            },
+                            
+                        ]
+                    });
+                </script>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Method</th>
+                        <th>Name</th>
+                        <th># Requests</th>
+                        <th># Fails</th>
+                        <th>Average (ms)</th>
+                        <th>Min (ms)</th>
+                        <th>Max (ms)</th>
+                        <th>RPS</th>
+                        <th>Failures/s</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+        <td>POST</td>
+        <td>/login</td>
+        <td>18,999</td>
+        <td>0</td>
+        <td>330.48</td>
+        <td>43</td>
+        <td>495</td>
+        <td>292.29</td>
+        <td>0.00</td>
+    </tr>
+<tr>
+        <td></td>
+        <td>Aggregated</td>
+        <td>18,999</td>
+        <td>0</td>
+        <td>330.48</td>
+        <td>43</td>
+        <td>495</td>
+        <td>292.29</td>
+        <td>0.00</td>
+    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        
+
+        <div class="responses">
+            <h2>Response Time Metrics</h2>
+
+            <div class="graph">
+                <div id="graph-avg-response-time" style="width: 1000px; height:500px; background: white;"></div>
+
+                <script type="text/javascript">
+                    var chartDom = document.getElementById('graph-avg-response-time');
+                    var myChart = echarts.init(chartDom);
+
+                    myChart.setOption({
+                        color: ['#2c664f', '#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de', '#3ba272', '#fc8452', '#9a60b4', '#ea7ccc'],
+                        tooltip: { trigger: 'axis' },
+                        toolbox: {
+                            feature: {
+                                dataZoom: { yAxisIndex: 'none' },
+                                restore: {},
+                                saveAsImage: {}
+                            }
+                        },
+                        dataZoom: [
+                            {
+                                type: 'inside',
+                                start: 0,
+                                end: 100,
+                                fillerColor: 'rgba(34, 80, 61, 0.25)',
+                                selectedDataBackground: {
+                                    lineStyle: { color: '#2c664f' },
+                                    areaStyle: { color: '#378063' }
+                                }
+                            },
+                            {
+                                start: 0,
+                                end: 100,
+                                fillerColor: 'rgba(34, 80, 61, 0.25)',
+                                selectedDataBackground: {
+                                    lineStyle: { color: '#2c664f' },
+                                    areaStyle: { color: '#378063' }
+                                }
+                            },
+                        ],
+                        xAxis: { type: 'time' },
+                        yAxis: {
+                            name: 'Response time [ms]',
+                            nameLocation: 'center',
+                            nameRotate: 90,
+                            nameGap: 45,
+                            type: 'value'
+                        },
+                        
+                        series: [
+                            {
+                                name: 'POST /login',
+                                type: 'line',
+                                symbol: 'none',
+                                sampling: 'lttb',
+                                lineStyle: { color: '#2c664f' },
+                                areaStyle: { color: '#378063' },
+                                markArea: {
+                                    data: [
+                                        [
+                            {
+                                xAxis: '2026-10-27 22:44:06',
+                                itemStyle: { borderColor: 'rgba(44, 102, 79, 0.25)', borderWidth: 1 },
+                            },
+                            {
+                                xAxis: '2026-10-27 22:44:06'
+                            }
+                        ],
+                        [
+                            {
+                                xAxis: '2026-10-27 22:44:06',
+                                itemStyle: { color: 'rgba(44, 102, 79, 0.05)' },
+                            },
+                            {
+                                xAxis: '2026-10-27 22:44:11'
+                            }
+                        ],
+                        [
+                            {
+                                xAxis: '2026-10-27 22:44:11',
+                                itemStyle: { borderColor: 'rgba(44, 102, 79, 0.25)', borderWidth: 1 },
+                            },
+                            {
+                                xAxis: '2026-10-27 22:44:11'
+                            }
+                        ],[
+                            {
+                                xAxis: '2026-10-27 22:45:11',
+                                itemStyle: { borderColor: 'rgba(179, 65, 65, 0.25)', borderWidth: 1 },
+                            },
+                            {
+                                xAxis: '2026-10-27 22:45:11'
+                            }
+                        ],
+                        [
+                            {
+                                xAxis: '2026-10-27 22:45:11',
+                                itemStyle: { color: 'rgba(179, 65, 65, 0.05)' },
+                            },
+                            {
+                                xAxis: '2026-10-27 22:45:11'
+                            }
+                        ],
+                        [
+                            {
+                                xAxis: '2026-10-27 22:45:11',
+                                itemStyle: { borderColor: 'rgba(179, 65, 65, 0.25)', borderWidth: 1 },
+                            },
+                            {
+                                xAxis: '2026-10-27 22:45:11'
+                            }
+                        ],
+                                    ]
+                                },
+                                data: [["2026-10-27 22:44:06",60.544368743896484],["2026-10-27 22:44:07",105.82193756103516],["2026-10-27 22:44:08",167.87008666992188],["2026-10-27 22:44:09",238.21527099609375],["2026-10-27 22:44:10",310.9155578613281],["2026-10-27 22:44:11",341.73974609375],["2026-10-27 22:44:12",345.035888671875],["2026-10-27 22:44:13",354.087646484375],["2026-10-27 22:44:14",345.8069152832031],["2026-10-27 22:44:15",339.2584228515625],["2026-10-27 22:44:16",344.5017395019531],["2026-10-27 22:44:17",345.4809265136719],["2026-10-27 22:44:18",342.7269592285156],["2026-10-27 22:44:19",331.1451721191406],["2026-10-27 22:44:20",344.4472961425781],["2026-10-27 22:44:21",329.8205871582031],["2026-10-27 22:44:22",345.52423095703125],["2026-10-27 22:44:23",339.63763427734375],["2026-10-27 22:44:24",339.60821533203125],["2026-10-27 22:44:25",350.64703369140625],["2026-10-27 22:44:26",335.54913330078125],["2026-10-27 22:44:27",338.4507751464844],["2026-10-27 22:44:28",339.0069274902344],["2026-10-27 22:44:29",349.1571960449219],["2026-10-27 22:44:30",323.4982604980469],["2026-10-27 22:44:31",334.0919494628906],["2026-10-27 22:44:32",351.02105712890625],["2026-10-27 22:44:33",349.7367248535156],["2026-10-27 22:44:34",334.9197082519531],["2026-10-27 22:44:35",332.4062194824219],["2026-10-27 22:44:36",340.4040832519531],["2026-10-27 22:44:37",332.9660949707031],["2026-10-27 22:44:38",339.078369140625],["2026-10-27 22:44:39",332.05419921875],["2026-10-27 22:44:40",346.6327819824219],["2026-10-27 22:44:41",340.2910461425781],["2026-10-27 22:44:42",348.7465515136719],["2026-10-27 22:44:43",345.5068359375],["2026-10-27 22:44:44",342.1479187011719],["2026-10-27 22:44:45",347.6472473144531],["2026-10-27 22:44:46",345.8149108886719],["2026-10-27 22:44:47",343.8606872558594],["2026-10-27 22:44:48",348.4459533691406],["2026-10-27 22:44:49",353.79010009765625],["2026-10-27 22:44:50",341.6814270019531],["2026-10-27 22:44:51",349.4232482910156],["2026-10-27 22:44:52",344.6654052734375],["2026-10-27 22:44:53",338.7491149902344],["2026-10-27 22:44:54",347.0710754394531],["2026-10-27 22:44:55",336.1682434082031],["2026-10-27 22:44:56",342.2232360839844],["2026-10-27 22:44:57",343.9575500488281],["2026-10-27 22:44:58",341.2690734863281],["2026-10-27 22:44:59",342.4291076660156],["2026-10-27 22:45:00",340.62420654296875],["2026-10-27 22:45:01",352.55853271484375],["2026-10-27 22:45:02",331.076904296875],["2026-10-27 22:45:03",335.22613525390625],["2026-10-27 22:45:04",338.2872009277344],["2026-10-27 22:45:05",341.2277526855469],["2026-10-27 22:45:06",333.7652587890625],["2026-10-27 22:45:07",348.96875],["2026-10-27 22:45:08",333.33563232421875],["2026-10-27 22:45:09",341.71832275390625],["2026-10-27 22:45:10",335.6509094238281],["2026-10-27 22:45:11",342.5151672363281]],
+                            },
+                            
+                        ]
+                    });
+                </script>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Method</th>
+                        <th>Name</th>
+                        <th>50%ile (ms)</th>
+                        <th>60%ile (ms)</th>
+                        <th>70%ile (ms)</th>
+                        <th>80%ile (ms)</th>
+                        <th>90%ile (ms)</th>
+                        <th>95%ile (ms)</th>
+                        <th>99%ile (ms)</th>
+                        <th>100%ile (ms)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+            <td>POST</td>
+            <td>/login</td>
+            <td>330</td>
+            <td>340</td>
+            <td>360</td>
+            <td>380</td>
+            <td>400</td>
+            <td>410</td>
+            <td>420</td>
+            <td>495</td>
+        </tr>
+<tr>
+            <td></td>
+            <td>Aggregated</td>
+            <td>330</td>
+            <td>340</td>
+            <td>360</td>
+            <td>380</td>
+            <td>400</td>
+            <td>410</td>
+            <td>420</td>
+            <td>495</td>
+        </tr>
+                </tbody>
+            </table>
+        </div>
+
+        
+
+        <div class="status_codes">
+        <h2>Status Code Metrics</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Method</th>
+                    <th colspan="2">Name</th>
+                    <th colspan="3">Status Codes</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+        <td>POST</td>
+        <td colspan="2">/login</td>
+        <td colspan="3">18,999 [200]</td>
+    </tr>
+<tr>
+        <td></td>
+        <td colspan="2">Aggregated</td>
+        <td colspan="3">18,999 [200]</td>
+    </tr>
+            </tbody>
+        </table>
+    </div>
+
+        <div class="transactions">
+        <h2>Transaction Metrics</h2>
+
+        <div class="graph">
+                <div id="graph-tps" style="width: 1000px; height:500px; background: white;"></div>
+
+                <script type="text/javascript">
+                    var chartDom = document.getElementById('graph-tps');
+                    var myChart = echarts.init(chartDom);
+
+                    myChart.setOption({
+                        color: ['#2c664f', '#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de', '#3ba272', '#fc8452', '#9a60b4', '#ea7ccc'],
+                        tooltip: { trigger: 'axis' },
+                        toolbox: {
+                            feature: {
+                                dataZoom: { yAxisIndex: 'none' },
+                                restore: {},
+                                saveAsImage: {}
+                            }
+                        },
+                        dataZoom: [
+                            {
+                                type: 'inside',
+                                start: 0,
+                                end: 100,
+                                fillerColor: 'rgba(34, 80, 61, 0.25)',
+                                selectedDataBackground: {
+                                    lineStyle: { color: '#2c664f' },
+                                    areaStyle: { color: '#378063' }
+                                }
+                            },
+                            {
+                                start: 0,
+                                end: 100,
+                                fillerColor: 'rgba(34, 80, 61, 0.25)',
+                                selectedDataBackground: {
+                                    lineStyle: { color: '#2c664f' },
+                                    areaStyle: { color: '#378063' }
+                                }
+                            },
+                        ],
+                        xAxis: { type: 'time' },
+                        yAxis: {
+                            name: 'Transactions #',
+                            nameLocation: 'center',
+                            nameRotate: 90,
+                            nameGap: 45,
+                            type: 'value'
+                        },
+                        
+                        series: [
+                            {
+                                name: 'Total',
+                                type: 'line',
+                                symbol: 'none',
+                                sampling: 'lttb',
+                                lineStyle: { color: '#2c664f' },
+                                areaStyle: { color: '#378063' },
+                                markArea: {
+                                    data: [
+                                        [
+                            {
+                                xAxis: '2026-10-27 22:44:06',
+                                itemStyle: { borderColor: 'rgba(44, 102, 79, 0.25)', borderWidth: 1 },
+                            },
+                            {
+                                xAxis: '2026-10-27 22:44:06'
+                            }
+                        ],
+                        [
+                            {
+                                xAxis: '2026-10-27 22:44:06',
+                                itemStyle: { color: 'rgba(44, 102, 79, 0.05)' },
+                            },
+                            {
+                                xAxis: '2026-10-27 22:44:11'
+                            }
+                        ],
+                        [
+                            {
+                                xAxis: '2026-10-27 22:44:11',
+                                itemStyle: { borderColor: 'rgba(44, 102, 79, 0.25)', borderWidth: 1 },
+                            },
+                            {
+                                xAxis: '2026-10-27 22:44:11'
+                            }
+                        ],[
+                            {
+                                xAxis: '2026-10-27 22:45:11',
+                                itemStyle: { borderColor: 'rgba(179, 65, 65, 0.25)', borderWidth: 1 },
+                            },
+                            {
+                                xAxis: '2026-10-27 22:45:11'
+                            }
+                        ],
+                        [
+                            {
+                                xAxis: '2026-10-27 22:45:11',
+                                itemStyle: { color: 'rgba(179, 65, 65, 0.05)' },
+                            },
+                            {
+                                xAxis: '2026-10-27 22:45:11'
+                            }
+                        ],
+                        [
+                            {
+                                xAxis: '2026-10-27 22:45:11',
+                                itemStyle: { borderColor: 'rgba(179, 65, 65, 0.25)', borderWidth: 1 },
+                            },
+                            {
+                                xAxis: '2026-10-27 22:45:11'
+                            }
+                        ],
+                                    ]
+                                },
+                                data: [["2026-10-27 22:44:06",169],["2026-10-27 22:44:07",292],["2026-10-27 22:44:08",300],["2026-10-27 22:44:09",302],["2026-10-27 22:44:10",308],["2026-10-27 22:44:11",292],["2026-10-27 22:44:12",279],["2026-10-27 22:44:13",285],["2026-10-27 22:44:14",290],["2026-10-27 22:44:15",290],["2026-10-27 22:44:16",297],["2026-10-27 22:44:17",287],["2026-10-27 22:44:18",282],["2026-10-27 22:44:19",310],["2026-10-27 22:44:20",284],["2026-10-27 22:44:21",301],["2026-10-27 22:44:22",290],["2026-10-27 22:44:23",298],["2026-10-27 22:44:24",291],["2026-10-27 22:44:25",289],["2026-10-27 22:44:26",297],["2026-10-27 22:44:27",295],["2026-10-27 22:44:28",288],["2026-10-27 22:44:29",299],["2026-10-27 22:44:30",299],["2026-10-27 22:44:31",294],["2026-10-27 22:44:32",286],["2026-10-27 22:44:33",296],["2026-10-27 22:44:34",287],["2026-10-27 22:44:35",310],["2026-10-27 22:44:36",292],["2026-10-27 22:44:37",295],["2026-10-27 22:44:38",293],["2026-10-27 22:44:39",313],["2026-10-27 22:44:40",275],["2026-10-27 22:44:41",292],["2026-10-27 22:44:42",288],["2026-10-27 22:44:43",298],["2026-10-27 22:44:44",291],["2026-10-27 22:44:45",275],["2026-10-27 22:44:46",297],["2026-10-27 22:44:47",294],["2026-10-27 22:44:48",287],["2026-10-27 22:44:49",281],["2026-10-27 22:44:50",292],["2026-10-27 22:44:51",293],["2026-10-27 22:44:52",284],["2026-10-27 22:44:53",291],["2026-10-27 22:44:54",281],["2026-10-27 22:44:55",303],["2026-10-27 22:44:56",291],["2026-10-27 22:44:57",282],["2026-10-27 22:44:58",301],["2026-10-27 22:44:59",296],["2026-10-27 22:45:00",290],["2026-10-27 22:45:01",290],["2026-10-27 22:45:02",299],["2026-10-27 22:45:03",292],["2026-10-27 22:45:04",296],["2026-10-27 22:45:05",281],["2026-10-27 22:45:06",311],["2026-10-27 22:45:07",288],["2026-10-27 22:45:08",295],["2026-10-27 22:45:09",291],["2026-10-27 22:45:10",295],["2026-10-27 22:45:11",99]],
+                            },
+                            
+                        ]
+                    });
+                </script>
+            </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th colspan="2">Transaction</th>
+                    <th># Times Run</th>
+                    <th># Fails</th>
+                    <th>Average (ms)</th>
+                    <th>Min (ms)</th>
+                    <th>Max (ms)</th>
+                    <th>RPS</th>
+                    <th>Failures/s</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+            <td colspan="10" align="left"><strong>login</strong></td>
+        </tr>
+<tr>
+            <td colspan="2">0.0 </strong></td>
+            <td>18,999</td>
+            <td>0</td>
+            <td>330.52</td>
+            <td>43</td>
+            <td>495</td>
+            <td>292.29</td>
+            <td>0.00</td>
+        </tr>
+<tr>
+            <td colspan="2"> Aggregated</strong></td>
+            <td>18,999</td>
+            <td>0</td>
+            <td>330.48</td>
+            <td>43</td>
+            <td>495</td>
+            <td>292.29</td>
+            <td>0.00</td>
+        </tr>
+            </tbody>
+        </table>
+    </div>
+
+        <div class="scenarios">
+        <h2>Scenario Metrics</h2>
+
+        <div class="graph">
+                <div id="graph-sps" style="width: 1000px; height:500px; background: white;"></div>
+
+                <script type="text/javascript">
+                    var chartDom = document.getElementById('graph-sps');
+                    var myChart = echarts.init(chartDom);
+
+                    myChart.setOption({
+                        color: ['#2c664f', '#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de', '#3ba272', '#fc8452', '#9a60b4', '#ea7ccc'],
+                        tooltip: { trigger: 'axis' },
+                        toolbox: {
+                            feature: {
+                                dataZoom: { yAxisIndex: 'none' },
+                                restore: {},
+                                saveAsImage: {}
+                            }
+                        },
+                        dataZoom: [
+                            {
+                                type: 'inside',
+                                start: 0,
+                                end: 100,
+                                fillerColor: 'rgba(34, 80, 61, 0.25)',
+                                selectedDataBackground: {
+                                    lineStyle: { color: '#2c664f' },
+                                    areaStyle: { color: '#378063' }
+                                }
+                            },
+                            {
+                                start: 0,
+                                end: 100,
+                                fillerColor: 'rgba(34, 80, 61, 0.25)',
+                                selectedDataBackground: {
+                                    lineStyle: { color: '#2c664f' },
+                                    areaStyle: { color: '#378063' }
+                                }
+                            },
+                        ],
+                        xAxis: { type: 'time' },
+                        yAxis: {
+                            name: 'Scenarios #',
+                            nameLocation: 'center',
+                            nameRotate: 90,
+                            nameGap: 45,
+                            type: 'value'
+                        },
+                        
+                        series: [
+                            {
+                                name: 'Total',
+                                type: 'line',
+                                symbol: 'none',
+                                sampling: 'lttb',
+                                lineStyle: { color: '#2c664f' },
+                                areaStyle: { color: '#378063' },
+                                markArea: {
+                                    data: [
+                                        [
+                            {
+                                xAxis: '2026-10-27 22:44:06',
+                                itemStyle: { borderColor: 'rgba(44, 102, 79, 0.25)', borderWidth: 1 },
+                            },
+                            {
+                                xAxis: '2026-10-27 22:44:06'
+                            }
+                        ],
+                        [
+                            {
+                                xAxis: '2026-10-27 22:44:06',
+                                itemStyle: { color: 'rgba(44, 102, 79, 0.05)' },
+                            },
+                            {
+                                xAxis: '2026-10-27 22:44:11'
+                            }
+                        ],
+                        [
+                            {
+                                xAxis: '2026-10-27 22:44:11',
+                                itemStyle: { borderColor: 'rgba(44, 102, 79, 0.25)', borderWidth: 1 },
+                            },
+                            {
+                                xAxis: '2026-10-27 22:44:11'
+                            }
+                        ],[
+                            {
+                                xAxis: '2026-10-27 22:45:11',
+                                itemStyle: { borderColor: 'rgba(179, 65, 65, 0.25)', borderWidth: 1 },
+                            },
+                            {
+                                xAxis: '2026-10-27 22:45:11'
+                            }
+                        ],
+                        [
+                            {
+                                xAxis: '2026-10-27 22:45:11',
+                                itemStyle: { color: 'rgba(179, 65, 65, 0.05)' },
+                            },
+                            {
+                                xAxis: '2026-10-27 22:45:11'
+                            }
+                        ],
+                        [
+                            {
+                                xAxis: '2026-10-27 22:45:11',
+                                itemStyle: { borderColor: 'rgba(179, 65, 65, 0.25)', borderWidth: 1 },
+                            },
+                            {
+                                xAxis: '2026-10-27 22:45:11'
+                            }
+                        ],
+                                    ]
+                                },
+                                data: [["2026-10-27 22:44:06",150],["2026-10-27 22:44:07",273],["2026-10-27 22:44:08",281],["2026-10-27 22:44:09",282],["2026-10-27 22:44:10",288],["2026-10-27 22:44:11",289],["2026-10-27 22:44:12",279],["2026-10-27 22:44:13",285],["2026-10-27 22:44:14",290],["2026-10-27 22:44:15",290],["2026-10-27 22:44:16",297],["2026-10-27 22:44:17",287],["2026-10-27 22:44:18",282],["2026-10-27 22:44:19",310],["2026-10-27 22:44:20",284],["2026-10-27 22:44:21",301],["2026-10-27 22:44:22",290],["2026-10-27 22:44:23",298],["2026-10-27 22:44:24",292],["2026-10-27 22:44:25",288],["2026-10-27 22:44:26",297],["2026-10-27 22:44:27",295],["2026-10-27 22:44:28",288],["2026-10-27 22:44:29",299],["2026-10-27 22:44:30",299],["2026-10-27 22:44:31",294],["2026-10-27 22:44:32",286],["2026-10-27 22:44:33",296],["2026-10-27 22:44:34",287],["2026-10-27 22:44:35",310],["2026-10-27 22:44:36",292],["2026-10-27 22:44:37",295],["2026-10-27 22:44:38",293],["2026-10-27 22:44:39",313],["2026-10-27 22:44:40",275],["2026-10-27 22:44:41",292],["2026-10-27 22:44:42",288],["2026-10-27 22:44:43",298],["2026-10-27 22:44:44",291],["2026-10-27 22:44:45",275],["2026-10-27 22:44:46",297],["2026-10-27 22:44:47",294],["2026-10-27 22:44:48",287],["2026-10-27 22:44:49",281],["2026-10-27 22:44:50",292],["2026-10-27 22:44:51",293],["2026-10-27 22:44:52",284],["2026-10-27 22:44:53",291],["2026-10-27 22:44:54",281],["2026-10-27 22:44:55",303],["2026-10-27 22:44:56",291],["2026-10-27 22:44:57",282],["2026-10-27 22:44:58",301],["2026-10-27 22:44:59",296],["2026-10-27 22:45:00",290],["2026-10-27 22:45:01",290],["2026-10-27 22:45:02",299],["2026-10-27 22:45:03",292],["2026-10-27 22:45:04",296],["2026-10-27 22:45:05",281],["2026-10-27 22:45:06",311],["2026-10-27 22:45:07",288],["2026-10-27 22:45:08",295],["2026-10-27 22:45:09",291],["2026-10-27 22:45:10",295],["2026-10-27 22:45:11",99]],
+                            },
+                            
+                        ]
+                    });
+                </script>
+            </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th colspan="2">Scenario</th>
+                    <th># Users</th>
+                    <th># Times Run</th>
+                    <th>Average (ms)</th>
+                    <th>Min (ms)</th>
+                    <th>Max (ms)</th>
+                    <th>Scenarios/s</th>
+                    <th>Iterations</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+            <td colspan="2">login</strong></td>
+            <td>100</td>
+            <td>18,899</td>
+            <td>330.43</td>
+            <td>43</td>
+            <td>495</td>
+            <td>290.75</td>
+            <td>188.99</td>
+        </tr>
+<tr>
+            <td colspan="2">Aggregated</strong></td>
+            <td>100</td>
+            <td>18,899</td>
+            <td>330.43</td>
+            <td>43</td>
+            <td>495</td>
+            <td>290.75</td>
+            <td>188.99</td>
+        </tr>
+            </tbody>
+        </table>
+    </div>
+
+        <div class="users">
+        <h2>User Metrics</h2>
+            <div class="graph">
+                <div id="graph-active-users" style="width: 1000px; height:500px; background: white;"></div>
+
+                <script type="text/javascript">
+                    var chartDom = document.getElementById('graph-active-users');
+                    var myChart = echarts.init(chartDom);
+
+                    myChart.setOption({
+                        color: ['#2c664f', '#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de', '#3ba272', '#fc8452', '#9a60b4', '#ea7ccc'],
+                        tooltip: { trigger: 'axis' },
+                        toolbox: {
+                            feature: {
+                                dataZoom: { yAxisIndex: 'none' },
+                                restore: {},
+                                saveAsImage: {}
+                            }
+                        },
+                        dataZoom: [
+                            {
+                                type: 'inside',
+                                start: 0,
+                                end: 100,
+                                fillerColor: 'rgba(34, 80, 61, 0.25)',
+                                selectedDataBackground: {
+                                    lineStyle: { color: '#2c664f' },
+                                    areaStyle: { color: '#378063' }
+                                }
+                            },
+                            {
+                                start: 0,
+                                end: 100,
+                                fillerColor: 'rgba(34, 80, 61, 0.25)',
+                                selectedDataBackground: {
+                                    lineStyle: { color: '#2c664f' },
+                                    areaStyle: { color: '#378063' }
+                                }
+                            },
+                        ],
+                        xAxis: { type: 'time' },
+                        yAxis: {
+                            name: 'Active users #',
+                            nameLocation: 'center',
+                            nameRotate: 90,
+                            nameGap: 45,
+                            type: 'value'
+                        },
+                        
+                        series: [
+                            {
+                                name: 'Total',
+                                type: 'line',
+                                symbol: 'none',
+                                sampling: 'lttb',
+                                lineStyle: { color: '#2c664f' },
+                                areaStyle: { color: '#378063' },
+                                markArea: {
+                                    data: [
+                                        [
+                            {
+                                xAxis: '2026-10-27 22:44:06',
+                                itemStyle: { borderColor: 'rgba(44, 102, 79, 0.25)', borderWidth: 1 },
+                            },
+                            {
+                                xAxis: '2026-10-27 22:44:06'
+                            }
+                        ],
+                        [
+                            {
+                                xAxis: '2026-10-27 22:44:06',
+                                itemStyle: { color: 'rgba(44, 102, 79, 0.05)' },
+                            },
+                            {
+                                xAxis: '2026-10-27 22:44:11'
+                            }
+                        ],
+                        [
+                            {
+                                xAxis: '2026-10-27 22:44:11',
+                                itemStyle: { borderColor: 'rgba(44, 102, 79, 0.25)', borderWidth: 1 },
+                            },
+                            {
+                                xAxis: '2026-10-27 22:44:11'
+                            }
+                        ],[
+                            {
+                                xAxis: '2026-10-27 22:45:11',
+                                itemStyle: { borderColor: 'rgba(179, 65, 65, 0.25)', borderWidth: 1 },
+                            },
+                            {
+                                xAxis: '2026-10-27 22:45:11'
+                            }
+                        ],
+                        [
+                            {
+                                xAxis: '2026-10-27 22:45:11',
+                                itemStyle: { color: 'rgba(179, 65, 65, 0.05)' },
+                            },
+                            {
+                                xAxis: '2026-10-27 22:45:11'
+                            }
+                        ],
+                        [
+                            {
+                                xAxis: '2026-10-27 22:45:11',
+                                itemStyle: { borderColor: 'rgba(179, 65, 65, 0.25)', borderWidth: 1 },
+                            },
+                            {
+                                xAxis: '2026-10-27 22:45:11'
+                            }
+                        ],
+                                    ]
+                                },
+                                data: [["2026-10-27 22:44:06",20],["2026-10-27 22:44:07",38],["2026-10-27 22:44:08",58],["2026-10-27 22:44:09",77],["2026-10-27 22:44:10",97],["2026-10-27 22:44:11",100],["2026-10-27 22:44:12",100],["2026-10-27 22:44:13",100],["2026-10-27 22:44:14",100],["2026-10-27 22:44:15",100],["2026-10-27 22:44:16",100],["2026-10-27 22:44:17",100],["2026-10-27 22:44:18",100],["2026-10-27 22:44:19",100],["2026-10-27 22:44:20",100],["2026-10-27 22:44:21",100],["2026-10-27 22:44:22",100],["2026-10-27 22:44:23",100],["2026-10-27 22:44:24",100],["2026-10-27 22:44:25",100],["2026-10-27 22:44:26",100],["2026-10-27 22:44:27",100],["2026-10-27 22:44:28",100],["2026-10-27 22:44:29",100],["2026-10-27 22:44:30",100],["2026-10-27 22:44:31",100],["2026-10-27 22:44:32",100],["2026-10-27 22:44:33",100],["2026-10-27 22:44:34",100],["2026-10-27 22:44:35",100],["2026-10-27 22:44:36",100],["2026-10-27 22:44:37",100],["2026-10-27 22:44:38",100],["2026-10-27 22:44:39",100],["2026-10-27 22:44:40",100],["2026-10-27 22:44:41",100],["2026-10-27 22:44:42",100],["2026-10-27 22:44:43",100],["2026-10-27 22:44:44",100],["2026-10-27 22:44:45",100],["2026-10-27 22:44:46",100],["2026-10-27 22:44:47",100],["2026-10-27 22:44:48",100],["2026-10-27 22:44:49",100],["2026-10-27 22:44:50",100],["2026-10-27 22:44:51",100],["2026-10-27 22:44:52",100],["2026-10-27 22:44:53",100],["2026-10-27 22:44:54",100],["2026-10-27 22:44:55",100],["2026-10-27 22:44:56",100],["2026-10-27 22:44:57",100],["2026-10-27 22:44:58",100],["2026-10-27 22:44:59",100],["2026-10-27 22:45:00",100],["2026-10-27 22:45:01",100],["2026-10-27 22:45:02",100],["2026-10-27 22:45:03",100],["2026-10-27 22:45:04",100],["2026-10-27 22:45:05",100],["2026-10-27 22:45:06",100],["2026-10-27 22:45:07",100],["2026-10-27 22:45:08",100],["2026-10-27 22:45:09",100],["2026-10-27 22:45:10",100]],
+                            },
+                            
+                        ]
+                    });
+                </script>
+            </div>
+        </div>
+
+        
+
+        
+
+    </div>
+</body>
+</html>

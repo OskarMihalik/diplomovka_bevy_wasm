@@ -23,6 +23,8 @@ struct StatPoint {
     time_sec: f32,
     cpu: f32,
     mem: f32,
+    /// backend under attack when the point was sampled ("axum", "express" or "" in between)
+    target: &'static str,
 }
 
 #[derive(Clone)]
@@ -36,6 +38,29 @@ struct Session {
 struct ContainerStats {
     backend: Vec<StatPoint>,
     backend_express: Vec<StatPoint>,
+    /// shows whether a backend is limited by the database rather than by itself
+    postgres: Vec<StatPoint>,
+}
+
+impl ContainerStats {
+    /// Writes all samples, so the CPU of the database can be evaluated per backend.
+    fn write_csv(&self, file: &str) {
+        let mut csv = String::from("time_s,container,target,cpu_percent,mem_percent\n");
+        for (container, points) in [
+            ("axum", &self.backend),
+            ("express", &self.backend_express),
+            ("postgres", &self.postgres),
+        ] {
+            for p in points {
+                csv.push_str(&format!(
+                    "{:.2},{container},{},{:.2},{:.3}\n",
+                    p.time_sec, p.target, p.cpu, p.mem
+                ));
+            }
+        }
+        std::fs::write(file, csv).expect("Failed to write the container stats");
+        println!("Container stats saved to {file}");
+    }
 }
 
 /// Returns the `Ok` payload of a backend response.
@@ -305,29 +330,36 @@ async fn docker_compose(args: &[&str]) {
     assert!(status.success(), "docker compose {args:?} failed: {status}");
 }
 
+/// Runs SQL commands with psql in the postgres container and fails if one of them fails.
+async fn psql(commands: &[&str]) {
+    let mut args = vec![
+        "exec", "-T", "postgres", "psql", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "bevy",
+    ];
+    for command in commands {
+        args.extend(["-c", command]);
+    }
+    docker_compose(&args).await;
+}
+
+/// Fails unless the database has the index of the tag list.
+///
+/// Without it, every tag submission scans the whole `Tag` table, so the throughput falls as the
+/// table grows during the run and the result depends on its length.
+async fn check_tag_index() {
+    psql(&["DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'Tag_project_id_created_at_idx') THEN RAISE EXCEPTION 'index Tag_project_id_created_at_idx is missing, run `npx prisma migrate deploy` in prisma/'; END IF; END $$"]).await;
+}
+
 /// Removes what earlier load tests left behind, so every attack starts from the same tables.
 ///
-/// The tag queries scan the whole `Tag` table, so leftover rows (and dead rows that were not
-/// vacuumed yet) of the previous attack would slow down the backend that is tested second.
+/// Leftover rows (and dead rows that were not vacuumed yet) of the previous attack would make
+/// the tables and their indexes larger for the backend that is tested second.
 async fn reset_database() {
     println!("Resetting loadtest data in the database...");
     let delete = format!(
         "DELETE FROM public.\"Project\" WHERE name LIKE '{PROJECT_NAME_PREFIX}%' AND description = '{PROJECT_DESCRIPTION}'"
     );
-    docker_compose(&[
-        "exec",
-        "-T",
-        "postgres",
-        "psql",
-        "-v",
-        "ON_ERROR_STOP=1",
-        "-U",
-        "postgres",
-        "-d",
-        "bevy",
-        "-c",
+    psql(&[
         &delete,
-        "-c",
         "VACUUM (ANALYZE) public.\"Tag\", public.\"Model\", public.\"ProjectUser\", public.\"Project\", public.\"User\"",
     ])
     .await;
@@ -380,6 +412,7 @@ fn generate_graph(stats: &ContainerStats, suffix: &str) {
                     .map(|p| p.cpu)
                     .fold(0.0, f32::max),
             )
+            .max(stats.postgres.iter().map(|p| p.cpu).fold(0.0, f32::max))
             .max(1.0)
             * 1.2;
 
@@ -415,6 +448,15 @@ fn generate_graph(stats: &ContainerStats, suffix: &str) {
             .unwrap()
             .label("Express (Node)")
             .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &BLUE));
+
+        chart
+            .draw_series(LineSeries::new(
+                stats.postgres.iter().map(|p| (p.time_sec, p.cpu)),
+                &GREEN,
+            ))
+            .unwrap()
+            .label("PostgreSQL")
+            .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &GREEN));
 
         chart
             .configure_series_labels()
@@ -511,9 +553,22 @@ async fn main() -> Result<(), GooseError> {
         Ok(other) => panic!("unknown LOADTEST_SCENARIO {other:?}, expected `tag` or `login`"),
     };
 
+    // LOADTEST_RUN=<n> numbers repeated runs: the files get the suffix `-r<n>` and even runs
+    // attack Express first, so neither backend is always the second one on the same database
+    let run = std::env::var("LOADTEST_RUN").ok().map(|n| {
+        n.parse::<u32>()
+            .ok()
+            .filter(|&n| n >= 1)
+            .unwrap_or_else(|| panic!("LOADTEST_RUN must be a number >= 1, got {n:?}"))
+    });
+    let express_first = run.is_some_and(|n| n % 2 == 0);
+
     println!("Starting docker-compose...");
     // the backends connect to the database on startup, so it has to accept connections first
     docker_compose(&["up", "-d", "--wait", "postgres"]).await;
+    if !login_only {
+        check_tag_index().await;
+    }
     docker_compose(&["up", "-d", "--build", "backend", "backend-express"]).await;
 
     println!("Waiting for the backends to be ready...");
@@ -522,6 +577,8 @@ async fn main() -> Result<(), GooseError> {
 
     let stats = Arc::new(Mutex::new(ContainerStats::default()));
     let stats_clone = stats.clone();
+    let target = Arc::new(Mutex::new(""));
+    let target_clone = target.clone();
     let start_time = std::time::Instant::now();
     let cancel_token = Arc::new(tokio::sync::Notify::new());
     let cancel = cancel_token.clone();
@@ -538,6 +595,7 @@ async fn main() -> Result<(), GooseError> {
                     if let Ok(out) = output {
                         if let Ok(text) = String::from_utf8(out.stdout) {
                             let elapsed = start_time.elapsed().as_secs_f32();
+                            let target = *target_clone.lock().unwrap();
                             let mut locked = stats_clone.lock().unwrap();
                             for line in text.lines() {
                                 let parts: Vec<&str> = line.split(',').collect();
@@ -546,11 +604,13 @@ async fn main() -> Result<(), GooseError> {
                                     let cpu = parts[1].replace("%", "").parse::<f32>().unwrap_or(0.0);
                                     let mem = parts[2].replace("%", "").parse::<f32>().unwrap_or(0.0);
 
-                                    let point = StatPoint { time_sec: elapsed, cpu, mem };
+                                    let point = StatPoint { time_sec: elapsed, cpu, mem, target };
                                     if name.contains("backend-express") {
                                         locked.backend_express.push(point);
                                     } else if name.starts_with("diplomovka_bevy_wasm-backend-1") || (name.contains("backend") && !name.contains("express")) {
                                         locked.backend.push(point);
+                                    } else if name.contains("postgres") {
+                                        locked.postgres.push(point);
                                     }
                                 }
                             }
@@ -564,9 +624,7 @@ async fn main() -> Result<(), GooseError> {
         }
     });
 
-    println!("Starting GooseAttack for axum...");
-
-    let (scenario, suffix) = if login_only {
+    let (scenario, scenario_suffix) = if login_only {
         (
             scenario!("login").register_transaction(transaction!(login_own_account)),
             "-login",
@@ -582,35 +640,37 @@ async fn main() -> Result<(), GooseError> {
             "",
         )
     };
+    let suffix = match run {
+        Some(n) => format!("{scenario_suffix}-r{n}"),
+        None => scenario_suffix.to_string(),
+    };
 
-    reset_database().await;
-    GooseAttack::initialize()?
-        .register_scenario(scenario.clone())
-        .set_default(GooseDefault::Host, AXUM_HOST)?
-        .set_default(
-            GooseDefault::ReportFile,
-            format!("axumReport{suffix}.html").as_str(),
-        )?
-        .set_default(GooseDefault::NoResetMetrics, true)?
-        .execute()
-        .await?;
-
-    println!("Starting GooseAttack for express...");
-    reset_database().await;
-    GooseAttack::initialize()?
-        .register_scenario(scenario.clone())
-        .set_default(GooseDefault::Host, EXPRESS_HOST)?
-        .set_default(
-            GooseDefault::ReportFile,
-            format!("expressReport{suffix}.html").as_str(),
-        )?
-        .set_default(GooseDefault::NoResetMetrics, true)?
-        .execute()
-        .await?;
+    let mut backends = [("axum", AXUM_HOST), ("express", EXPRESS_HOST)];
+    if express_first {
+        backends.reverse();
+    }
+    for (name, host) in backends {
+        println!("Starting GooseAttack for {name}...");
+        reset_database().await;
+        *target.lock().unwrap() = name;
+        GooseAttack::initialize()?
+            .register_scenario(scenario.clone())
+            .set_default(GooseDefault::Host, host)?
+            .set_default(
+                GooseDefault::ReportFile,
+                format!("{name}Report{suffix}.html").as_str(),
+            )?
+            .set_default(GooseDefault::NoResetMetrics, true)?
+            .execute()
+            .await?;
+        *target.lock().unwrap() = "";
+    }
 
     cancel_token.notify_one();
 
-    generate_graph(&stats.lock().unwrap(), suffix);
+    let stats = stats.lock().unwrap();
+    stats.write_csv(&format!("container_stats{suffix}.csv"));
+    generate_graph(&stats, &suffix);
 
     Ok(())
 }
