@@ -31,8 +31,19 @@ always tested second.
   `/register` requests.
 - A request counts as failed when the backend answers with an `Err` body, not only on a
   non-2xx status code.
-- `backend-express` runs with `UV_THREADPOOL_SIZE=28` (one thread per logical CPU of the test
-  machine) instead of the default 4, so that it can compute the Argon2id hashes of the login on
-  as many CPUs as the Tokio blocking pool of `backend`.
+- Both backends get the same resources from `BACKEND_THREADS` (default 28, one per logical CPU of
+  the test machine; set it with `BACKEND_THREADS=<n> cargo run ...`), see `docker-compose.yml`:
+
+  | | `backend` (Axum) | `backend-express` |
+  | --- | --- | --- |
+  | CPU workers | `TOKIO_WORKER_THREADS` Tokio workers | `WORKERS` cluster processes (`src/cluster.ts`) |
+  | argon2 / file threads | `BLOCKING_THREADS` | `UV_THREADPOOL_SIZE=1` per process |
+  | database connections | `DB_POOL_SIZE` | `DB_POOL_SIZE=1` per process |
+
+  So each backend runs `BACKEND_THREADS` workers, computes at most `BACKEND_THREADS` hashes at
+  the same time and holds `BACKEND_THREADS` database connections. The reports `-r1` to `-r5`
+  in this directory are from this setup (29 Oct 2026). `old-asymmetric/` keeps the earlier
+  runs: a single Express process with `UV_THREADPOOL_SIZE=28`, and Axum on the default Tokio
+  runtime with a pool of 10.
 - Before each attack the projects of earlier load tests (`goose-project-*`) are deleted and the
   tables are vacuumed, so both backends start from the same database state.

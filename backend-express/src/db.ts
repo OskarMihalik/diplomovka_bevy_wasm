@@ -21,9 +21,17 @@ if (!connectionString) {
   connectionString = `postgresql://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${dbName}`
 }
 
+// DB_POOL_SIZE is per process and defaults to node-postgres' default of 10 connections; with
+// WORKERS > 1 (cluster.ts) the backend holds WORKERS * DB_POOL_SIZE connections
+const poolSize = Number(process.env.DB_POOL_SIZE || 10)
+if (!Number.isInteger(poolSize) || poolSize < 1) {
+  throw new Error(`invalid DB_POOL_SIZE=${process.env.DB_POOL_SIZE}`)
+}
+
 const dialect = new PostgresDialect({
   pool: new Pool({
     connectionString,
+    max: poolSize,
   }),
 })
 

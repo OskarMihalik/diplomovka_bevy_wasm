@@ -33,11 +33,14 @@ services:
         - PORT=4001
     ports:
       - "4001:4001"
-    # argon2 hashes on the libuv thread pool, whose default is 4 threads, whereas backend hashes
-    # on the blocking pool of Tokio (up to 512 threads). With one thread per logical CPU of the
-    # test machine, both backends can compute the login hashes on all CPUs.
+    # Symmetric with backend: BACKEND_THREADS (default 28, the logical CPUs of the test machine)
+    # cluster workers, each with one libuv thread for argon2 and file writes and one database
+    # connection, so both backends run BACKEND_THREADS JS workers / Tokio workers, at most
+    # BACKEND_THREADS concurrent hashes and hold BACKEND_THREADS database connections.
     environment:
-      - UV_THREADPOOL_SIZE=28
+      - WORKERS=${BACKEND_THREADS:-28}
+      - UV_THREADPOOL_SIZE=1
+      - DB_POOL_SIZE=1
     # same limit as backend
     ulimits:
       nofile:
@@ -59,6 +62,12 @@ services:
         - PORT=4000
     ports:
       - "4000:4000"
+    # Symmetric with backend-express: BACKEND_THREADS Tokio workers, blocking threads (argon2,
+    # file writes) and database connections.
+    environment:
+      - TOKIO_WORKER_THREADS=${BACKEND_THREADS:-28}
+      - BLOCKING_THREADS=${BACKEND_THREADS:-28}
+      - DB_POOL_SIZE=${BACKEND_THREADS:-28}
     # the default soft limit of 1024 open files is too low for 1000 concurrent connections
     ulimits:
       nofile:

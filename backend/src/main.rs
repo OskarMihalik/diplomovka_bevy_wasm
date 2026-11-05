@@ -41,10 +41,27 @@ use tower_http::{
 use tracing_subscriber::EnvFilter;
 type ConnectionPool = Pool<PostgresConnectionManager<NoTls>>;
 
-#[tokio::main]
-async fn main() {
+fn main() {
     dotenv().ok(); // Reads the .env file
 
+    // Worker threads come from TOKIO_WORKER_THREADS (read by Tokio). BLOCKING_THREADS caps the
+    // spawn_blocking pool (argon2, file reads) like UV_THREADPOOL_SIZE caps Node's libuv pool;
+    // Tokio's default of 512 lets every concurrent login compute a 19 MiB argon2 hash at once.
+    let mut builder = tokio::runtime::Builder::new_multi_thread();
+    builder.enable_all();
+    if let Ok(value) = env::var("BLOCKING_THREADS") {
+        let threads: usize = value
+            .parse()
+            .expect("BLOCKING_THREADS must be a positive integer");
+        builder.max_blocking_threads(threads);
+    }
+    builder
+        .build()
+        .expect("failed to build runtime")
+        .block_on(run());
+}
+
+async fn run() {
     // tracing_subscriber::fmt()
     //     .with_max_level(tracing::Level::DEBUG)
     //     .init();
@@ -61,7 +78,20 @@ async fn main() {
     });
 
     let manager = PostgresConnectionManager::new_from_stringlike(db_url, NoTls).unwrap();
-    let pool = Pool::builder().build(manager).await.unwrap();
+    // DB_POOL_SIZE defaults to bb8's default of 10 connections
+    let pool_size: u32 = env::var("DB_POOL_SIZE").map_or(10, |value| {
+        value.parse().expect("DB_POOL_SIZE must be a positive integer")
+    });
+    let pool = Pool::builder()
+        .max_size(pool_size)
+        .build(manager)
+        .await
+        .unwrap();
+    println!(
+        "backend listening on :{PORT}, tokio workers: {}, blocking threads: {}, db pool: {pool_size}",
+        tokio::runtime::Handle::current().metrics().num_workers(),
+        env::var("BLOCKING_THREADS").unwrap_or_else(|_| "default".into()),
+    );
     let backend = async {
         let app = Router::new()
             .nest_service("/assets/model/", ServeDir::new("backend/assets/models"))
