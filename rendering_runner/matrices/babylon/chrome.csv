@@ -1,0 +1,14 @@
+# matrices/chrome.csv with only babylon-web, to re-measure Babylon.js with its shadow map at
+# 1024 px per face like Bevy (scene.js, 2026-11-10); the rows with 2048 px are in
+# bencmark_results/rendering_*_babylon_shadow2048.csv. The comment of the original:
+# The web rows of main.csv in Chrome (Playwright's Chromium build) instead of Firefox: the same
+# models, distances and settings on the integrated GPU, 5 launches with one 60 s orbit each.
+# Uncapped with --disable-frame-rate-limit --disable-gpu-vsync; Chrome's frame time percentiles
+# aren't comparable with Firefox's in this mode, avg_fps is (see README.md, Chrome).
+platform,model,distance,repeat,runs,duration,warmup,gpu,resolution,msaa,shadows,expect_gpu,browser
+babylon-web,building,20,5,1,60,5,low,2088x1550,4,on,Intel,chrome
+babylon-web,barling_wrecks cai_mep_port_vietnam,5.22,5,1,60,5,low,2088x1550,4,on,Intel,chrome
+babylon-web,full_gameready_city_buildings_iv_hongkong,10,5,1,60,5,low,2088x1550,4,on,Intel,chrome
+babylon-web,administrative_and_warehouse_complex,19000,5,1,60,5,low,2088x1550,4,on,Intel,chrome
+babylon-web,london_city,19000,5,1,60,5,low,2088x1550,4,on,Intel,chrome
+babylon-web,national_airport_by_aditya,20,5,1,60,5,low,2088x1550,4,on,Intel,chrome

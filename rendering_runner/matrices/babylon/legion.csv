@@ -1,0 +1,36 @@
+# Every Babylon.js configuration measured on the legion, re-measured with its shadow map at 1024 px
+# per face like Bevy (scene.js, 2026-11-10): matrices/babylon/main.csv, load.csv, webgpu.csv,
+# chrome.csv and main_nvidia.csv in one batch, so drift affects all of them alike. Empty cells are
+# the defaults (browser firefox, api webgl2, no env). The RTX rows need the monitors on the NVIDIA
+# GPU (HDMI, DP) disconnected; the 2048 px rows are in bencmark_results/rendering_*_babylon_shadow2048.csv.
+platform,model,distance,repeat,runs,duration,warmup,gpu,resolution,msaa,shadows,env,expect_gpu,browser,api
+babylon-web,building,20,5,1,60,5,low,2088x1550,4,on,,Intel,,
+babylon-web,barling_wrecks cai_mep_port_vietnam,5.22,5,1,60,5,low,2088x1550,4,on,,Intel,,
+babylon-web,full_gameready_city_buildings_iv_hongkong,10,5,1,60,5,low,2088x1550,4,on,,Intel,,
+babylon-web,administrative_and_warehouse_complex,19000,5,1,60,5,low,2088x1550,4,on,,Intel,,
+babylon-web,london_city,19000,5,1,60,5,low,2088x1550,4,on,,Intel,,
+babylon-web,national_airport_by_aditya,20,5,1,60,5,low,2088x1550,4,on,,Intel,,
+babylon-web,building,20,10,0,,,low,2088x1550,4,on,,Intel,,
+babylon-web,barling_wrecks cai_mep_port_vietnam,5.22,10,0,,,low,2088x1550,4,on,,Intel,,
+babylon-web,full_gameready_city_buildings_iv_hongkong,10,10,0,,,low,2088x1550,4,on,,Intel,,
+babylon-web,administrative_and_warehouse_complex,19000,10,0,,,low,2088x1550,4,on,,Intel,,
+babylon-web,london_city,19000,10,0,,,low,2088x1550,4,on,,Intel,,
+babylon-web,national_airport_by_aditya,20,10,0,,,low,2088x1550,4,on,,Intel,,
+babylon-web,building,20,5,1,60,5,low,2088x1550,4,on,,Intel,firefox chrome,webgpu
+babylon-web,barling_wrecks cai_mep_port_vietnam,5.22,5,1,60,5,low,2088x1550,4,on,,Intel,firefox chrome,webgpu
+babylon-web,full_gameready_city_buildings_iv_hongkong,10,5,1,60,5,low,2088x1550,4,on,,Intel,firefox chrome,webgpu
+babylon-web,administrative_and_warehouse_complex,19000,5,1,60,5,low,2088x1550,4,on,,Intel,firefox chrome,webgpu
+babylon-web,london_city,19000,5,1,60,5,low,2088x1550,4,on,,Intel,firefox chrome,webgpu
+babylon-web,national_airport_by_aditya,20,5,1,60,5,low,2088x1550,4,on,,Intel,firefox chrome,webgpu
+babylon-web,building,20,5,1,60,5,low,2088x1550,4,on,,Intel,chrome,
+babylon-web,barling_wrecks cai_mep_port_vietnam,5.22,5,1,60,5,low,2088x1550,4,on,,Intel,chrome,
+babylon-web,full_gameready_city_buildings_iv_hongkong,10,5,1,60,5,low,2088x1550,4,on,,Intel,chrome,
+babylon-web,administrative_and_warehouse_complex,19000,5,1,60,5,low,2088x1550,4,on,,Intel,chrome,
+babylon-web,london_city,19000,5,1,60,5,low,2088x1550,4,on,,Intel,chrome,
+babylon-web,national_airport_by_aditya,20,5,1,60,5,low,2088x1550,4,on,,Intel,chrome,
+babylon-web,building,20,5,1,60,5,high,2088x1550,4,on,__NV_PRIME_RENDER_OFFLOAD=1;__GLX_VENDOR_LIBRARY_NAME=nvidia,NVIDIA,,
+babylon-web,barling_wrecks cai_mep_port_vietnam,5.22,5,1,60,5,high,2088x1550,4,on,__NV_PRIME_RENDER_OFFLOAD=1;__GLX_VENDOR_LIBRARY_NAME=nvidia,NVIDIA,,
+babylon-web,full_gameready_city_buildings_iv_hongkong,10,5,1,60,5,high,2088x1550,4,on,__NV_PRIME_RENDER_OFFLOAD=1;__GLX_VENDOR_LIBRARY_NAME=nvidia,NVIDIA,,
+babylon-web,administrative_and_warehouse_complex,19000,5,1,60,5,high,2088x1550,4,on,__NV_PRIME_RENDER_OFFLOAD=1;__GLX_VENDOR_LIBRARY_NAME=nvidia,NVIDIA,,
+babylon-web,london_city,19000,5,1,60,5,high,2088x1550,4,on,__NV_PRIME_RENDER_OFFLOAD=1;__GLX_VENDOR_LIBRARY_NAME=nvidia,NVIDIA,,
+babylon-web,national_airport_by_aditya,20,5,1,60,5,high,2088x1550,4,on,__NV_PRIME_RENDER_OFFLOAD=1;__GLX_VENDOR_LIBRARY_NAME=nvidia,NVIDIA,,

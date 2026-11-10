@@ -75,7 +75,8 @@ fn run() -> Result<(), String> {
         )?;
         out.write("tables/load_asus.tex", &load_table(&load, Platform::ASUS))?;
     }
-    // WebGPU next to WebGL2 on the integrated GPU (rendering_runner/matrices/webgpu.csv), once it ran
+    // WebGPU next to WebGL2 on the integrated GPU, in Firefox and Chrome
+    // (rendering_runner/matrices/webgpu.csv, chrome.csv), once it ran
     if fps.iter().any(|m| matches!(m.platform, Platform::BevyWebGpu | Platform::BabylonWebGpu)) {
         out.write(
             "tables/fps_webgpu.tex",
@@ -93,7 +94,7 @@ fn run() -> Result<(), String> {
             "tables/load_webgpu.tex",
             &webgpu_table(&load, "total load time in s", |r| r.total_ms / 1000., 2, Best::None, true),
         )?;
-        // both APIs in Firefox, only there the API is the one thing that differs
+        // within one browser, so the API or the engine is the one thing that differs
         out.write(
             "tables/ttest_webgpu.tex",
             &ttest_table(
@@ -113,6 +114,38 @@ fn run() -> Result<(), String> {
                 ],
             ),
         )?;
+        // the same in Chrome, on average fps (its frame times aren't comparable, see data.rs);
+        // WebGL2 Bevy vs. Babylon in Firefox is ttest.tex
+        if fps.iter().any(|m| matches!(m.platform, Platform::BevyWasmChrome | Platform::BabylonWasmChrome)) {
+            out.write(
+                "tables/ttest_chrome.tex",
+                &ttest_table(
+                    &fps,
+                    &[
+                        (
+                            Platform::BevyWebGpuChrome,
+                            Platform::BevyWasmChrome,
+                            "Bevy: WebGPU vs. WebGL2".into(),
+                        ),
+                        (
+                            Platform::BabylonWebGpuChrome,
+                            Platform::BabylonWasmChrome,
+                            "Babylon.js: WebGPU vs. WebGL2".into(),
+                        ),
+                        (
+                            Platform::BevyWasmChrome,
+                            Platform::BabylonWasmChrome,
+                            "WebGL2: Bevy vs. Babylon.js".into(),
+                        ),
+                        (
+                            Platform::BevyWebGpuChrome,
+                            Platform::BabylonWebGpuChrome,
+                            "WebGPU: Bevy vs. Babylon.js".into(),
+                        ),
+                    ],
+                ),
+            )?;
+        }
     }
     out.write("tables/load.tex", &load_table(&load, Platform::COMPARED))?;
     out.write(
@@ -481,15 +514,29 @@ fn ttest_table(fps: &[Measurement], pairs: &[(Platform, Platform, String)]) -> S
     tex
 }
 
-/// Columns of the WebGPU tables: WebGL2 in Firefox, WebGPU in Firefox and in Chrome, per engine
-const WEBGPU_GROUPS: [(&str, [Platform; 3]); 2] = [
-    ("Bevy (Wasm)", [Platform::BevyWasm, Platform::BevyWebGpu, Platform::BevyWebGpuChrome]),
+/// Columns of the WebGPU tables: WebGL2 and WebGPU in Firefox and in Chrome, per engine
+const WEBGPU_GROUPS: [(&str, [Platform; 4]); 2] = [
+    (
+        "Bevy (Wasm)",
+        [
+            Platform::BevyWasm,
+            Platform::BevyWebGpu,
+            Platform::BevyWasmChrome,
+            Platform::BevyWebGpuChrome,
+        ],
+    ),
     (
         "Babylon.js",
-        [Platform::BabylonWasm, Platform::BabylonWebGpu, Platform::BabylonWebGpuChrome],
+        [
+            Platform::BabylonWasm,
+            Platform::BabylonWebGpu,
+            Platform::BabylonWasmChrome,
+            Platform::BabylonWebGpuChrome,
+        ],
     ),
 ];
-const WEBGPU_COLUMNS: [&str; 3] = ["Firefox WebGL2", "Firefox WebGPU", "Chrome WebGPU"];
+// Chromium: Playwright's build, which the CSVs record as Chrome (its user agent)
+const WEBGPU_COLUMNS: [&str; 4] = ["Firefox WebGL2", "Firefox WebGPU", "Chromium WebGL2", "Chromium WebGPU"];
 
 #[derive(Clone, Copy, PartialEq)]
 enum Best {

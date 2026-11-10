@@ -23,13 +23,16 @@ const CAMERA_START = new Vector3(0, 1.5, 5);
 export const DEFAULT_DISTANCE = 5.220153;
 const MODEL_SCALE = 0.25;
 
-// Bevy's PointLight::default(): 1 000 000 lm, range 20 m, 2048 px shadow cube map. Bevy's default
-// camera exposure (ev100 9.7) scales light by 1 / (1.2 * 2^9.7), Babylon's PBR takes the result
-// in candela: 1 000 000 / 4π * exposure ≈ 80.
+// Bevy's PointLight::default(): 1 000 000 lm, range 20 m. Bevy's default camera exposure (ev100
+// 9.7) scales light by 1 / (1.2 * 2^9.7), Babylon's PBR takes the result in candela:
+// 1 000 000 / 4π * exposure ≈ 80.
 const EXPOSURE = 1 / (1.2 * 2 ** 9.7);
 const POINT_LIGHT_INTENSITY = (1_000_000 / (4 * Math.PI)) * EXPOSURE;
 const POINT_LIGHT_RANGE = 20;
-const SHADOW_MAP_SIZE = 2048;
+// Bevy's default PointLightShadowMap is 1024 px per cube face (bevy_light 0.19). Until
+// 2026-11-10 this was 2048, four times the shadow-map pixels of the Bevy scene; those rows are in
+// bencmark_results/rendering_*_babylon_shadow2048.csv
+const SHADOW_MAP_SIZE = 1024;
 // Bevy's default AmbientLight, 80 cd/m², through the same exposure
 const AMBIENT_INTENSITY = 80 * EXPOSURE;
 // Bevy's default ClearColor

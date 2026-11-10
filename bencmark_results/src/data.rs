@@ -106,10 +106,13 @@ pub enum Platform {
     BabylonWebGpu,
     BevyWebGpuChrome,
     BabylonWebGpuChrome,
+    // WebGL2 in Chrome on the integrated GPU of the legion, see rendering_runner/matrices/chrome.csv
+    BevyWasmChrome,
+    BabylonWasmChrome,
 }
 
 impl Platform {
-    pub const ALL: [Platform; 13] = [
+    pub const ALL: [Platform; 15] = [
         Platform::BevyWasm,
         Platform::BabylonWasm,
         Platform::BevyNative,
@@ -123,6 +126,8 @@ impl Platform {
         Platform::BabylonWebGpu,
         Platform::BevyWebGpuChrome,
         Platform::BabylonWebGpuChrome,
+        Platform::BevyWasmChrome,
+        Platform::BabylonWasmChrome,
     ];
     // The ones compared on the same integrated GPU
     pub const COMPARED: [Platform; 3] = [
@@ -158,6 +163,8 @@ impl Platform {
             Platform::BabylonWebGpu => "Babylon.js (WebGPU)",
             Platform::BevyWebGpuChrome => "Bevy (WebGPU, Chrome)",
             Platform::BabylonWebGpuChrome => "Babylon.js (WebGPU, Chrome)",
+            Platform::BevyWasmChrome => "Bevy (Wasm, Chrome)",
+            Platform::BabylonWasmChrome => "Babylon.js (Chrome)",
         }
     }
 
@@ -180,14 +187,26 @@ impl Platform {
                 | Platform::BevyWasmAsus
                 | Platform::BevyWebGpu
                 | Platform::BevyWebGpuChrome
+                | Platform::BevyWasmChrome
         )
     }
 
-    /// Chrome uncapped (--disable-frame-rate-limit) runs requestAnimationFrame ahead of the GPU:
-    /// near-zero frame times between long stalls, so its frame time percentiles and 1% low don't
-    /// describe frames on screen; its average fps does (rendering_runner/PLAN.md section 9)
+    pub fn is_chrome(self) -> bool {
+        matches!(
+            self,
+            Platform::BevyWebGpuChrome
+                | Platform::BabylonWebGpuChrome
+                | Platform::BevyWasmChrome
+                | Platform::BabylonWasmChrome
+        )
+    }
+
+    /// Chrome uncapped (--disable-frame-rate-limit, webgpu.csv and chrome.csv batch
+    /// 20261110-103329) runs requestAnimationFrame ahead of the GPU: near-zero frame times between
+    /// long stalls, so its frame time percentiles and 1% low don't describe frames on screen; its
+    /// average fps does (rendering_runner/PLAN.md section 9)
     pub fn frame_times_valid(self) -> bool {
-        !matches!(self, Platform::BevyWebGpuChrome | Platform::BabylonWebGpuChrome)
+        !self.is_chrome()
     }
 
     /// column name in the pgfplots data files
@@ -206,6 +225,8 @@ impl Platform {
             Platform::BabylonWebGpu => "babylon_webgpu",
             Platform::BevyWebGpuChrome => "bevy_webgpu_chrome",
             Platform::BabylonWebGpuChrome => "babylon_webgpu_chrome",
+            Platform::BevyWasmChrome => "bevy_wasm_chrome",
+            Platform::BabylonWasmChrome => "babylon_wasm_chrome",
         }
     }
 
@@ -224,8 +245,18 @@ impl Platform {
                 _ => None,
             };
         }
-        // otherwise WebGL2 in Firefox; Chrome's WebGL2 rows (chrome.csv) aren't part of these
-        // comparisons
+        // WebGL2 in Chrome, like WebGPU only on the integrated GPU of the legion (chrome.csv)
+        if browser == "Chrome" {
+            if pc != "legion" || gpu.contains("NVIDIA") {
+                return None;
+            }
+            return match engine {
+                "bevy" => Some(Platform::BevyWasmChrome),
+                "babylon" => Some(Platform::BabylonWasmChrome),
+                _ => None,
+            };
+        }
+        // otherwise WebGL2 in Firefox or native
         if browser != "native" && browser != "Firefox" {
             return None;
         }

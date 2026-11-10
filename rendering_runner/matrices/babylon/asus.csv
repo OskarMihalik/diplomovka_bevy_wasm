@@ -1,0 +1,17 @@
+# Every Babylon.js configuration measured on the asus (older notebook, Intel HD Graphics 4000),
+# re-measured with its shadow map at 1024 px per face like Bevy (scene.js, 2026-11-10):
+# matrices/babylon/main.csv and load.csv in one batch, run with --pc asus. The 2048 px rows are in
+# bencmark_results/rendering_*_babylon_shadow2048.csv.
+platform,model,distance,repeat,runs,duration,warmup,gpu,resolution,msaa,shadows,expect_gpu
+babylon-web,building,20,5,1,60,5,low,2088x1550,4,on,Intel
+babylon-web,barling_wrecks cai_mep_port_vietnam,5.22,5,1,60,5,low,2088x1550,4,on,Intel
+babylon-web,full_gameready_city_buildings_iv_hongkong,10,5,1,60,5,low,2088x1550,4,on,Intel
+babylon-web,administrative_and_warehouse_complex,19000,5,1,60,5,low,2088x1550,4,on,Intel
+babylon-web,london_city,19000,5,1,60,5,low,2088x1550,4,on,Intel
+babylon-web,national_airport_by_aditya,20,5,1,60,5,low,2088x1550,4,on,Intel
+babylon-web,building,20,10,0,,,low,2088x1550,4,on,Intel
+babylon-web,barling_wrecks cai_mep_port_vietnam,5.22,10,0,,,low,2088x1550,4,on,Intel
+babylon-web,full_gameready_city_buildings_iv_hongkong,10,10,0,,,low,2088x1550,4,on,Intel
+babylon-web,administrative_and_warehouse_complex,19000,10,0,,,low,2088x1550,4,on,Intel
+babylon-web,london_city,19000,10,0,,,low,2088x1550,4,on,Intel
+babylon-web,national_airport_by_aditya,20,10,0,,,low,2088x1550,4,on,Intel
