@@ -18,9 +18,9 @@ function commonFields(engine, config) {
     config.pc,
     os(),
     cpuCores(),
-    engine.getGlInfo().renderer,
+    gpuName(engine),
     // named like wgpu's backends, so Bevy's and Babylon's rows can be compared
-    "Gl",
+    engine.isWebGPU ? "BrowserWebGpu" : "Gl",
     browserName,
     browserVersion,
     BUILD,
@@ -29,6 +29,16 @@ function commonFields(engine, config) {
     config.modelName,
     config.modelVersion,
   ];
+}
+
+/**
+ * The WebGL renderer, or `vendor architecture` of the WebGPU adapter like Bevy's web build
+ * (`intel gen-12lp` in Chrome, empty in Firefox, which hides the adapter info)
+ */
+function gpuName(engine) {
+  if (!engine.isWebGPU) return engine.getGlInfo().renderer;
+  const info = engine._adapterInfo ?? {};
+  return [info.vendor, info.architecture].filter(Boolean).join(" ");
 }
 
 /** Logs `summary` with the CSV row and reports it to the runner, returns the row */

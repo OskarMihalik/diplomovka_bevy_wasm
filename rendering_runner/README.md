@@ -4,7 +4,7 @@ Runs the rendering and loading benchmarks ([bevy_rendering_benchmark](../bevy_re
 native and wasm, [babylon_rendering_benchmark](../babylon_rendering_benchmark)) and the whole
 [bevy_diplomovka](../bevy_diplomovka) app from a matrix CSV, and appends the rows to
 `bencmark_results/rendering_fps.csv` and `rendering_load.csv` (the app: `fps.csv` and
-`load.csv`). The web benchmarks run in Playwright's Firefox. Why it works the way it does:
+`load.csv`). The web benchmarks run in Playwright's Firefox, or its Chromium (`browser=chrome`). Why it works the way it does:
 [PLAN.md](PLAN.md).
 
 ## Setup
@@ -13,6 +13,7 @@ native and wasm, [babylon_rendering_benchmark](../babylon_rendering_benchmark)) 
 cd rendering_runner
 npm install
 npx playwright install firefox
+npx playwright install chromium   # only for browser=chrome
 ```
 
 Also needed: `cargo`, `trunk`, `npm install` in `babylon_rendering_benchmark`, and for the app
@@ -62,6 +63,8 @@ bevy-native,administrative_and_warehouse_complex,19000,1,1,60,5,low,2088x1550,1 
 | `runs` | measured orbits per launch, default 5; 0 = load only |
 | `env` | environment variables, `A=1;B=2`, e.g. `WGPU_BACKEND=gl` |
 | `expect_gpu` | text the GPU name must contain, otherwise the job fails |
+| `browser` | web platforms only: `firefox` (default) or `chrome`; `firefox chrome` runs each configuration in both |
+| `api` | `bevy-web` and `babylon-web` only: `webgl2` (default) or `webgpu` |
 | anything else | passed to the benchmark: `duration`, `warmup`, `gpu`, `resolution`, `msaa`, `shadows`, `distance`, `id`, `name`, `version` |
 
 Jobs run in rounds: launch 1 of every configuration, then launch 2, and so on, so slow drift
@@ -74,6 +77,8 @@ Matrices in `matrices/`:
 - `load.csv`: load only, 10 launches per model and platform (~1 h 35 min)
 - `previous_fps.csv`: the configurations of the old manual `rendering_fps.csv`, 5 orbits per launch (~1 h 30 min)
 - `app.csv`: the whole app, 7 models, native and web (~1 h 35 min)
+- `chrome.csv`: the web rows of `main.csv` in Chrome (~1 h 35 min), see below
+- `webgpu.csv`: the web rows of `main.csv` on WebGPU in Firefox and Chrome (~3 h 10 min), see below
 - `nvidia.csv`: `main.csv` on the dedicated RTX 4070 as a reference (~2 h 30 min); the results
   tool writes it to `tables/fps_rtx.tex` and `ttest_rtx.tex`
 
@@ -86,6 +91,34 @@ job that falls back to the integrated GPU: native rows say `NVIDIA GeForce RTX 4
 Firefox `NVIDIA GeForce GTX 980, or similar` (its sanitized name). The laptop panel is driven by
 the integrated GPU, so every frame is copied to it (hybrid mode). Disconnect monitors on the
 NVIDIA GPU (HDMI) before the batch, the runner warns about them.
+
+## Chrome (`browser=chrome`)
+
+Playwright's Chromium build (the CSVs say `Chrome`), uncapped with `--disable-frame-rate-limit
+--disable-gpu-vsync`, made fullscreen through CDP because it ignores `--kiosk`. Job ids get a
+`-chrome` suffix. Without `--disable-frame-rate-limit` Chrome stays at the display's refresh rate
+on Wayland. With it, `requestAnimationFrame` runs ahead of the GPU: near-zero frame times with
+long stalls between them, so for Chrome only `avg_fps` and the load times compare with Firefox,
+not the frame time percentiles, `median_fps` or `low_1_fps`. Measurements: PLAN.md section 9.
+The results tool (`bencmark_results`) skips Chrome rows.
+
+## WebGPU (`api=webgpu`)
+
+Bevy runs its `webgpu` build (`trunk build ... --features webgpu --dist dist-webgpu`, served at
+`/bevy-webgpu/`), Babylon its `WebGPUEngine` (`?api=webgpu`, its own WGSL shaders, nothing from
+the CDN). Rows say `BrowserWebGpu` in `graphics_backend`, job ids get a `-webgpu` suffix. WebGPU
+is switched on only for these jobs:
+
+- Firefox: `dom.webgpu.enabled` (off on Linux), `dom.webgpu.testing.assert-hardware-adapter`
+  (fails instead of a CPU adapter) and `dom.webgpu.allow-present-without-readback` (otherwise
+  every frame is copied through the CPU, Bevy loses a third of its fps). Firefox hides the
+  adapter info: the `gpu` column is empty and `expect_gpu` can't be checked, only that the
+  adapter is hardware.
+- Chrome: `--enable-unsafe-webgpu --enable-features=Vulkan` (without them no adapter, with only
+  the first one SwiftShader). `gpu` is `intel gen-12lp`; the frame time percentiles have the same
+  problem as on WebGL2 (above).
+
+The results tool skips WebGPU rows. Measurements: PLAN.md section 10.
 
 ## The app (`app-native`, `app-web`)
 

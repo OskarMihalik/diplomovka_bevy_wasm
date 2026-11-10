@@ -1,0 +1,11 @@
+# The web rows of main.csv on WebGPU in Firefox and Chrome: the same models, distances and
+# settings on the integrated GPU, 5 launches with one 60 s orbit each. Bevy is the webgpu build
+# (bevy_rendering_benchmark/dist-webgpu), Babylon its WebGPUEngine (`api=webgpu`). Firefox hides
+# the adapter info (empty gpu column), Chrome's frame time percentiles aren't comparable (README.md).
+platform,model,distance,repeat,runs,duration,warmup,gpu,resolution,msaa,shadows,expect_gpu,browser,api
+bevy-web babylon-web,building,20,5,1,60,5,low,2088x1550,4,on,Intel,firefox chrome,webgpu
+bevy-web babylon-web,barling_wrecks cai_mep_port_vietnam,5.22,5,1,60,5,low,2088x1550,4,on,Intel,firefox chrome,webgpu
+bevy-web babylon-web,full_gameready_city_buildings_iv_hongkong,10,5,1,60,5,low,2088x1550,4,on,Intel,firefox chrome,webgpu
+bevy-web babylon-web,administrative_and_warehouse_complex,19000,5,1,60,5,low,2088x1550,4,on,Intel,firefox chrome,webgpu
+babylon-web,london_city,19000,5,1,60,5,low,2088x1550,4,on,Intel,firefox chrome,webgpu
+babylon-web,national_airport_by_aditya,20,5,1,60,5,low,2088x1550,4,on,Intel,firefox chrome,webgpu

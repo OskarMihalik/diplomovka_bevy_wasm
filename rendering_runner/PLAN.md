@@ -18,7 +18,8 @@ only in the small ways listed in section 3.
 | Long overnight batches survive failures and interruptions | failed jobs are logged and skipped, `--resume <batch>` |
 
 **Decisions already made:**
-- Browser: **Firefox only**, no Chrome.
+- Browser: **Firefox** for the thesis comparison. Chrome (Playwright's Chromium) was added later
+  as a side measurement through the `browser` column (section 9).
 - The browser is driven with **Playwright** (`playwright` pinned to an exact version in
   `rendering_runner/package.json`).
 - Firefox is **Playwright's own Firefox build** (`npx playwright install firefox`), not the snap.
@@ -319,3 +320,79 @@ Also: the app's native `date()` uses local time (as fixed in the rendering bench
   like the rendering benchmark's camera, so it is the same orbit); `fps.csv` and `load.csv` start
   with a `camera_distance` column (the camera's actual radius, also for a manual F9). `app.csv`
   uses the distances of `main.csv`. Tested at 20 m natively and on the web.
+
+---
+
+## 9. Chrome (2026-11-05)
+
+`browser` column, `firefox` (default) or `chrome` = Playwright's Chromium build
+(`npx playwright install chromium`, 153.0.8010.12 with Playwright 1.63.0; the user agent and the
+`browser` column say Chrome, `browser_version` is the reduced `153.0.0.0`). Native Wayland, WebGL2
+through ANGLE on OpenGL ES on the Intel GPU, cross-origin isolated (5 µs timer steps).
+
+- `--kiosk` is ignored for the windows Playwright opens over CDP (978x1131), so the runner makes
+  the window fullscreen with `Browser.setWindowBounds`: 2048x1280 CSS px like Firefox.
+- Uncapping, `building` (light) and `barling_wrecks` (GPU-bound), legion, Intel:
+
+  | flags | building bevy / babylon | p50 / p99 ms (bevy) | barling bevy / babylon |
+  |---|---|---|---|
+  | none | 137 / 87 fps | 6.09 / 12.7 (165 Hz) | 51 / 55 fps |
+  | `--disable-gpu-vsync` | 138 / 107 fps | 6.08 / 12.6 (165 Hz) | 52 / 50 fps |
+  | both + `--disable-frame-rate-limit` | **193 / 248 fps** | 2.12 / 76 | 54 / 57 fps |
+  | X11 + `--disable-gpu-vsync` | 69 / 108 fps | 7.07 / 93 | |
+  | Firefox, `layout.frame_rate=0` | 129 / 152 fps | 7.64 / 10.7 | 50 / 53 fps |
+
+- Only both flags uncap Chrome. Then `requestAnimationFrame` runs ahead of the GPU: many
+  near-zero frame times (babylon p50 0.20 ms on barling_wrecks) and stalls of hundreds of ms when
+  the GPU queue is full. `avg_fps` (frames / time) is throughput and comparable with Firefox; the
+  percentiles, `median_fps` and `low_1_fps` describe the submission of frames, not frames on
+  screen, and aren't comparable.
+- `bencmark_results/src/data.rs` ignores Chrome rows, so they don't mix with the Firefox
+  platforms.
+
+---
+
+## 10. WebGPU (2026-11-05)
+
+`api` column, `webgl2` (default) or `webgpu`, for `bevy-web` and `babylon-web`. Bevy: the
+`webgpu` cargo feature (overrides `webgl2`), a second dist; wgpu only takes the adapter's
+`description` for the name, which both browsers leave empty, so the webgpu build asks the browser
+for the adapter itself and writes `vendor architecture` like Babylon. Babylon 9.29:
+`WebGPUEngine` + `initAsync`; its WGSL shaders cover the scene, glslang/twgsl aren't loaded (the
+cross-origin isolated page would block them). In Firefox one of Babylon's internal shaders
+(`CopyVideoToTexture`) fails validation at startup; it's for video textures, rendering works.
+
+- Firefox 155: WebGPU only with `dom.webgpu.enabled`; adapter info empty.
+  `allow-present-without-readback`, 15 s orbit, Intel:
+
+  | | readback (default) | without readback |
+  |---|---|---|
+  | Bevy barling_wrecks | 37.7 fps, p50 26.3 ms | **53.8 fps**, p50 18.2 ms |
+  | Babylon barling_wrecks | 32.4 fps | 32.1 fps |
+  | Bevy building | 67.7 fps | 73.7 fps |
+  | Babylon building | 44.4 fps, p99 83.9 ms | 49.4 fps, p99 21.6 ms |
+
+- Chrome 153: adapter `intel gen-12lp` (Vulkan) with `--enable-unsafe-webgpu
+  --enable-features=Vulkan`; default: no adapter, only the first flag: SwiftShader. Uncapped like
+  WebGL2, with the same requestAnimationFrame run-ahead (barling_wrecks babylon p50 0.39 ms,
+  p99 416 ms), so only `avg_fps` is comparable.
+- First smoke run (barling_wrecks, 10 s, Firefox still with readback): Bevy Firefox 37.9, Chrome
+  76.2 fps; Babylon Firefox 32.4, Chrome 52.2 fps; native Bevy 44.6 fps.
+- **Buffer limit (2026-11-06):** batch `20261105-221325` (webgpu.csv) gave Babylon 63 fps on
+  london_city and 30 on national_airport_by_aditya, 8.5× and 6.6× its WebGL2. Their vertex
+  buffers (353 MB, 650 MB) are over WebGPU's default `maxBufferSize` of 256 MiB; Babylon asked for
+  the default limits, the buffer creation failed and those frames weren't drawn (in Chrome every
+  command buffer was invalid). The runner didn't notice, a validation error isn't a page error.
+  Fixed: `setMaximumLimits: true`, the adapter's limits like Bevy (wgpu's `adapter.limits()` with
+  the default `Functionality` priority); london_city then 6.8 fps in Firefox, 7.3 in Chrome (WebGL2
+  7.4). Babylon's page now reports any uncaptured WebGPU error as a job failure (except the
+  `CopyVideoToTexture` one above): without the fix both london_city jobs fail with the buffer size
+  error. The 20 jobs' rows were removed from rendering_fps.csv and rendering_load.csv (40 rows) and
+  from the batch's done.txt; `--resume 20261105-221325` measures them again (~32 min). The other
+  100 jobs had no WebGPU errors.
+- The resume (2026-11-06, 20/20 passed, no WebGPU errors) ran without `--pc`, so its 40 rows got
+  the host name `omih-83df` and the results tool skipped them; same laptop (meta.json: hostname,
+  CPU, kernel, Mesa, power profile, commit), relabelled `legion`. `--resume` now takes the pc of
+  the batch and refuses another `--pc`. london_city 6.8 fps (Firefox) / 7.6 (Chrome), WebGL2 7.4;
+  national_airport_by_aditya 4.2 / 4.5, WebGL2 4.6.
+

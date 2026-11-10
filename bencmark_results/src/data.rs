@@ -100,10 +100,16 @@ pub enum Platform {
     BevyWasmAsus,
     BabylonWasmAsus,
     BevyNativeAsus,
+    // WebGPU instead of WebGL2 on the integrated GPU of the legion, in Firefox and Chrome, see
+    // rendering_runner/matrices/webgpu.csv; the Bevy and Babylon platforms above are WebGL2
+    BevyWebGpu,
+    BabylonWebGpu,
+    BevyWebGpuChrome,
+    BabylonWebGpuChrome,
 }
 
 impl Platform {
-    pub const ALL: [Platform; 9] = [
+    pub const ALL: [Platform; 13] = [
         Platform::BevyWasm,
         Platform::BabylonWasm,
         Platform::BevyNative,
@@ -113,6 +119,10 @@ impl Platform {
         Platform::BevyWasmAsus,
         Platform::BabylonWasmAsus,
         Platform::BevyNativeAsus,
+        Platform::BevyWebGpu,
+        Platform::BabylonWebGpu,
+        Platform::BevyWebGpuChrome,
+        Platform::BabylonWebGpuChrome,
     ];
     // The ones compared on the same integrated GPU
     pub const COMPARED: [Platform; 3] = [
@@ -144,22 +154,40 @@ impl Platform {
             Platform::BevyWasmAsus => "Bevy (Wasm, HD 4000)",
             Platform::BabylonWasmAsus => "Babylon.js (HD 4000)",
             Platform::BevyNativeAsus => "Bevy (native, HD 4000)",
+            Platform::BevyWebGpu => "Bevy (WebGPU)",
+            Platform::BabylonWebGpu => "Babylon.js (WebGPU)",
+            Platform::BevyWebGpuChrome => "Bevy (WebGPU, Chrome)",
+            Platform::BabylonWebGpuChrome => "Babylon.js (WebGPU, Chrome)",
         }
     }
 
     /// Label without the GPU, for tables whose caption names the GPU
     pub fn short_label(self) -> &'static str {
-        self.on_integrated().label()
+        match self {
+            Platform::BevyWasmRtx | Platform::BevyWasmAsus => Platform::BevyWasm.label(),
+            Platform::BabylonWasmRtx | Platform::BabylonWasmAsus => Platform::BabylonWasm.label(),
+            Platform::BevyNativeRtx | Platform::BevyNativeAsus => Platform::BevyNative.label(),
+            other => other.label(),
+        }
     }
 
-    /// The same renderer on the integrated GPU of the legion
-    pub fn on_integrated(self) -> Platform {
-        match self {
-            Platform::BevyWasmRtx | Platform::BevyWasmAsus => Platform::BevyWasm,
-            Platform::BabylonWasmRtx | Platform::BabylonWasmAsus => Platform::BabylonWasm,
-            Platform::BevyNativeRtx | Platform::BevyNativeAsus => Platform::BevyNative,
-            other => other,
-        }
+    /// Bevy compiled to Wasm, which can't load the models over the 4 GB of wasm32 memory
+    pub fn is_bevy_wasm(self) -> bool {
+        matches!(
+            self,
+            Platform::BevyWasm
+                | Platform::BevyWasmRtx
+                | Platform::BevyWasmAsus
+                | Platform::BevyWebGpu
+                | Platform::BevyWebGpuChrome
+        )
+    }
+
+    /// Chrome uncapped (--disable-frame-rate-limit) runs requestAnimationFrame ahead of the GPU:
+    /// near-zero frame times between long stalls, so its frame time percentiles and 1% low don't
+    /// describe frames on screen; its average fps does (rendering_runner/PLAN.md section 9)
+    pub fn frame_times_valid(self) -> bool {
+        !matches!(self, Platform::BevyWebGpuChrome | Platform::BabylonWebGpuChrome)
     }
 
     /// column name in the pgfplots data files
@@ -174,10 +202,33 @@ impl Platform {
             Platform::BevyWasmAsus => "bevy_wasm_asus",
             Platform::BabylonWasmAsus => "babylon_wasm_asus",
             Platform::BevyNativeAsus => "bevy_native_asus",
+            Platform::BevyWebGpu => "bevy_webgpu",
+            Platform::BabylonWebGpu => "babylon_webgpu",
+            Platform::BevyWebGpuChrome => "bevy_webgpu_chrome",
+            Platform::BabylonWebGpuChrome => "babylon_webgpu_chrome",
         }
     }
 
-    fn of(pc: &str, engine: &str, browser: &str, gpu: &str) -> Option<Self> {
+    fn of(pc: &str, engine: &str, browser: &str, graphics_backend: &str, gpu: &str) -> Option<Self> {
+        // WebGPU only ran on the integrated GPU of the legion (webgpu.csv): Firefox hides the
+        // adapter, its gpu column is empty, Chrome's says `intel gen-12lp`
+        if graphics_backend == "BrowserWebGpu" {
+            if pc != "legion" || gpu.contains("NVIDIA") {
+                return None;
+            }
+            return match (engine, browser) {
+                ("bevy", "Firefox") => Some(Platform::BevyWebGpu),
+                ("babylon", "Firefox") => Some(Platform::BabylonWebGpu),
+                ("bevy", "Chrome") => Some(Platform::BevyWebGpuChrome),
+                ("babylon", "Chrome") => Some(Platform::BabylonWebGpuChrome),
+                _ => None,
+            };
+        }
+        // otherwise WebGL2 in Firefox; Chrome's WebGL2 rows (chrome.csv) aren't part of these
+        // comparisons
+        if browser != "native" && browser != "Firefox" {
+            return None;
+        }
         // Firefox reports the same generic Intel GPU on both notebooks, only `pc` tells them apart
         if pc == "asus" {
             return match (engine, browser == "native") {
@@ -209,6 +260,8 @@ pub struct Row {
     camera_distance: f64,
     pc: String,
     gpu: String,
+    #[serde(default)]
+    graphics_backend: String,
     browser: String,
     resolution: String,
     model_name: String,
@@ -283,7 +336,7 @@ fn read(path: &Path, check_distance: bool) -> Result<Vec<Measurement>, String> {
         };
         let c = &row;
         let model = MODELS.iter().position(|m| m.file == c.model_name);
-        let platform = Platform::of(&c.pc, &c.engine, &c.browser, &c.gpu);
+        let platform = Platform::of(&c.pc, &c.engine, &c.browser, &c.graphics_backend, &c.gpu);
         let settings_match = c.resolution == RESOLUTION && c.msaa == MSAA && c.shadows == SHADOWS;
         match (model, platform) {
             (Some(model), Some(platform))

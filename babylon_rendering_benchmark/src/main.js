@@ -1,7 +1,7 @@
 // Rendering benchmark: opens one glb model the way bevy_rendering_benchmark does and measures
 // how long it takes to load and how fast it renders while the camera orbits it. See README.md.
 
-import { BaseTexture, Engine, LoadAssetContainerAsync, Scene } from "@babylonjs/core";
+import { BaseTexture, Engine, LoadAssetContainerAsync, Scene, WebGPUEngine } from "@babylonjs/core";
 import "@babylonjs/loaders/glTF";
 
 import { Bench } from "./bench.js";
@@ -27,9 +27,9 @@ try {
 // canvas' css size, not scaled by devicePixelRatio
 canvas.style.width = `${config.width}px`;
 canvas.style.height = `${config.height}px`;
-const engine = new Engine(
+// no antialiasing on the canvas, MSAA happens offscreen (scene.js)
+const engine = config.webgpu ? await createWebGpuEngine() : new Engine(
   canvas,
-  // no antialiasing on the canvas, MSAA happens offscreen (scene.js)
   false,
   { powerPreference: config.powerPreference, stencil: true, preserveDrawingBuffer: false },
   false,
@@ -56,6 +56,47 @@ engine.runRenderLoop(() => {
   scene.render();
   frame += 1;
 });
+
+/**
+ * Babylon's WebGPU engine with its own WGSL shaders; a material without them would load the
+ * GLSL compilers from Babylon's CDN, which the cross-origin isolated page blocks
+ */
+// Firefox's WebGPU rejects the shader of Babylon's internal video-to-texture copy, which it
+// creates at startup; no video is used here. The first error has no label. A model's own broken
+// shader would still fail the job through the invalid pipeline using it, whose label isn't a
+// video one.
+const HARMLESS_WEBGPU_ERRORS = [
+  /CopyVideoToTexture|InternalVideoPipeline/,
+  /^Shader module creation failed: Shader validation error$/,
+];
+
+async function createWebGpuEngine() {
+  try {
+    const engine = new WebGPUEngine(canvas, {
+      antialias: false,
+      powerPreference: config.powerPreference,
+      stencil: true,
+      // the adapter's limits like Bevy (wgpu's adapter.limits()): with WebGPU's defaults the
+      // 256 MiB maxBufferSize rejects the vertex buffers of london_city (353 MB) and
+      // national_airport_by_aditya (650 MB), and nothing is drawn
+      setMaximumLimits: true,
+    });
+    await engine.initAsync();
+    // a validation error means frames that weren't drawn as measured: the job fails
+    engine._device.addEventListener("uncapturederror", (event) => {
+      const message = event.error?.message ?? String(event.error);
+      if (HARMLESS_WEBGPU_ERRORS.some((pattern) => pattern.test(message))) return;
+      console.error(`WebGPU error: ${message}`);
+      report({ error: `WebGPU error: ${message}` });
+    });
+    return engine;
+  } catch (error) {
+    const message = `WebGPU init failed: ${error.message ?? error}`;
+    console.error(message);
+    report({ error: message });
+    throw error;
+  }
+}
 
 /** `source` is a url or the bytes of a picked file */
 async function loadModel(source, fileName) {

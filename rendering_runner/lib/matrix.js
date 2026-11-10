@@ -5,9 +5,15 @@ import path from "node:path";
 
 // app-*: the whole bevy_diplomovka app in bench mode (PLAN.md section 7)
 export const PLATFORMS = ["bevy-native", "bevy-web", "babylon-web", "app-native", "app-web"];
+// the web platforms run in Playwright's Firefox or Chromium (written as Chrome in the CSVs)
+export const BROWSERS = ["firefox", "chrome"];
+// the web platforms' graphics API, webgpu is a second Bevy build (dist-webgpu), Babylon's `api`
+export const APIS = ["webgl2", "webgpu"];
+// columns only the web platforms use
+const WEB_COLUMNS = ["browser", "api"];
 
 // columns the runner uses itself, every other column is a benchmark option
-const RUNNER_COLUMNS = ["platform", "model", "repeat", "env", "expect_gpu"];
+const RUNNER_COLUMNS = ["platform", "model", "repeat", "env", "expect_gpu", ...WEB_COLUMNS];
 // never split on spaces
 const NO_EXPANSION = ["env", "expect_gpu", "name"];
 // the benchmarks' defaults, for the time estimate and the expected number of fps rows
@@ -82,6 +88,13 @@ export function readMatrix(file, modelsDir) {
         values.map((value) => ({ ...combination, [column]: value })),
       );
     }
+    // native platforms have no browser or api: one job, not one per value of those cells
+    const first = Object.fromEntries(WEB_COLUMNS.map((column) => [column, (cells[column] ?? "").split(/\s+/)[0]]));
+    combinations = combinations.filter(
+      (combination) =>
+        combination.platform?.endsWith("-web") ||
+        WEB_COLUMNS.every((column) => (combination[column] ?? "") === first[column]),
+    );
     for (const cells of combinations) configs.push(config(cells, line, modelsDir));
   });
 
@@ -90,7 +103,10 @@ export function readMatrix(file, modelsDir) {
   for (let rep = 1; rep <= rounds; rep++) {
     configs.forEach((config, index) => {
       if (rep > config.repeat) return;
-      const id = `${String(index + 1).padStart(3, "0")}-${config.platform}-${config.modelName}-rep${rep}`;
+      // the defaults aren't in the id, so batches from before these columns still resume
+      const browser = config.browser && config.browser !== "firefox" ? `-${config.browser}` : "";
+      const api = config.api === "webgpu" ? "-webgpu" : "";
+      const id = `${String(index + 1).padStart(3, "0")}-${config.platform}${browser}${api}-${config.modelName}-rep${rep}`;
       jobs.push({ ...config, id, rep });
     });
   }
@@ -104,6 +120,18 @@ function config(cells, line, modelsDir) {
   }
   const model = modelPath(cells.model, modelsDir);
   if (!fs.existsSync(model)) throw new Error(`${line}: model not found: ${model}`);
+  const web = platform.endsWith("-web");
+  const browser = web ? cells.browser ?? "firefox" : null;
+  if (web && !BROWSERS.includes(browser)) {
+    throw new Error(`${line}: browser must be one of ${BROWSERS.join(", ")}, got \`${browser}\``);
+  }
+  const api = web ? cells.api ?? "webgl2" : null;
+  if (web && !APIS.includes(api)) {
+    throw new Error(`${line}: api must be one of ${APIS.join(", ")}, got \`${api}\``);
+  }
+  if (platform === "app-web" && api === "webgpu") {
+    throw new Error(`${line}: the app has no WebGPU build, api=webgpu only works for bevy-web and babylon-web`);
+  }
   const repeat = Number(cells.repeat ?? 1);
   if (!Number.isInteger(repeat) || repeat < 1) {
     throw new Error(`${line}: repeat must be a whole number from 1, got \`${cells.repeat}\``);
@@ -125,6 +153,8 @@ function config(cells, line, modelsDir) {
   const runs = Math.max(Math.trunc(number("runs")), 0);
   return {
     platform,
+    browser,
+    api,
     model,
     modelName: path.basename(model).replace(/\.(glb|gltf)$/, ""),
     repeat,

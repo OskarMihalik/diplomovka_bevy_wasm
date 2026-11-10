@@ -307,7 +307,7 @@ impl CsvContext<'_, '_> {
             self.config.pc.clone(),
             system_info::os(),
             system_info::cpu_cores().to_string(),
-            self.adapter.name.clone(),
+            system_info::gpu_name(&self.adapter.name),
             format!("{:?}", self.adapter.backend),
             browser,
             browser_version,

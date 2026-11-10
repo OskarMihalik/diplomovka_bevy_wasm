@@ -42,6 +42,11 @@ npx http-server backend/assets/models --cors -p 8090
 browser console. Uncap the browser frame rate first: in Firefox, set `layout.frame_rate` to `0` in about:config.
 In Chrome, start it with `--disable-frame-rate-limit --disable-gpu-vsync`.
 
+WebGPU instead of WebGL2 is a separate build, `--features webgpu` (Bevy's `webgpu` overrides
+`webgl2`): `trunk serve --release --cargo-profile wasm-release --features webgpu`. On Linux,
+Firefox needs `dom.webgpu.enabled` and `dom.webgpu.allow-present-without-readback`, Chrome
+`--enable-unsafe-webgpu --enable-features=Vulkan`.
+
 ## Options
 
 Native `--key value`, web `?key=value&...`:

@@ -10,7 +10,8 @@
 // - `runs`       how many measured runs, default 5; 0 only measures the load
 // - `duration`   seconds of one run, the camera does one full orbit in this time, default 60
 // - `warmup`     seconds before the first run that are not measured, default 5
-// - `gpu`        `low` or `high`, the WebGL power preference, default high
+// - `gpu`        `low` or `high`, the WebGL or WebGPU power preference, default high
+// - `api`        `webgl2` (default) or `webgpu`
 // - `resolution` canvas size in physical pixels, `2088x1550` by default
 // - `msaa`       1, 2, 4 or 8 samples, default 4 like bevy_diplomovka
 // - `shadows`    `on` or `off`, shadows of the point light, default on like bevy_diplomovka
@@ -85,6 +86,10 @@ function parse(params) {
   if (!match) {
     throw new Error(`\`resolution\` must look like 1920x1080, got \`${resolution}\``);
   }
+  const api = get("api") ?? "webgl2";
+  if (api !== "webgl2" && api !== "webgpu") {
+    throw new Error(`\`api\` must be \`webgl2\` or \`webgpu\`, got \`${api}\``);
+  }
   const msaa = Math.trunc(number("msaa", 4));
   if (![1, 2, 4, 8].includes(msaa)) {
     throw new Error(`\`msaa\` must be 1, 2, 4 or 8, got ${msaa}`);
@@ -99,6 +104,7 @@ function parse(params) {
     duration: Math.max(number("duration", 60), 1),
     warmup: Math.max(number("warmup", 5), 0),
     powerPreference: gpu === "low" ? "low-power" : "high-performance",
+    webgpu: api === "webgpu",
     width: Number(match[1]),
     height: Number(match[2]),
     msaa,

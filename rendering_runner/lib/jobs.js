@@ -17,11 +17,11 @@ const appOptions = (job) => ({
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { firefox } from "playwright";
+import { chromium, firefox } from "playwright";
 
 import { ACCOUNT } from "./app.js";
 
-// launching Firefox, opening a page and navigating hang while Firefox can't draw (locked screen)
+// launching the browser, opening a page and navigating hang while it can't draw (locked screen)
 const STEP_TIMEOUT_MS = 60_000;
 
 // set while a job runs, so Ctrl+C can stop it
@@ -31,17 +31,54 @@ export const stopRunningJob = () => stopCurrent?.();
 /** The time a job may take before it counts as hung */
 export const jobTimeoutS = (job) => Math.round(job.estimateS * 1.5 + 120);
 
-/** Settings for Firefox, the same for the preflight check and every job */
-function launchFirefox(env = {}) {
-  return firefox.launch({
-    headless: false,
-    // fullscreen without toolbars, the 2088x1550 canvas only fits the screen like this
-    args: ["--kiosk"],
-    firefoxUserPrefs: { "layout.frame_rate": 0 },
-    env: { ...process.env, ...env },
-    timeout: STEP_TIMEOUT_MS,
-  });
+/** The name in the CSVs' `browser` column and in meta.json */
+const BROWSER_NAMES = { firefox: "Firefox", chrome: "Chrome" };
+
+/**
+ * A browser with the same settings for the preflight check and every job: fullscreen without
+ * toolbars (the 2088x1550 canvas only fits the screen like this) and an uncapped frame rate.
+ * `chrome` is Playwright's Chromium build, its user agent says Chrome. WebGPU is switched on only
+ * for `webgpu` jobs, the WebGL2 jobs run in the browser as it was measured before.
+ */
+function launchBrowser(name, env = {}, api = "webgl2") {
+  const common = { headless: false, env: { ...process.env, ...env }, timeout: STEP_TIMEOUT_MS };
+  const webgpu = api === "webgpu";
+  if (name === "chrome") {
+    // both are needed: without --disable-frame-rate-limit Chrome stays at the display's 165 Hz
+    // on Wayland, see README.md for what this does to the frame time percentiles
+    const args = ["--disable-frame-rate-limit", "--disable-gpu-vsync"];
+    // WebGPU on Linux: without these no adapter, with only the first one SwiftShader (CPU)
+    if (webgpu) args.push("--enable-unsafe-webgpu", "--enable-features=Vulkan");
+    return chromium.launch({ ...common, args });
+  }
+  const firefoxUserPrefs = { "layout.frame_rate": 0 };
+  if (webgpu) {
+    // off by default on Linux; requestAdapter fails instead of falling back to a CPU adapter,
+    // the only GPU check there is in Firefox, which hides the adapter info
+    firefoxUserPrefs["dom.webgpu.enabled"] = true;
+    firefoxUserPrefs["dom.webgpu.testing.assert-hardware-adapter"] = true;
+    // otherwise every frame is copied back to the CPU to be presented: Bevy barling_wrecks
+    // 38 -> 54 fps, Babylon building p99 84 -> 22 ms (PLAN.md section 10)
+    firefoxUserPrefs["dom.webgpu.allow-present-without-readback"] = true;
+  }
+  return firefox.launch({ ...common, args: ["--kiosk"], firefoxUserPrefs });
 }
+
+/** A new context and page; Chromium ignores --kiosk for the windows Playwright opens */
+async function openPage(browser, name) {
+  const context = await within(browser.newContext({ viewport: null }), "creating the browser context");
+  const page = await within(context.newPage(), "opening a page");
+  if (name === "chrome") {
+    const cdp = await context.newCDPSession(page);
+    const { windowId } = await cdp.send("Browser.getWindowForTarget");
+    await cdp.send("Browser.setWindowBounds", { windowId, bounds: { windowState: "fullscreen" } });
+    await cdp.detach();
+  }
+  return page;
+}
+
+const executable = (name) => (name === "chrome" ? chromium : firefox).executablePath();
+const installName = (name) => (name === "chrome" ? "chromium" : "firefox");
 
 /** Native Bevy or the native app, writes its CSVs to `jobDir` (`--out`), read back afterwards */
 export async function runNative(job, { root, pc, jobDir, log }) {
@@ -95,10 +132,11 @@ export async function runNative(job, { root, pc, jobDir, log }) {
   return { rows, error: outcome };
 }
 
-/** Bevy, Babylon or the app in a new Firefox with a new profile, the page posts its rows */
+/** Bevy, Babylon or the app in a new browser with a new profile, the page posts its rows */
 export async function runWeb(job, { server, pc, log }) {
   // the url path the server mounts each dist at
   const engine = job.platform.replace(/-web$/, "");
+  const webgpu = job.api === "webgpu";
   const rows = [];
   let settle;
   const finished = new Promise((resolve) => (settle = resolve));
@@ -115,11 +153,10 @@ export async function runWeb(job, { server, pc, log }) {
   let timer;
   let error;
   try {
-    browser = await launchFirefox(job.env);
-    log.write(`firefox ${browser.version()}\n`);
-    browser.on("disconnected", () => settle("Firefox closed"));
-    const context = await within(browser.newContext({ viewport: null }), "creating the browser context");
-    const page = await within(context.newPage(), "opening a page");
+    browser = await launchBrowser(job.browser, job.env, job.api);
+    log.write(`${job.browser} ${browser.version()}\n`);
+    browser.on("disconnected", () => settle(`${BROWSER_NAMES[job.browser]} closed`));
+    const page = await openPage(browser, job.browser);
     page.on("console", (message) => log.write(`[console.${message.type()}] ${message.text()}\n`));
     // a config error, a wasm trap (e.g. out of memory)
     page.on("pageerror", (pageError) => settle(`page error: ${pageError.message}`));
@@ -129,10 +166,12 @@ export async function runWeb(job, { server, pc, log }) {
       ...job.options,
       // the app downloads the model from the backend, the rendering benchmarks from this server
       ...(engine === "app" ? appOptions(job) : { model: `/models/${path.basename(job.model)}` }),
+      // Bevy's WebGPU is its own build, Babylon picks the engine from the url
+      ...(webgpu && engine === "babylon" ? { api: "webgpu" } : {}),
       report: "/report",
       pc,
     });
-    const url = `${server.origin}/${engine}/?${params}`;
+    const url = `${server.origin}/${engine}${webgpu && engine === "bevy" ? "-webgpu" : ""}/?${params}`;
     log.write(`open ${url.replace(ACCOUNT.password, "***")}\n`);
     await within(page.goto(url, { waitUntil: "commit" }), "opening the benchmark page");
 
@@ -147,23 +186,35 @@ export async function runWeb(job, { server, pc, log }) {
     server.onReport = () => {};
     await browser?.close().catch(() => {});
   }
-  return { rows, error, firefox: browser?.version() };
+  return { rows, error, browserVersion: browser?.version() };
 }
 
 /**
- * Opens an empty page once before the batch: Firefox starts, WebGL2 runs on a GPU, the page is
- * cross-origin isolated (20 µs timer steps). Returns what goes into meta.json.
+ * Opens an empty page once before the batch: the browser starts, WebGL2 runs on a GPU, the page
+ * is cross-origin isolated (20 µs timer steps in Firefox, 5 µs in Chrome). Returns what goes into
+ * meta.json.
  */
-export async function checkFirefox(server, env = {}) {
-  if (!fs.existsSync(firefox.executablePath())) {
-    throw new Error("Playwright's Firefox isn't installed: cd rendering_runner && npx playwright install firefox");
+export async function checkBrowser(name, server, env = {}, api = "webgl2") {
+  if (!fs.existsSync(executable(name))) {
+    throw new Error(
+      `Playwright's ${installName(name)} isn't installed: cd rendering_runner && npx playwright install ${installName(name)}`,
+    );
   }
-  const browser = await launchFirefox(env);
+  const browser = await launchBrowser(name, env, api);
   try {
-    const page = await within((await browser.newContext({ viewport: null })).newPage(), "opening a page");
+    const page = await openPage(browser, name);
     await within(page.goto(`${server.origin}/check`), "opening the check page");
-    const info = await page.evaluate(() => {
+    const info = await page.evaluate(async (webgpu) => {
+      let adapter = null;
+      if (webgpu) {
+        const found = await navigator.gpu?.requestAdapter({ powerPreference: "low-power" }).catch(() => null);
+        adapter = found
+          ? { vendor: found.info.vendor, architecture: found.info.architecture, fallback: Boolean(found.info.isFallbackAdapter) }
+          : null;
+      }
       const gl = document.createElement("canvas").getContext("webgl2");
+      // Chrome's RENDERER is "WebKit WebGL", the GPU is only in the unmasked one
+      const debug = gl?.getExtension("WEBGL_debug_renderer_info");
       let timerStepMs = Infinity;
       let last = performance.now();
       for (let i = 0; i < 100000; i++) {
@@ -172,16 +223,17 @@ export async function checkFirefox(server, env = {}) {
         last = now;
       }
       return {
-        webgl2_renderer: gl ? gl.getParameter(gl.RENDERER) : null,
+        webgl2_renderer: gl ? gl.getParameter(debug ? debug.UNMASKED_RENDERER_WEBGL : gl.RENDERER) : null,
         cross_origin_isolated: crossOriginIsolated,
         timer_step_ms: Number(timerStepMs.toFixed(4)),
         screen: `${screen.width}x${screen.height}`,
         device_pixel_ratio: devicePixelRatio,
         window: `${innerWidth}x${innerHeight}`,
         user_agent: navigator.userAgent,
+        ...(webgpu ? { webgpu_adapter: adapter } : {}),
       };
-    });
-    return { firefox: browser.version(), ...info };
+    }, api === "webgpu");
+    return { browser: BROWSER_NAMES[name], version: browser.version(), ...info };
   } finally {
     await browser.close().catch(() => {});
   }

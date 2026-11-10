@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 
 import { backendUrl, prepareBackend } from "./lib/app.js";
 import { busyApps, displaysOnNvidia, keepScreenAwake, machineInfo, onAcPower, screenLocked } from "./lib/host.js";
-import { checkFirefox, csvFiles, jobTimeoutS, runNative, runWeb, stopRunningJob } from "./lib/jobs.js";
+import { checkBrowser, csvFiles, jobTimeoutS, runNative, runWeb, stopRunningJob } from "./lib/jobs.js";
 import { formatDuration, parseCsv, readMatrix } from "./lib/matrix.js";
 import { startServer } from "./lib/server.js";
 
@@ -44,7 +44,7 @@ function fail(message) {
 
 const dryRun = flag("dry-run");
 const noBuild = flag("no-build");
-const pc = option("pc", os.hostname());
+let pc = option("pc", null);
 const outDir = path.resolve(option("out", path.join(ROOT, "bencmark_results")));
 const modelsDir = path.resolve(option("models", path.join(os.homedir(), "Documents/diplomovka_models")));
 const cooldownS = Number(option("cooldown", "10"));
@@ -62,6 +62,11 @@ try {
 }
 const platforms = new Set(jobs.map((job) => job.platform));
 const hasWeb = [...platforms].some((platform) => platform.endsWith("-web"));
+// every browser and api the web jobs use, each checked once before the batch
+const browserChecks = [...new Set(jobs.filter((job) => job.browser).map((job) => `${job.browser} ${job.api}`))].map(
+  (key) => key.split(" "),
+);
+const bevyWeb = (api) => jobs.some((job) => job.platform === "bevy-web" && job.api === api);
 const appJobs = jobs.filter((job) => job.platform.startsWith("app-"));
 
 // --- batch folder, --resume -------------------------------------------------------------------
@@ -76,11 +81,17 @@ if (resume) {
     console.error(`${matrixFile} differs from the batch's matrix.csv, resume with the same matrix`);
     process.exit(2);
   }
+  // the rows of a batch name one pc: a resume keeps it, the host name isn't the --pc of the batch
+  const metaFile = path.join(batchDir, "meta.json");
+  const batchPc = fs.existsSync(metaFile) ? JSON.parse(fs.readFileSync(metaFile, "utf8")).runs?.[0]?.pc : null;
+  if (pc && batchPc && pc !== batchPc) fail(`batch ${batch} ran with --pc ${batchPc}, not ${pc}`);
+  pc ??= batchPc;
   const doneFile = path.join(batchDir, "done.txt");
   if (fs.existsSync(doneFile)) {
     for (const id of fs.readFileSync(doneFile, "utf8").split("\n").filter(Boolean)) done.add(id);
   }
 }
+pc ??= os.hostname();
 const todo = jobs.filter((job) => !done.has(job.id));
 const cooldownTotal = Math.max(todo.length - 1, 0) * cooldownS;
 const estimate = (list) => list.reduce((sum, job) => sum + job.estimateS, 0);
@@ -91,7 +102,7 @@ console.log(
 );
 if (dryRun) {
   for (const job of todo) {
-    const options = Object.entries(job.options).map(([key, value]) => `${key}=${value}`).join(" ");
+    const options = jobOptions(job);
     const env = Object.keys(job.env).length ? ` env ${Object.entries(job.env).map(([k, v]) => `${k}=${v}`).join(";")}` : "";
     console.log(`  ${job.id.padEnd(60)} ${formatDuration(job.estimateS).padStart(8)}  ${options}${env}`);
   }
@@ -122,10 +133,17 @@ if (!noBuild) {
   if (platforms.has("bevy-native")) {
     steps.push(["cargo", ["build", "-p", "bevy_rendering_benchmark", "--release"], ROOT]);
   }
-  if (platforms.has("bevy-web")) {
+  if (bevyWeb("webgl2")) {
     steps.push([
       "trunk",
       ["build", "--release", "--cargo-profile", "wasm-release"],
+      path.join(ROOT, "bevy_rendering_benchmark"),
+    ]);
+  }
+  if (bevyWeb("webgpu")) {
+    steps.push([
+      "trunk",
+      ["build", "--release", "--cargo-profile", "wasm-release", "--features", "webgpu", "--dist", "dist-webgpu"],
       path.join(ROOT, "bevy_rendering_benchmark"),
     ]);
   }
@@ -174,12 +192,13 @@ meta.runs.push(thisRun);
 const writeMeta = () => fs.writeFileSync(metaFile, JSON.stringify(meta, null, 2) + "\n");
 writeMeta();
 
-// --- server, Firefox check, keeping the screen awake ------------------------------------------
+// --- server, browser check, keeping the screen awake ------------------------------------------
 let server = null;
 if (hasWeb) {
   server = await startServer(
     {
       "/bevy/": path.join(ROOT, "bevy_rendering_benchmark/dist"),
+      "/bevy-webgpu/": path.join(ROOT, "bevy_rendering_benchmark/dist-webgpu"),
       "/babylon/": path.join(ROOT, "babylon_rendering_benchmark/dist"),
       "/app/": path.join(ROOT, "bevy_diplomovka/dist-bench"),
     },
@@ -195,23 +214,31 @@ process.on("SIGINT", () => {
   stopRunningJob();
 });
 
-if (hasWeb) {
+for (const [browser, api] of browserChecks) {
   await waitForUnlock();
+  const label = api === "webgpu" ? `${browser} webgpu` : browser;
+  const of = (job) => job.browser === browser && job.api === api;
+  let check;
   try {
-    // with the environment of the web jobs, e.g. the PRIME variables of nvidia.csv
-    thisRun.firefox = await checkFirefox(server, todo.find((job) => job.platform.endsWith("-web"))?.env);
+    // with the environment of the browser's jobs, e.g. the PRIME variables of nvidia.csv
+    check = await checkBrowser(browser, server, (todo.find(of) ?? jobs.find(of)).env, api);
   } catch (error) {
-    console.error(`Firefox check failed: ${error.message}`);
+    console.error(`${label} check failed: ${error.message}`);
     await finish(1);
   }
+  thisRun[label.replace(" ", "_")] = check;
   writeMeta();
-  const check = thisRun.firefox;
-  console.log(`firefox ${check.firefox}, WebGL2 ${check.webgl2_renderer}, timer step ${check.timer_step_ms} ms`);
-  if (!check.webgl2_renderer) {
-    console.error("Firefox has no WebGL2");
+  const adapter = check.webgpu_adapter;
+  const gpu =
+    api === "webgpu"
+      ? `WebGPU ${adapter ? [adapter.vendor, adapter.architecture].filter(Boolean).join(" ") || "(adapter info hidden)" : "none"}`
+      : `WebGL2 ${check.webgl2_renderer}`;
+  console.log(`${label} ${check.version}, ${gpu}, timer step ${check.timer_step_ms} ms, window ${check.window}`);
+  if (api === "webgpu" ? !adapter || adapter.fallback : !check.webgl2_renderer) {
+    console.error(`${label}: ${api === "webgpu" ? "no hardware WebGPU adapter" : "no WebGL2"}`);
     await finish(1);
   }
-  if (!check.cross_origin_isolated) console.warn("warning: the page isn't cross-origin isolated, frame times are rounded to 1 ms");
+  if (!check.cross_origin_isolated) console.warn(`warning: the page isn't cross-origin isolated in ${label}, frame times are rounded`);
 }
 
 // --- the app's backend: account, project, models --------------------------------------------
@@ -240,7 +267,7 @@ let passed = 0;
 for (const [index, job] of todo.entries()) {
   if (interrupted) break;
   const left = estimate(todo.slice(index)) + Math.max(todo.length - index - 1, 0) * cooldownS;
-  const options = Object.entries(job.options).map(([key, value]) => `${key}=${value}`).join(" ");
+  const options = jobOptions(job);
   console.log(`[${index + 1}/${todo.length}] ${job.id}  ${options}  (${formatDuration(left)} left)`);
 
   const log = fs.createWriteStream(path.join(batchDir, `${job.id}.log`), { flags: "a" });
@@ -255,7 +282,7 @@ for (const [index, job] of todo.entries()) {
         : await runWeb(job, { server, pc, log });
     result.seconds = Math.round((Date.now() - started) / 1000);
     result.error ??= validate(job, result.rows);
-    // a locked screen stops Firefox from drawing and changes native frame times
+    // a locked screen stops the browser from drawing and changes native frame times
     if (screenLocked() && !interrupted) {
       result.error = `the screen was locked${result.error ? ` (${result.error})` : ""}`;
       if (attempt < LOCKED_RETRIES) {
@@ -267,8 +294,9 @@ for (const [index, job] of todo.entries()) {
   }
   log.end();
 
-  if (result.firefox && !thisRun.firefox_versions?.includes(result.firefox)) {
-    thisRun.firefox_versions = [...(thisRun.firefox_versions ?? []), result.firefox];
+  const versions = `${job.browser}_versions`;
+  if (result.browserVersion && !thisRun[versions]?.includes(result.browserVersion)) {
+    thisRun[versions] = [...(thisRun[versions] ?? []), result.browserVersion];
   }
   if (result.error) {
     failed.push({ id: job.id, error: result.error });
@@ -298,6 +326,12 @@ for (const { id, error } of failed) console.log(`  ${id}: ${error}`);
 await finish(failed.length || interrupted ? 1 : 0);
 
 // --- helpers ----------------------------------------------------------------------------------
+/** `browser=chrome api=webgl2 runs=1 duration=60 ...` */
+function jobOptions(job) {
+  const options = { ...(job.browser ? { browser: job.browser, api: job.api } : {}), ...job.options };
+  return Object.entries(options).map(([key, value]) => `${key}=${value}`).join(" ");
+}
+
 async function finish(code) {
   thisRun.finished = new Date().toISOString();
   writeMeta();
@@ -325,6 +359,8 @@ function validate(job, rows) {
   if (job.expectGpu) {
     for (const { header, row } of rows) {
       const gpu = field(header, row, "gpu");
+      // Firefox hides the WebGPU adapter info, assert-hardware-adapter only rules out the CPU
+      if (job.api === "webgpu" && job.browser === "firefox" && gpu === "") continue;
       if (!gpu.toLowerCase().includes(job.expectGpu.toLowerCase())) {
         return `ran on \`${gpu}\`, expected \`${job.expectGpu}\``;
       }

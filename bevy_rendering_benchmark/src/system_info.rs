@@ -85,6 +85,46 @@ pub fn browser() -> (String, String) {
     ("native".to_string(), String::new())
 }
 
+#[cfg(all(target_arch = "wasm32", feature = "webgpu"))]
+thread_local! {
+    static WEBGPU_ADAPTER: std::cell::RefCell<String> = const { std::cell::RefCell::new(String::new()) };
+}
+
+/// Asks the browser for a WebGPU adapter with the power preference wgpu uses, for `gpu_name`:
+/// wgpu only takes the adapter's `description`, which both Chrome and Firefox leave empty
+#[cfg(all(target_arch = "wasm32", feature = "webgpu"))]
+pub fn request_webgpu_adapter(power_preference: bevy::render::settings::PowerPreference) {
+    use bevy::render::settings::PowerPreference;
+    let preference = match power_preference {
+        PowerPreference::LowPower => "low-power",
+        PowerPreference::HighPerformance => "high-performance",
+        PowerPreference::None => "",
+    };
+    let request = js_sys::Function::new_with_args(
+        "preference",
+        "return navigator.gpu ? navigator.gpu.requestAdapter(preference ? { powerPreference: preference } : {})\
+         .then((a) => (a ? [a.info.vendor, a.info.architecture].filter(Boolean).join(' ') : '')) : Promise.resolve('')",
+    );
+    let Ok(promise) = request.call1(&wasm_bindgen::JsValue::NULL, &preference.into()) else {
+        return;
+    };
+    wasm_bindgen_futures::spawn_local(async move {
+        if let Ok(name) = wasm_bindgen_futures::JsFuture::from(js_sys::Promise::from(promise)).await {
+            WEBGPU_ADAPTER.with(|adapter| *adapter.borrow_mut() = name.as_string().unwrap_or_default());
+        }
+    });
+}
+
+/// The adapter name, on WebGPU `vendor architecture` (`intel gen-12lp` in Chrome; Firefox hides
+/// the adapter info, so empty)
+pub fn gpu_name(adapter_name: &str) -> String {
+    #[cfg(all(target_arch = "wasm32", feature = "webgpu"))]
+    if adapter_name.is_empty() {
+        return WEBGPU_ADAPTER.with(|adapter| adapter.borrow().clone());
+    }
+    adapter_name.to_string()
+}
+
 /// Operating system as reported by the browser (or the target OS natively)
 #[cfg(target_arch = "wasm32")]
 pub fn os() -> String {

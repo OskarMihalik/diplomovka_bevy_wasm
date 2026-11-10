@@ -48,7 +48,8 @@ about:config. In Chrome, start it with `--disable-frame-rate-limit --disable-gpu
 | `runs`       | 5             | 0 only measures the load                                     |
 | `duration`   | 60            | seconds per run = one orbit                                  |
 | `warmup`     | 5             | seconds, not measured                                        |
-| `gpu`        | high          | `low` / `high` WebGL power preference                        |
+| `gpu`        | high          | `low` / `high` WebGL or WebGPU power preference              |
+| `api`        | webgl2        | `webgl2` or `webgpu` (WebGPUEngine)                          |
 | `resolution` | 2088x1550     | physical pixels                                              |
 | `msaa`       | 4             | 1, 2, 4, 8                                                   |
 | `shadows`    | on            | point light shadows                                          |

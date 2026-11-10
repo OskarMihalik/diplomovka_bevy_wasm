@@ -59,6 +59,8 @@ fn main() {
     if let Some(power_preference) = config.power_preference {
         wgpu.power_preference = power_preference;
     }
+    #[cfg(all(target_arch = "wasm32", feature = "webgpu"))]
+    system_info::request_webgpu_adapter(wgpu.power_preference);
 
     let mut app = App::new();
     // registers the `memory://` asset source, so it has to come before DefaultPlugins

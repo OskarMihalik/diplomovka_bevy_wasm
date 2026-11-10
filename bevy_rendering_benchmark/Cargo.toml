@@ -8,6 +8,11 @@ edition = "2024"
 # Renders a single glb model the same way bevy_diplomovka does, without egui, the backend api,
 # picking and outlines, and measures load time and frame times. See README.md.
 
+[features]
+# the web build on WebGPU instead of WebGL2 (bevy's webgpu overrides webgl2):
+#   trunk build --release --cargo-profile wasm-release --features webgpu --dist dist-webgpu
+webgpu = ["bevy/webgpu"]
+
 [dependencies]
 # Same rendering features as bevy_diplomovka, minus picking and the ui
 bevy = { version = "0.19", default-features = false, features = [
@@ -37,6 +42,8 @@ time = { version = "0.3", features = ["local-offset"] }
 # keep in sync with bevy_diplomovka, trunk needs the matching wasm-bindgen-cli
 wasm-bindgen = "=0.2.121"
 js-sys = "0.3.66"
+# the WebGPU adapter info for the gpu column, see system_info.rs
+wasm-bindgen-futures = "0.4.71"
 web-sys = { version = "0.3.98", features = ["Window", "Location", "Navigator", "Url"] }
 # glam pulls in getrandom 0.3, which needs the `wasm_js` backend on the web (see .cargo/config.toml)
 getrandom = { version = "0.3", features = ["wasm_js"] }
